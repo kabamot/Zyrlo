@@ -48,7 +48,7 @@ add_executable(${PROJECT_NAME}
     ${TS_FILES}
 )
 
-target_compile_definit/t    /t  ions(${PROJECT_NAME}
+target_compile_definitions(${PROJECT_NAME}
   PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>)
 target_link_libraries(Zyrlo
   PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick)

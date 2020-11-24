@@ -31,6 +31,8 @@ set(TS_FILES translations/Zyrlo_en_US.ts)
 
 set(SRC_FILES
     src/main.cpp
+    src/maincontroller.cpp
+    src/maincontroller.h
 )
 
 set(QML_FILES

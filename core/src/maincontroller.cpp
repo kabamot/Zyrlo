@@ -6,6 +6,7 @@
  ****************************************************************************/
 
 #include "maincontroller.h"
+#include "ocrhandler.h"
 
 MainController::MainController()
 {

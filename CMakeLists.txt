@@ -1,77 +1,38 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(Zyrlo LANGUAGES CXX)
+project(ZyrloProject VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick LinguistTools REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools REQUIRED)
+# Options: Things you can set via commandline options to cmake (e.g. -DENABLE_LTO=[ON|OFF])
+option(ENABLE_WARNINGS_SETTINGS "Allow target_set_warnings to add flags and defines.
+                                 Set this to OFF if you want to provide your own warning parameters." ON)
+option(ENABLE_LTO "Enable link time optimization" ON)
+option(ENABLE_DOCTESTS "Include tests in the library. Setting this to OFF will remove all doctest related code.
+                        Tests in tests/*.cpp will still be enabled." ON)
 
-set(TS_FILES translations/Zyrlo_en_US.ts)
+# Include stuff. No change needed.
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+include(ConfigSafeGuards)
+include(Colors)
+include(CTest)
+include(Doctest)
+include(LTO)
+include(Misc)
+include(Warnings)
 
-set(SRC_FILES
-    src/main.cpp
-    src/maincontroller.cpp
-    src/maincontroller.h
-    src/ocrhandler.cpp
-    src/ocrhandler.h
-)
+# Check for LTO support.
+find_lto(CXX)
 
-set(QML_FILES
-    qml/main.qml
-)
 
-set(QRC_FILES
-    qml.qrc
-)
+add_subdirectory(core)
+add_subdirectory(ui)
 
-qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
-
-add_executable(${PROJECT_NAME}
-    ${SRC_FILES}
-    ${QRC_FILES}
-    ${QML_FILES}
-    ${TS_FILES}
-)
-
-if (${CMAKE_CROSSCOMPILING})
-    find_package(OpenCV REQUIRED)
-    add_definitions(-DRPI)
-else()
-    find_package(OpenCV 3.2.0 EXACT REQUIRED PATHS "/home/dilshodm/work/proj/upwork/leon/opencv")
-endif()
-
-target_compile_definitions(${PROJECT_NAME}
-    PRIVATE $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:QT_QML_DEBUG>
-)
-
-find_library(ZYRLO_OCR_LIB ZyrloOcr HINTS /home/dilshodm/work/proj/upwork/leon/doc/Locate/ZyrloOcr/Ubuntu REQUIRED)
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-    Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick
-
-    ${OpenCV_LIBS}
-    ${ZYRLO_OCR_LIB}
-)
-
-include_directories(
-    3rd/locate
-    ${OpenCV_INCLUDE_DIRS}/..
-)
-
-target_link_directories(${PROJECT_NAME}
-    PUBLIC
-        /opt/vc/lib
-)
-
-if (${CMAKE_CROSSCOMPILING})
-    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "/tmp/")
+# Typically needed only if we are the top level project
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    add_subdirectory(tests)
+#    add_subdirectory(packaging)
 endif()

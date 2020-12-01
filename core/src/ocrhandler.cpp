@@ -13,7 +13,7 @@
 
 constexpr auto DATA_DIR = "/opt/zyrlo/Distrib";
 
-OcrHandler::OcrHandler(QObject *parent) : QObject(parent)
+OcrHandler::OcrHandler()
 {
     const auto retCode = zyrlo_proc_init(DATA_DIR, m_languageCode);
     if (retCode != 0) {

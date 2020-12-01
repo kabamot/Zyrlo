@@ -13,17 +13,26 @@ namespace cv {
 class Mat;
 }
 
+// Sinlgleton instance
 class OcrHandler : public QObject
 {
     Q_OBJECT
 public:
-    explicit OcrHandler(QObject *parent = nullptr);
+    static OcrHandler &instance() {
+        static OcrHandler ocr;
+        return ocr;
+    }
+    OcrHandler(OcrHandler const&) = delete;
+    void operator=(OcrHandler const&) = delete;
     ~OcrHandler();
 
     bool setLanguage(int languageCode);
     bool startProcess(const cv::Mat &image);
 
 signals:
+
+private:
+    explicit OcrHandler();
 
 private:
     int m_languageCode {1};

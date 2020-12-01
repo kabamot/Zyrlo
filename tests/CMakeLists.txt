@@ -16,6 +16,12 @@ target_link_libraries(${TEST_MAIN} PRIVATE ${LIBRARY_NAME} doctest)
 set_target_properties(${TEST_MAIN} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 target_set_warnings(${TEST_MAIN} ENABLE ALL AS_ERROR ALL DISABLE Annoying) # Set warnings (if needed).
 
+# Include core's private headers to test non-public classes
+target_include_directories(${TEST_MAIN}
+    PRIVATE
+        ../core/src
+)
+
 set_target_properties(${TEST_MAIN} PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED YES

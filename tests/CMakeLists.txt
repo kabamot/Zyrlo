@@ -1,6 +1,7 @@
 # List all files containing tests. (Change as needed)
 set(TESTFILES        # All .cpp files in tests/
     main.cpp
+    test_textpage.cpp
 )
 
 set(LIBRARY_NAME core)

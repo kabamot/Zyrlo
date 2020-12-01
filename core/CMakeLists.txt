@@ -21,6 +21,8 @@ set(INC_FILES
 set(SRC_FILES
     src/maincontroller.cpp
     src/ocrhandler.cpp
+    src/textpage.cpp
+    src/textpage.h
 )
 
 qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})

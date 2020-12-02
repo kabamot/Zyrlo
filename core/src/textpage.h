@@ -7,10 +7,27 @@
 
 #pragma once
 
+#include <QVector>
+#include "paragraph.h"
 
+/*
+ * @brief TextPage handles one page of text extracted by OcrHandler
+ *
+ */
 class TextPage
 {
 public:
-    TextPage();
+    explicit TextPage(int numOfParagraphs);
+
+    int numParagraphs() const;
+
+    Paragraph &paragraph(int num);
+    const Paragraph &paragraph(int num) const;
+
+private:
+    bool isNumOk(int num) const;
+
+private:
+    QVector<Paragraph> m_paragraphs;
 };
 

@@ -12,8 +12,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick LinguistTools REQUIRED)
 find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools REQUIRED)
 
-set(TS_FILES translations/Zyrlo_en_US.ts)
-
 set(SRC_FILES
     src/main.cpp
 )
@@ -26,7 +24,11 @@ set(QRC_FILES
     qml.qrc
 )
 
-qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+set(TS_FILES translations/Zyrlo_en_US.ts)
+#qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
+#set_source_files_properties(${TS_FILES} PROPERTIES OUTPUT_LOCATION "l10n")
+#qt5_add_translation(QM_FILES ${TS_FILES})
+
 
 add_executable(${APP_NAME}
     ${SRC_FILES}

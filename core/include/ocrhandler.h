@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <string_view>
 #include <QObject>
 
 namespace cv {
@@ -28,11 +29,16 @@ public:
 
     bool setLanguage(int languageCode);
     bool startProcess(const cv::Mat &image);
+    bool cancelProcess();
+
+    bool isIdle() const;
+    bool isOcring() const;
 
 signals:
 
-private:
+public:
     explicit OcrHandler();
+    QString getStatus() const;
 
 private:
     int m_languageCode {1};

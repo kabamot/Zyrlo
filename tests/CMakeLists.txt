@@ -3,6 +3,7 @@ set(TESTFILES        # All .cpp files in tests/
     main.cpp
     test_textpage.cpp
     test_paragraph.cpp
+    test_ocrhandler.cpp
 )
 
 set(LIBRARY_NAME core)

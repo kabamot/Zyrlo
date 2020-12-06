@@ -37,5 +37,7 @@ add_test(
     COMMAND ${TEST_MAIN} ${TEST_RUNNER_PARAMS}
 )
 
+source_group(data FILES data/*)
+
 # Adds a 'coverage' target.
 include(CodeCoverage)

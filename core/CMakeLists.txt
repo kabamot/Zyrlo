@@ -16,15 +16,15 @@ find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools REQUIRED)
 set(INC_FILES
     include/maincontroller.h
     include/ocrhandler.h
+    include/textpage.h
+    include/paragraph.h
 )
 
 set(SRC_FILES
     src/maincontroller.cpp
     src/ocrhandler.cpp
     src/textpage.cpp
-    src/textpage.h
     src/paragraph.cpp
-    src/paragraph.h
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})

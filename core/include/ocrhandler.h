@@ -9,6 +9,9 @@
 
 #include <string_view>
 #include <QObject>
+#include <QTimer>
+
+class TextPage;
 
 namespace cv {
 class Mat;
@@ -28,19 +31,31 @@ public:
     ~OcrHandler();
 
     bool setLanguage(int languageCode);
+
     bool startProcess(const cv::Mat &image);
-    bool cancelProcess();
+    bool stopProcess();
 
     bool isIdle() const;
     bool isOcring() const;
 
 signals:
+    void lineAdded();
+    void finished();
 
-public:
+private slots:
+    void checkProcess();
+
+private:
     explicit OcrHandler();
     QString getStatus() const;
 
+    void createTextPage();
+    void destroyTextPage();
+    bool getOcrResults();
+
 private:
     int m_languageCode {1};
+    TextPage *m_page {nullptr};
+    QTimer m_timer;
 };
 

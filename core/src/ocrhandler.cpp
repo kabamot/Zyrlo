@@ -12,9 +12,10 @@
 #include <QThread>
 
 #include <ZyrloOcr.h>
+#include "textpage.h"
 
 constexpr auto DATA_DIR = "/opt/zyrlo/Distrib";
-constexpr int STATUS_MAX_SIZE = 32;
+constexpr int STATUS_MAX_SIZE = 64;
 
 OcrHandler::OcrHandler()
 {
@@ -26,6 +27,9 @@ OcrHandler::OcrHandler()
     while (!isIdle()) {
         QThread::msleep(1);
     }
+
+    m_timer.setInterval(10);
+    connect(&m_timer, &QTimer::timeout, this, &OcrHandler::checkProcess);
 }
 
 OcrHandler::~OcrHandler()
@@ -45,16 +49,19 @@ bool OcrHandler::setLanguage(int languageCode)
 
 bool OcrHandler::startProcess(const cv::Mat &image)
 {
-    cancelProcess();
+    stopProcess();
 
     const auto retCode = zyrlo_proc_start_with_bayer(image);
-    if (retCode != 0) {
+    if (retCode == 0) {
+        m_timer.start();
+    } else {
         qWarning() << "Error in zyrlo_proc_start_with_bayer()" << retCode;
     }
+
     return retCode == 0;
 }
 
-bool OcrHandler::cancelProcess()
+bool OcrHandler::stopProcess()
 {
     if (!isIdle()) {
         zyrlo_proc_cancel();
@@ -62,6 +69,9 @@ bool OcrHandler::cancelProcess()
             QThread::msleep(1);
         }
     }
+
+    m_timer.stop();
+    destroyTextPage();
     return true;
 }
 
@@ -75,9 +85,64 @@ bool OcrHandler::isOcring() const
     return getStatus() == QStringLiteral("Ocring");
 }
 
+void OcrHandler::checkProcess()
+{
+    if (isIdle()) {
+        m_timer.stop();
+        emit finished();
+    }
+
+    if (isOcring()) {
+        if (m_page == nullptr) {
+            createTextPage();
+        }
+
+        if (getOcrResults()) {
+            emit lineAdded();
+        }
+    }
+}
+
 QString OcrHandler::getStatus() const
 {
     char buffer[STATUS_MAX_SIZE];
     zyrlo_proc_get_status(buffer);
     return QString(buffer);
+}
+
+void OcrHandler::createTextPage()
+{
+    const auto numParagraphs = zyrlo_proc_get_num_paragraphs();
+    m_page = new TextPage(numParagraphs);
+
+    for (int i = 0; i < numParagraphs; ++i) {
+        const auto numLines = zyrlo_proc_get_num_lines(i);
+        Q_ASSERT(numLines > 0);
+        m_page->paragraph(i).setId(i);
+        m_page->paragraph(i).setNumLines(numLines);
+    }
+}
+
+void OcrHandler::destroyTextPage()
+{
+    if (m_page) {
+        delete m_page;
+        m_page = nullptr;
+    }
+}
+
+bool OcrHandler::getOcrResults()
+{
+    bool hasNewResult = false;
+    text_line textLine;
+    int resultsCode = 0;
+    while (resultsCode == 0) {
+        resultsCode = zyrlo_proc_get_result(&textLine);
+        if (resultsCode == 0) {
+            m_page->paragraph(textLine.nParagraphId).addLine(textLine.sText);
+            hasNewResult = true;
+        }
+    }
+
+    return hasNewResult;
 }

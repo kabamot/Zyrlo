@@ -20,7 +20,7 @@ TEST_CASE("OcrHandler")
 
     OcrHandler &ocr = OcrHandler::instance();
 
-    const cv::Mat bayer = cv::imread("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/test01.jpg", cv::IMREAD_GRAYSCALE);
+    const cv::Mat bayer = cv::imread("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/RawFull_000.jpg", cv::IMREAD_GRAYSCALE);
 
     DOCTEST_SUBCASE("idle status first test") {
         CHECK(ocr.isIdle());
@@ -51,7 +51,6 @@ TEST_CASE("OcrHandler")
         app.exec();
         ocr.stopProcess();
 
-        INFO(QString::number(gotResults).toStdString());
-        CHECK(gotResults == 0);
+        CHECK(gotResults == 19);
     }
 }

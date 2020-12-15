@@ -29,7 +29,8 @@ find_lto(CXX)
 
 
 add_subdirectory(core)
-add_subdirectory(ui)
+add_subdirectory(wui)
+#add_subdirectory(ui)
 
 # Typically needed only if we are the top level project
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)

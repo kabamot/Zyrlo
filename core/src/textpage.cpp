@@ -30,6 +30,26 @@ const Paragraph &TextPage::paragraph(int num) const
     return m_paragraphs[num];
 }
 
+QString TextPage::text() const
+{
+    QString allText;
+    for (const auto &paragraph : m_paragraphs) {
+        allText.append(paragraph.text());
+    }
+
+    return allText;
+}
+
+QString TextPage::formattedText() const
+{
+    QString allText;
+    for (const auto &paragraph : m_paragraphs) {
+        allText.append(QStringLiteral("<p style='font-size:30px'>%1</p>").arg(paragraph.text()));
+    }
+
+    return allText;
+}
+
 bool TextPage::isNumOk(int num) const
 {
     return num >= 0 && num < numParagraphs();

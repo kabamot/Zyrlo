@@ -8,6 +8,7 @@
 #pragma once
 
 #include <QMainWindow>
+#include "maincontroller.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -21,6 +22,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+private slots:
+    void start();
+
 private:
     Ui::MainWindow *ui;
+    MainController m_controller;
 };

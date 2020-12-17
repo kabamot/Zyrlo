@@ -38,6 +38,8 @@ public:
     bool isIdle() const;
     bool isOcring() const;
 
+    const TextPage *textPage() const;
+
 signals:
     void lineAdded();
     void finished();

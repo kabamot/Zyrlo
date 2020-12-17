@@ -51,6 +51,12 @@ bool OcrHandler::startProcess(const cv::Mat &image)
 {
     stopProcess();
 
+    if (image.empty()) {
+        qWarning() << "Image is empty";
+        emit finished();
+        return false;
+    }
+
     const auto retCode = zyrlo_proc_start_with_bayer(image);
     if (retCode == 0) {
         m_timer.start();
@@ -83,6 +89,11 @@ bool OcrHandler::isIdle() const
 bool OcrHandler::isOcring() const
 {
     return getStatus() == QStringLiteral("Ocring");
+}
+
+const TextPage *OcrHandler::textPage() const
+{
+    return m_page;
 }
 
 void OcrHandler::checkProcess()

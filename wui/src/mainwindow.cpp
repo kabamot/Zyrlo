@@ -13,6 +13,12 @@ MainWindow::MainWindow(QWidget *parent)
       , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
+    connect(&m_controller, &MainController::formattedTextUpdated,
+            ui->textBrowser, &QTextBrowser::setHtml);
+
+    ui->fileNameLineEdit->setText("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/RawFull_000.jpg");
 }
 
 MainWindow::~MainWindow()
@@ -20,3 +26,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::start()
+{
+    m_controller.start(ui->fileNameLineEdit->text());
+}

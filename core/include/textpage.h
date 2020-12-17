@@ -23,6 +23,8 @@ public:
 
     Paragraph &paragraph(int num);
     const Paragraph &paragraph(int num) const;
+    QString text() const;
+    QString formattedText() const;
 
 private:
     bool isNumOk(int num) const;

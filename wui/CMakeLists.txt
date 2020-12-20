@@ -55,5 +55,5 @@ target_link_directories(${APP_NAME}
 )
 
 if (${CMAKE_CROSSCOMPILING})
-    install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION "/tmp/")
+    install(TARGETS ${APP_NAME} RUNTIME DESTINATION "/tmp/")
 endif()

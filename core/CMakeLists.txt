@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.14)
+
 set(LIB_NAME core)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -9,9 +11,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core Quick LinguistTools REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core Quick LinguistTools REQUIRED)
+add_definitions(-DQT_STATICPLUGIN)
 
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core LinguistTools TextToSpeech REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core LinguistTools TextToSpeech REQUIRED)
 
 set(INC_FILES
     include/maincontroller.h
@@ -25,6 +28,12 @@ set(SRC_FILES
     src/ocrhandler.cpp
     src/textpage.cpp
     src/paragraph.cpp
+
+    src/cerence/cerencettsengine.cpp
+    src/cerence/cerencettsengine.h
+    src/cerence/cerencettsplugin.cpp
+    src/cerence/cerencettsplugin.h
+    src/cerence/cerence_plugin.json
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -49,7 +58,8 @@ find_library(ZYRLO_OCR_LIB ZyrloOcr HINTS /home/dilshodm/work/proj/upwork/leon/d
 
 target_link_libraries(${LIB_NAME}
     PUBLIC
-        Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick
+        Qt${QT_VERSION_MAJOR}::Core
+        Qt${QT_VERSION_MAJOR}::TextToSpeech
         ${OpenCV_LIBS}
 
     PRIVATE

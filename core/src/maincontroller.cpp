@@ -8,7 +8,13 @@
 #include "maincontroller.h"
 #include "ocrhandler.h"
 #include "textpage.h"
+#include "cerence/cerencettsplugin.h"
 #include <opencv2/imgcodecs.hpp>
+
+#include <QDebug>
+#include <QTextToSpeech>
+
+Q_IMPORT_PLUGIN(CerenceTTSPlugin)
 
 MainController::MainController()
 {
@@ -16,6 +22,9 @@ MainController::MainController()
         emit textUpdated(ocr().textPage()->text());
         emit formattedTextUpdated(ocr().textPage()->formattedText());
     });
+
+    QTextToSpeech tts;
+    qDebug() << tts.availableEngines();
 }
 
 void MainController::start(const QString &filename)

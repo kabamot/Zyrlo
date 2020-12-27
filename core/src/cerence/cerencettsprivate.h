@@ -35,21 +35,26 @@ public:
     void bufferDone(size_t size);
 
 private:
-    CerenceTTS *m_parent {nullptr};
+    void initTTS();
+    void initAudio();
+    void stopAudio();
 
-    VE_INSTALL m_stInstall;
-    VPLATFORM_RESOURCES m_stResources;
-    VE_HSPEECH m_hSpeech;
-    VE_HINSTANCE m_hTtsInst;
+private:
+    CerenceTTS             *m_parent {nullptr};
+
+    VE_INSTALL              m_stInstall;
+    VPLATFORM_RESOURCES     m_stResources;
+    VE_HSPEECH              m_hSpeech;
+    VE_HINSTANCE            m_hTtsInst;
 
     // array of parameters for the vocalizer
-    VE_PARAM m_ttsParam[16];
-    VE_OUTDEVINFO m_stOutDevInfo;
+    VE_PARAM                m_ttsParam[16];
+    VE_OUTDEVINFO           m_stOutDevInfo;
 
-    QByteArray m_ttsBuffer {100 * 1024, 0};
+    QByteArray              m_ttsBuffer {100 * 1024, 0};
+    QFuture<void>           m_ttsFuture;
 
-    QAudioOutput *m_audioOut {nullptr};
-    QBuffer *m_audioIO {nullptr};
-    QFuture<void> m_ttsFuture;
+    QAudioOutput           *m_audioOutput {nullptr};
+    QBuffer                *m_audioIO {nullptr};
 };
 

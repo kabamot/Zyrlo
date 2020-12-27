@@ -66,6 +66,77 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
 CerenceTTSPrivate::CerenceTTSPrivate(CerenceTTS *p)
     : m_parent(p)
 {
+    initTTS();
+    initAudio();
+
+    qDebug() << __func__;
+}
+
+CerenceTTSPrivate::~CerenceTTSPrivate()
+{
+    stop();
+
+    if (m_hTtsInst.pHandleData != nullptr) {
+        ve_ttsClose(m_hTtsInst);
+    }
+
+    if (m_hSpeech.pHandleData != nullptr) {
+        ve_ttsUnInitialize(m_hSpeech);
+    }
+
+    vplatform_ReleaseInterfaces(&m_stInstall);
+}
+
+void CerenceTTSPrivate::say(const QString &text)
+{
+    stop();
+
+    m_audioIO->buffer().clear();
+    m_audioIO->reset();
+    m_audioOutput->start(m_audioIO);
+
+    m_ttsFuture = QtConcurrent::run([this, text](){
+        qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->format() ;
+        auto textBytes = text.toUtf8();
+
+        VE_INTEXT inText;
+        inText.eTextFormat = VE_NORM_TEXT;
+        inText.szInText = textBytes.data();
+        // Caveat: ve_ttsProcessText2Speech expects the number of bytes as cntTextLength
+        inText.cntTextLength = static_cast<NUAN_U32>(textBytes.size());
+
+        QElapsedTimer timer;
+        timer.start();
+        ve_ttsProcessText2Speech(m_hTtsInst, &inText);
+        qDebug() << __func__ << "finished in" << timer.elapsed() << "ms";
+    });
+}
+
+void CerenceTTSPrivate::stop()
+{
+    m_audioOutput->stop();
+    ve_ttsStop(m_hTtsInst);
+    m_ttsFuture.waitForFinished();
+}
+
+char *CerenceTTSPrivate::buffer()
+{
+    return m_ttsBuffer.data();
+}
+
+size_t CerenceTTSPrivate::bufferSize()
+{
+    return m_ttsBuffer.size();
+}
+
+void CerenceTTSPrivate::bufferDone(size_t size)
+{
+    m_audioIO->buffer().append(m_ttsBuffer.data(), size);
+    qDebug() << __func__ << size;
+}
+
+void CerenceTTSPrivate::initTTS()
+{
     memset(&m_stInstall, 0, sizeof(m_stInstall));
     memset(&m_stResources, 0, sizeof(m_stResources));
     memset(&m_hSpeech, 0, sizeof(m_hSpeech));
@@ -110,7 +181,10 @@ CerenceTTSPrivate::CerenceTTSPrivate(CerenceTTS *p)
         qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
         return;
     }
+}
 
+void CerenceTTSPrivate::initAudio()
+{
     /* Set the output device */
     m_stOutDevInfo.pUserData = this;
     m_stOutDevInfo.pfOutNotify = vout_Write;
@@ -140,15 +214,15 @@ CerenceTTSPrivate::CerenceTTSPrivate(CerenceTTS *p)
                    << format.byteOrder() << format.sampleType();
     }
 
-    m_audioOut = new QAudioOutput(format, p);
-    m_audioOut->setBufferSize(4096);
-    QObject::connect(m_audioOut, &QAudioOutput::stateChanged, p, [this](QAudio::State state){
+    m_audioOutput = new QAudioOutput(format, m_parent);
+    m_audioOutput->setBufferSize(4096);
+    QObject::connect(m_audioOutput, &QAudioOutput::stateChanged, m_parent, [this](QAudio::State state){
         qDebug() << "state" << state;
         switch (state) {
         case QAudio::StoppedState:
-            if (m_audioOut->error() != QAudio::NoError) {
+            if (m_audioOutput->error() != QAudio::NoError) {
                 // Error handling
-                qWarning() << __func__ << __LINE__ << m_audioOut->error();
+                qWarning() << __func__ << __LINE__ << m_audioOutput->error();
             }
             break;
 
@@ -161,71 +235,6 @@ CerenceTTSPrivate::CerenceTTSPrivate(CerenceTTS *p)
         }
     });
 
-    m_audioIO = new QBuffer(p);
+    m_audioIO = new QBuffer(m_parent);
     m_audioIO->open(QIODevice::ReadOnly);
-
-    qDebug() << __func__;
-}
-
-CerenceTTSPrivate::~CerenceTTSPrivate()
-{
-    stop();
-
-    if (m_hTtsInst.pHandleData != nullptr) {
-        ve_ttsClose(m_hTtsInst);
-    }
-
-    if (m_hSpeech.pHandleData != nullptr) {
-        ve_ttsUnInitialize(m_hSpeech);
-    }
-
-    vplatform_ReleaseInterfaces(&m_stInstall);
-}
-
-void CerenceTTSPrivate::say(const QString &text)
-{
-    stop();
-
-    m_audioIO->buffer().clear();
-    m_audioIO->reset();
-    m_audioOut->start(m_audioIO);
-
-    m_ttsFuture = QtConcurrent::run([this, text](){
-        qDebug() << __func__ << m_audioOut->bufferSize() << m_audioOut->format() ;
-        auto textBytes = text.toUtf8();
-
-        VE_INTEXT inText;
-        inText.eTextFormat = VE_NORM_TEXT;
-        inText.szInText = textBytes.data();
-        // Caveat: ve_ttsProcessText2Speech expects the number of bytes as cntTextLength
-        inText.cntTextLength = static_cast<NUAN_U32>(textBytes.size());
-
-        QElapsedTimer timer;
-        timer.start();
-        ve_ttsProcessText2Speech(m_hTtsInst, &inText);
-        qDebug() << __func__ << "finished in" << timer.elapsed() << "ms";
-    });
-}
-
-void CerenceTTSPrivate::stop()
-{
-    m_audioOut->stop();
-    ve_ttsStop(m_hTtsInst);
-    m_ttsFuture.waitForFinished();
-}
-
-char *CerenceTTSPrivate::buffer()
-{
-    return m_ttsBuffer.data();
-}
-
-size_t CerenceTTSPrivate::bufferSize()
-{
-    return m_ttsBuffer.size();
-}
-
-void CerenceTTSPrivate::bufferDone(size_t size)
-{
-    m_audioIO->buffer().append(m_ttsBuffer.data(), size);
-    qDebug() << __func__ << size;
 }

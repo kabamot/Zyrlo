@@ -31,8 +31,6 @@ set(SRC_FILES
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h
-    src/cerence/cerencettsprivate.cpp
-    src/cerence/cerencettsprivate.h
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})

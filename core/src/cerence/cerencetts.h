@@ -8,20 +8,50 @@
 #pragma once
 
 #include <QObject>
+#include <QString>
+#include <QByteArray>
+#include <QBuffer>
+#include <QFuture>
 
-class CerenceTTSPrivate;
+#include <ve_ttsapi.h>
+#include <ve_platform.h>
+#include <vplatform.h>
+
+class QAudioOutput;
+class QIODevice;
 
 class CerenceTTS : public QObject
 {
-    Q_OBJECT
 public:
-    CerenceTTS(QObject *parent = nullptr);
-    ~CerenceTTS() override;
+    CerenceTTS(QObject *parent);
+    ~CerenceTTS();
 
-public slots:
     void say(const QString &text);
     void stop();
 
+    char *buffer();
+    size_t bufferSize();
+    void bufferDone(size_t size);
+
 private:
-    CerenceTTSPrivate *p;
+    void initTTS();
+    void initAudio();
+    void stopAudio();
+
+private:
+    VE_INSTALL              m_stInstall;
+    VPLATFORM_RESOURCES     m_stResources;
+    VE_HSPEECH              m_hSpeech;
+    VE_HINSTANCE            m_hTtsInst;
+
+    // array of parameters for the vocalizer
+    VE_PARAM                m_ttsParam[16];
+    VE_OUTDEVINFO           m_stOutDevInfo;
+
+    QByteArray              m_ttsBuffer {100 * 1024, 0};
+    QFuture<void>           m_ttsFuture;
+
+    QAudioOutput           *m_audioOutput {nullptr};
+    QBuffer                *m_audioIO {nullptr};
 };
+

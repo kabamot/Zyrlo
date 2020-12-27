@@ -10,6 +10,8 @@
 #include <QObject>
 
 class OcrHandler;
+class Paragraph;
+class CerenceTTS;
 
 class MainController : public QObject
 {
@@ -22,9 +24,11 @@ public:
 signals:
     void textUpdated(const QString &text);
     void formattedTextUpdated(const QString &text);
+//    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
 
 private:
     OcrHandler &ocr();
+    CerenceTTS *m_ttsEngine {nullptr};
 };
 

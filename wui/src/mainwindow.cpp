@@ -18,7 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_controller, &MainController::formattedTextUpdated,
             ui->textBrowser, &QTextBrowser::setHtml);
 
-    ui->fileNameLineEdit->setText("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/RawFull_000.jpg");
+//    ui->fileNameLineEdit->setText("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/RawFull_000.jpg");
+    ui->fileNameLineEdit->setText("/home/pi/zyrlo/Images/RawFull_001.bmp");
 }
 
 MainWindow::~MainWindow()

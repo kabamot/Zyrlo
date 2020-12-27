@@ -13,8 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_definitions(-DQT_STATICPLUGIN)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core LinguistTools TextToSpeech REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core LinguistTools TextToSpeech REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent REQUIRED)
 
 set(INC_FILES
     include/maincontroller.h
@@ -29,11 +29,10 @@ set(SRC_FILES
     src/textpage.cpp
     src/paragraph.cpp
 
-    src/cerence/cerencettsengine.cpp
-    src/cerence/cerencettsengine.h
-    src/cerence/cerencettsplugin.cpp
-    src/cerence/cerencettsplugin.h
-    src/cerence/cerence_plugin.json
+    src/cerence/cerencetts.cpp
+    src/cerence/cerencetts.h
+    src/cerence/cerencettsprivate.cpp
+    src/cerence/cerencettsprivate.h
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -55,15 +54,22 @@ target_compile_definitions(${LIB_NAME}
 )
 
 find_library(ZYRLO_OCR_LIB ZyrloOcr HINTS /home/dilshodm/work/proj/upwork/leon/doc/Locate/ZyrloOcr/Ubuntu REQUIRED)
+find_library(VE_LIB ve HINTS /home/dilshodm/work/proj/upwork/leon/doc/csdk/lib REQUIRED)
+
+add_subdirectory(3rd/tts_ve)
 
 target_link_libraries(${LIB_NAME}
     PUBLIC
         Qt${QT_VERSION_MAJOR}::Core
         Qt${QT_VERSION_MAJOR}::TextToSpeech
+        Qt${QT_VERSION_MAJOR}::Multimedia
+        Qt${QT_VERSION_MAJOR}::Concurrent
         ${OpenCV_LIBS}
 
     PRIVATE
         ${ZYRLO_OCR_LIB}
+        ${VE_LIB}
+        tts_ve
 )
 
 target_include_directories(${LIB_NAME}
@@ -71,8 +77,8 @@ target_include_directories(${LIB_NAME}
         include
         ${OpenCV_INCLUDE_DIRS}/..
     PRIVATE
-        ${CMAKE_SOURCE_DIR}/3rd/locate
         ${CMAKE_SOURCE_DIR}/3rd/doctest
+        3rd/locate
 )
 
 target_link_directories(${LIB_NAME}

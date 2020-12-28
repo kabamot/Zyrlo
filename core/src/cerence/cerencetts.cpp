@@ -114,7 +114,9 @@ void CerenceTTS::say(const QString &text)
 
         QElapsedTimer timer;
         timer.start();
+        emit sayStarted();
         ve_ttsProcessText2Speech(m_hTtsInst, &inText);
+        emit sayFinished();
         qDebug() << __func__ << "finished in" << timer.elapsed() << "ms";
     });
 }
@@ -159,6 +161,7 @@ void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
             if (mark.eMrkType == VE_MRK_WORD) {
                 qDebug() << mark.eMrkType << mark.cntSrcPos << mark.cntSrcTextLen << mark.cntDestPos;
                 m_marks.append(mark);
+                emit marksAdded();
             }
         }
     }

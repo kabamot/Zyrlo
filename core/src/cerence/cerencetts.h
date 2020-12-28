@@ -23,6 +23,7 @@ class QIODevice;
 
 class CerenceTTS : public QObject
 {
+    Q_OBJECT
 public:
     CerenceTTS(QObject *parent);
     ~CerenceTTS();
@@ -35,6 +36,11 @@ public:
     VE_MARKINFO *markBuffer();
     size_t markBufferSize();
     void bufferDone(size_t sizePcm, size_t sizeMarks);
+
+signals:
+    void sayStarted();
+    void sayFinished();
+    void wordMarksAdded();
 
 private:
     void initTTS();
@@ -57,6 +63,6 @@ private:
 
     QAudioOutput           *m_audioOutput {nullptr};
     QBuffer                *m_audioIO {nullptr};
-    QVector<VE_MARKINFO>    m_marks;
+    QVector<VE_MARKINFO>    m_wordMarks;
 };
 

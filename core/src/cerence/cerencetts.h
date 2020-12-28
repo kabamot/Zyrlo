@@ -12,6 +12,7 @@
 #include <QByteArray>
 #include <QBuffer>
 #include <QFuture>
+#include <QVector>
 
 #include <ve_ttsapi.h>
 #include <ve_platform.h>
@@ -31,7 +32,9 @@ public:
 
     char *buffer();
     size_t bufferSize();
-    void bufferDone(size_t size);
+    VE_MARKINFO *markBuffer();
+    size_t markBufferSize();
+    void bufferDone(size_t sizePcm, size_t sizeMarks);
 
 private:
     void initTTS();
@@ -49,9 +52,11 @@ private:
     VE_OUTDEVINFO           m_stOutDevInfo;
 
     QByteArray              m_ttsBuffer {100 * 1024, 0};
+    QVector<VE_MARKINFO>    m_ttsMarkBuffer {100};
     QFuture<void>           m_ttsFuture;
 
     QAudioOutput           *m_audioOutput {nullptr};
     QBuffer                *m_audioIO {nullptr};
+    QVector<VE_MARKINFO>    m_marks;
 };
 

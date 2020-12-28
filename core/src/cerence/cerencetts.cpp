@@ -40,18 +40,24 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
         break;
 
     case VE_MSG_OUTBUFREQ:
-        qDebug() << "Text-to-speech a new buffer is requested";
-        // a new buffer is requested
         pTtsOutData = static_cast<VE_OUTDATA *>(pcbMessage->pParam);
-        pTtsOutData->pOutPcmBuf = p->buffer();
-        pTtsOutData->cntPcmBufLen = p->bufferSize();
+        if (pTtsOutData) {
+            // a new buffer is requested
+            qDebug() << "Text-to-speech a new buffer is requested";
+            pTtsOutData->pOutPcmBuf = p->buffer();
+            pTtsOutData->cntPcmBufLen = p->bufferSize();
+            pTtsOutData->pMrkList = p->markBuffer();
+            pTtsOutData->cntMrkListLen = p->markBufferSize();
+        }
         break;
 
     case VE_MSG_OUTBUFDONE:
         pTtsOutData = (VE_OUTDATA *)pcbMessage->pParam;
-        qDebug() << "Text-to-speech buffer done, size" << pTtsOutData->cntPcmBufLen;
-        if (pTtsOutData->cntPcmBufLen != 0) {
-            p->bufferDone(pTtsOutData->cntPcmBufLen);
+        if (pTtsOutData) {
+            qDebug() << "Text-to-speech buffer done, size" << pTtsOutData->cntPcmBufLen;
+            if (pTtsOutData->cntPcmBufLen != 0) {
+                p->bufferDone(pTtsOutData->cntPcmBufLen, pTtsOutData->cntMrkListLen);
+            }
         }
         break;
 
@@ -91,6 +97,7 @@ void CerenceTTS::say(const QString &text)
 {
     stop();
 
+    m_marks.clear();
     m_audioIO->buffer().clear();
     m_audioIO->reset();
     m_audioOutput->start(m_audioIO);
@@ -129,10 +136,32 @@ size_t CerenceTTS::bufferSize()
     return m_ttsBuffer.size();
 }
 
-void CerenceTTS::bufferDone(size_t size)
+VE_MARKINFO *CerenceTTS::markBuffer()
 {
-    m_audioIO->buffer().append(m_ttsBuffer.data(), size);
-    qDebug() << __func__ << size;
+    return m_ttsMarkBuffer.data();
+}
+
+size_t CerenceTTS::markBufferSize()
+{
+    return m_ttsMarkBuffer.size() * sizeof(VE_MARKINFO);
+}
+
+void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
+{
+    qDebug() << __func__ << sizePcm << sizeMarks;
+    if (sizePcm > 0) {
+        m_audioIO->buffer().append(m_ttsBuffer.data(), sizePcm);
+    }
+
+    if (sizeMarks > 0) {
+        for (size_t i = 0; i < sizeMarks; ++i) {
+            const auto &mark = m_ttsMarkBuffer.at(i);
+            if (mark.eMrkType == VE_MRK_WORD) {
+                qDebug() << mark.eMrkType << mark.cntSrcPos << mark.cntSrcTextLen << mark.cntDestPos;
+                m_marks.append(mark);
+            }
+        }
+    }
 }
 
 void CerenceTTS::initTTS()
@@ -176,7 +205,10 @@ void CerenceTTS::initTTS()
     m_ttsParam[1].eID = VE_PARAM_TYPE_OF_CHAR;
     m_ttsParam[1].uValue.usValue = VE_TYPE_OF_CHAR_UTF8;
 
-    nErrcode = ve_ttsSetParamList(m_hTtsInst, &m_ttsParam[0], 2);
+    m_ttsParam[2].eID = VE_PARAM_MARKER_MODE;
+    m_ttsParam[2].uValue.usValue = (NUAN_U16) VE_MRK_ON;
+
+    nErrcode = ve_ttsSetParamList(m_hTtsInst, &m_ttsParam[0], 3);
     if (nErrcode != NUAN_OK) {
         qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
         return;
@@ -229,7 +261,7 @@ void CerenceTTS::initAudio()
             break;
 
         case QAudio::IdleState:
-            stop();
+//            stop();
             break;
 
         default:

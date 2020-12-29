@@ -27,6 +27,13 @@ MainController::MainController()
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
 
     m_hwhandler = new HWHandler(this);
+    connect(m_hwhandler, &HWHandler::imageReceived, this, [](const cv::Mat &image){
+        qDebug() << "received" << image.size;
+    }, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
+        qDebug() << "received" << (int)button;
+    }, Qt::QueuedConnection);
+
     m_hwhandler->start();
 }
 

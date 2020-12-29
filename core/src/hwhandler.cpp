@@ -4,8 +4,15 @@
 #include <QDebug>
 #include <opencv2/opencv.hpp>
 
+// This is important to receive cv::Mat from another thread
+Q_DECLARE_METATYPE(cv::Mat);
+Q_DECLARE_METATYPE(Button);
+
 HWHandler::HWHandler(QObject *parent) : QObject(parent)
 {
+    // This is important to receive cv::Mat from another thread
+    qRegisterMetaType<cv::Mat>();
+    qRegisterMetaType<Button>();
 }
 
 HWHandler::~HWHandler()
@@ -35,13 +42,13 @@ void HWHandler::run()
         qDebug() << "This is inside HWHandler main thread" << ++dummyCounter;
 
         // Image captured from the camera
-        if (false) {
+        if (dummyCounter % 10 == 0) {
             cv::Mat img;
             emit imageReceived(img);
         }
 
         // Button event received
-        if (false) {
+        if (dummyCounter % 11 == 0) {
             Button button = Button::Down;
             emit buttonReceived(button);
         }

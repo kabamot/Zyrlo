@@ -41,6 +41,7 @@ signals:
     void sayStarted();
     void sayFinished();
     void wordMarksAdded();
+    void wordNotify(int wordPosition, int wordLength);
 
 private:
     void initTTS();
@@ -64,5 +65,8 @@ private:
     QAudioOutput           *m_audioOutput {nullptr};
     QBuffer                *m_audioIO {nullptr};
     QVector<VE_MARKINFO>    m_wordMarks;
+    int                     m_currentWord {-1};
+
+    QMutex                  m_wordMarksMutex;
 };
 

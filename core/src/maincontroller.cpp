@@ -23,6 +23,7 @@ MainController::MainController()
     });
 
     m_ttsEngine = new CerenceTTS(this);
+    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
 }
 
 void MainController::start(const QString &filename)

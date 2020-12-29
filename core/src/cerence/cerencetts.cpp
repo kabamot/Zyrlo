@@ -43,7 +43,6 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
         pTtsOutData = static_cast<VE_OUTDATA *>(pcbMessage->pParam);
         if (pTtsOutData) {
             // a new buffer is requested
-            qDebug() << "Text-to-speech a new buffer is requested";
             pTtsOutData->pOutPcmBuf = p->buffer();
             pTtsOutData->cntPcmBufLen = p->bufferSize();
             pTtsOutData->pMrkList = p->markBuffer();
@@ -54,7 +53,6 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
     case VE_MSG_OUTBUFDONE:
         pTtsOutData = (VE_OUTDATA *)pcbMessage->pParam;
         if (pTtsOutData) {
-            qDebug() << "Text-to-speech buffer done, size" << pTtsOutData->cntPcmBufLen;
             if (pTtsOutData->cntPcmBufLen != 0) {
                 p->bufferDone(pTtsOutData->cntPcmBufLen, pTtsOutData->cntMrkListLen);
             }
@@ -97,7 +95,8 @@ void CerenceTTS::say(const QString &text)
 {
     stop();
 
-    m_marks.clear();
+    m_currentWord = -1;
+    m_wordMarks.clear();
     m_audioIO->buffer().clear();
     m_audioIO->reset();
     m_audioOutput->start(m_audioIO);
@@ -150,7 +149,6 @@ size_t CerenceTTS::markBufferSize()
 
 void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
 {
-    qDebug() << __func__ << sizePcm << sizeMarks;
     if (sizePcm > 0) {
         m_audioIO->buffer().append(m_ttsBuffer.data(), sizePcm);
     }
@@ -159,9 +157,11 @@ void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
         for (size_t i = 0; i < sizeMarks; ++i) {
             const auto &mark = m_ttsMarkBuffer.at(i);
             if (mark.eMrkType == VE_MRK_WORD) {
-                qDebug() << mark.eMrkType << mark.cntSrcPos << mark.cntSrcTextLen << mark.cntDestPos;
-                m_marks.append(mark);
-                emit marksAdded();
+                m_wordMarksMutex.lock();
+                m_wordMarks.append(mark);
+                m_wordMarksMutex.unlock();
+
+                emit wordMarksAdded();
             }
         }
     }
@@ -250,10 +250,34 @@ void CerenceTTS::initAudio()
     }
 
     m_audioOutput = new QAudioOutput(format, this);
-    m_audioOutput->setBufferSize(4096);
-    QObject::connect(m_audioOutput, &QAudioOutput::stateChanged,
-                     this, [this](QAudio::State state)
-    {
+//    m_audioOutput->setBufferSize(4096);
+    m_audioOutput->setNotifyInterval(50);
+    qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->notifyInterval();
+
+    connect(m_audioOutput, &QAudioOutput::notify, this, [this](){
+        const auto elapsedSamples = m_audioOutput->elapsedUSecs() *
+                m_audioOutput->format().sampleRate() / 1'000'000;
+        auto newCurrentWord = m_currentWord;
+
+        {
+            // Searching if the new word pronouncing
+            QMutexLocker locker(&m_wordMarksMutex);
+            for (int i = m_currentWord + 1; i < m_wordMarks.size(); ++i) {
+                if (elapsedSamples >= static_cast<qint64>(m_wordMarks[i].cntDestPos)) {
+                    newCurrentWord = i;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        if (newCurrentWord > m_currentWord) {
+            m_currentWord = newCurrentWord;
+            emit wordNotify(m_wordMarks[m_currentWord].cntSrcPos, m_wordMarks[m_currentWord].cntSrcTextLen);
+        }
+    });
+
+    connect(m_audioOutput, &QAudioOutput::stateChanged, this, [this](QAudio::State state) {
         qDebug() << "state" << state;
         switch (state) {
         case QAudio::StoppedState:
@@ -264,7 +288,6 @@ void CerenceTTS::initAudio()
             break;
 
         case QAudio::IdleState:
-//            stop();
             break;
 
         default:

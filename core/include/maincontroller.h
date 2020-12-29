@@ -26,6 +26,7 @@ signals:
     void formattedTextUpdated(const QString &text);
 //    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
+    void wordNotify(int wordPosition, int wordLength);
 
 private:
     OcrHandler &ocr();

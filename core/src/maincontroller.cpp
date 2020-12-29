@@ -8,6 +8,7 @@
 #include "maincontroller.h"
 #include "ocrhandler.h"
 #include "textpage.h"
+#include "hwhandler.h"
 #include "cerence/cerencetts.h"
 #include <opencv2/imgcodecs.hpp>
 
@@ -24,6 +25,9 @@ MainController::MainController()
 
     m_ttsEngine = new CerenceTTS(this);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
+
+    m_hwhandler = new HWHandler(this);
+    m_hwhandler->start();
 }
 
 void MainController::start(const QString &filename)

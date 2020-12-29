@@ -12,6 +12,7 @@
 class OcrHandler;
 class Paragraph;
 class CerenceTTS;
+class HWHandler;
 
 class MainController : public QObject
 {
@@ -31,5 +32,6 @@ signals:
 private:
     OcrHandler &ocr();
     CerenceTTS *m_ttsEngine {nullptr};
+    HWHandler  *m_hwhandler {nullptr};
 };
 

@@ -28,6 +28,8 @@ set(SRC_FILES
     src/ocrhandler.cpp
     src/textpage.cpp
     src/paragraph.cpp
+    src/hwhandler.cpp
+    src/hwhandler.h
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h

@@ -3,6 +3,8 @@
 #include <QObject>
 #include <QFuture>
 #include <atomic>
+#include "zyrlocamera.h"
+
 
 namespace cv {
     class Mat;
@@ -30,8 +32,10 @@ public:
 signals:
     void imageReceived(const cv::Mat &image);
     void buttonReceived(Button button);
+    void previewImgUpdate(const cv::Mat &prevImg);
 
 private:
     std::atomic_bool    m_stop {false};
     QFuture<void>       m_future;
+    ZyrloCamera m_zcam;
 };

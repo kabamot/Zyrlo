@@ -21,6 +21,8 @@ set(INC_FILES
     include/ocrhandler.h
     include/textpage.h
     include/paragraph.h
+    include/zyrlocamera.h
+    include/OFMotionDetector.h
 )
 
 set(SRC_FILES
@@ -30,6 +32,8 @@ set(SRC_FILES
     src/paragraph.cpp
     src/hwhandler.cpp
     src/hwhandler.h
+    src/zyrlocamera.cpp
+    src/OFMotionDetector.cpp
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h
@@ -46,7 +50,7 @@ if (${CMAKE_CROSSCOMPILING})
     find_package(OpenCV REQUIRED)
     add_definitions(-DRPI)
 else()
-    find_package(OpenCV 3.2.0 EXACT REQUIRED PATHS "/home/dilshodm/work/proj/upwork/leon/opencv")
+    find_package(OpenCV REQUIRED PATHS "/home/dilshodm/work/proj/upwork/leon/opencv")
 endif()
 
 target_compile_definitions(${LIB_NAME}

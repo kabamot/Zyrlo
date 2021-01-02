@@ -16,6 +16,8 @@
 #include <QTextToSpeech>
 #include <QPluginLoader>
 
+using namespace cv;
+
 MainController::MainController()
 {
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
@@ -27,12 +29,14 @@ MainController::MainController()
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
 
     m_hwhandler = new HWHandler(this);
-    connect(m_hwhandler, &HWHandler::imageReceived, this, [](const cv::Mat &image){
+    connect(m_hwhandler, &HWHandler::imageReceived, this, [](const Mat &image){
         qDebug() << "received" << image.size;
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
         qDebug() << "received" << (int)button;
     }, Qt::QueuedConnection);
+
+    connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
 
     m_hwhandler->start();
 }
@@ -58,4 +62,8 @@ void MainController::start(const QString &filename)
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();
+}
+
+void MainController::previewImgUpdate(const Mat & prevImg) {
+    emit previewUpdated(prevImg);
 }

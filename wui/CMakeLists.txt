@@ -16,7 +16,7 @@ set(SRC_FILES
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
-)
+ )
 
 set(UI_FILES
     src/mainwindow.ui

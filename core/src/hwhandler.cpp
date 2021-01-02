@@ -35,23 +35,26 @@ void HWHandler::stop()
 
 void HWHandler::run()
 {
+    m_zcam.initCamera();
     int dummyCounter = 0;
     while(!m_stop) {
         // Main stuff here
-        QThread::msleep(300);
-        qDebug() << "This is inside HWHandler main thread" << ++dummyCounter;
+
+        m_zcam.AcquireImage();
+        emit previewImgUpdate(m_zcam.GetPreviewImg());
+        QThread::msleep(1);//300);
+         //qDebug() << "This is inside HWHandler main thread" << ++dummyCounter;
 
         // Image captured from the camera
-        if (dummyCounter % 10 == 0) {
-            cv::Mat img;
-            emit imageReceived(img);
-        }
+//        if (dummyCounter % 10 == 0) {
+//            cv::Mat img;
+//            //emit imageReceived(img);
+//        }
 
         // Button event received
-        if (dummyCounter % 11 == 0) {
-            Button button = Button::Down;
-            emit buttonReceived(button);
-        }
+//        if (dummyCounter % 11 == 0) {
+//            Button button = Button::Down;
+//            emit buttonReceived(button);
+//        }
     }
 }
-

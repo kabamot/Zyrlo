@@ -11,6 +11,9 @@
 
 int main(int argc, char *argv[])
 {
+    // This is required for tesseract
+    qputenv("LC_ALL", "C");
+
     QApplication a(argc, argv);
     MainWindow w;
     w.show();

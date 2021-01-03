@@ -23,6 +23,10 @@ HWHandler::~HWHandler()
 
 void HWHandler::start()
 {
+    if (m_future.isRunning()) {
+        return;
+    }
+
     m_stop = false;
 
     m_future = QtConcurrent::run([this](){ run(); });

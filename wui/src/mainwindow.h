@@ -35,6 +35,7 @@ private:
     MainController m_controller;
     cv::Mat m_prevImg;
     QLabel *m_pLabelPreview;
+    bool m_bSavePreviewImage = false;
 protected:
     void keyPressEvent(QKeyEvent *ev);
 };

@@ -26,8 +26,9 @@ class ZyrloCamera {
 
         buffer *m_buffers;
         unsigned int m_nBuffers =  0;
+        int m_nExposure = 3000;
         int m_nCamBufInd = 0, m_nCnt = 0, m_timeStamp = 0;
-        bool m_bPictReq = false, m_wb = false;
+        bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true;
 
         int m_PrintMessLocation = 0;
         FILE *m_PrintMessageFile = NULL;
@@ -35,6 +36,7 @@ class ZyrloCamera {
 
         COFMotionDetector m_md;
         cv::Mat m_previewImg, m_previewImgPyr1, m_previewImgPyr2;
+        cv::Mat m_fullResRawImg;
         bool m_bEnableGestureUI = true;
         float m_fLookForTargetHighThreshold = 0.8f;
         float m_fLookForTargetLowThreshold = 0.7f;
@@ -52,8 +54,11 @@ class ZyrloCamera {
         void init_mmap();
         void uninit_mmap();
         int start_capturing();
+        int stop_capturing();
+
         void PrintMessage(const char *format, ...);
         int SetMode(bool bModePreview);
+        int SwitchMode(bool bModePreview);
         int acquireBuffer(int nBufferInd);
         int releaseBuffer(int nBufferInd);
 
@@ -70,6 +75,11 @@ public:
         const cv::Mat & GetPreviewImg() const;
         void PreviewProcessStep(const cv::Mat &prevFrame);
         int AcquireImage();
+        int setExposure(int nValue);
+        int adjustColorGains();
+        int snapImage();
+        void flashLed();
+        int AcquireFullResImage();
 };
 
 #endif /* ZYRLOCAMERA_H_ */

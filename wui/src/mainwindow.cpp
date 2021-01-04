@@ -44,17 +44,35 @@ void MainWindow::updatePreview(const Mat &img) {
     cvtColor(img, m_prevImg, CV_GRAY2RGB);
     rotate(m_prevImg, m_prevImg, ROTATE_180);
     m_pLabelPreview->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
+    if(m_bSavePreviewImage) {
+        m_bSavePreviewImage = false;
+        imwrite("PreviewImage.bmp", img);
+    }
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *ev) {
     switch(ev->key()) {
     case Qt::Key_S:
-        m_pLabelPreview->setVisible(true);
-        qDebug() << "Preview ON\n";
+        if(ev->modifiers() & Qt::CTRL) {
+            m_pLabelPreview->setVisible(true);
+            qDebug() << "Preview ON\n";
+        }
+        else {
+            m_bSavePreviewImage = true;
+            qDebug() << "Saving preview image\n";
+        }
         break;
     case Qt::Key_H:
         m_pLabelPreview->setVisible(false);
         qDebug() << "Preview OFF\n";
         break;
-    }
+    case Qt::Key_F:
+        m_controller.flashLed();
+        qDebug() << "Flash Led\n";
+        break;
+    case Qt::Key_T:
+        m_controller.snapImage();
+        qDebug() << "Flash Led\n";
+        break;
+     }
 }

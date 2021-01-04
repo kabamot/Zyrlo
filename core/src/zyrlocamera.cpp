@@ -24,6 +24,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <wiringPi.h>
+#include <QDebug>
 
 #include <linux/videodev2.h>
 #include <opencv2/opencv.hpp>
@@ -40,6 +41,11 @@ using namespace cv;
 #define DEVICE "/dev/video0"
 #define CLEAR(x) memset(&(x), 0, sizeof((x)))
 
+#define PREVIEW_WIDTH   1920
+#define PREVIEW_HEIGHT  1080;
+#define FULLRES_WIDTH   3280
+#define FULLRES_HEIGHT  2464
+
 unsigned long long GetTickCount(void)
 {
   struct timespec now;
@@ -49,10 +55,15 @@ unsigned long long GetTickCount(void)
 }
 
 ZyrloCamera::ZyrloCamera() {
-}
+    m_fullResRawImg.create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8U);
+ }
 
 ZyrloCamera::~ZyrloCamera() {
-    // TODO Auto-generated destructor stub
+    if(m_fd > 0) {
+        stop_capturing();
+        LOGI("Closing device\n");
+        close(m_fd);
+    }
 }
 
 void ZyrloCamera::BayerToDownsampledRG2BGR(const Mat & bayer, Mat & BGR, int step) const {
@@ -127,7 +138,7 @@ void ZyrloCamera::PrintMessage(const char *format, ...) {
     va_end( arglist );
 
     if(m_PrintMessLocation == 0)
-        printf(buf);
+        printf("%s\n", buf);
     else {
         if(m_PrintMessageFile != NULL) {
             fwrite(buf, strlen(buf), 1, m_PrintMessageFile);
@@ -256,16 +267,33 @@ int ZyrloCamera::start_capturing() {
     return 0;
 }
 
+int ZyrloCamera::stop_capturing() {
+    enum v4l2_buf_type type;
+    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (ioctl(m_fd, VIDIOC_STREAMOFF, &type) < 0) {
+        LOGI("ioctl error VIDIOC_STREAMON in stop_capturing %d\n", errno);
+        return -1;
+    }
+    LOGI("Stopped capturing OK\n");
+    return 0;
+}
+
+int ZyrloCamera::SwitchMode(bool bModePreview) {
+    stop_capturing();
+    uninit_mmap();
+    return SetMode(bModePreview);
+}
+
 int ZyrloCamera::SetMode(bool bModePreview)
 {
     struct v4l2_format fmt;
-
-    if(bModePreview) {
-        m_nCurrImgWidth = 1920;
-        m_nCurrImgHeight = 1080;
+    m_bModePreview = bModePreview;
+    if(m_bModePreview) {
+        m_nCurrImgWidth = PREVIEW_WIDTH;
+        m_nCurrImgHeight = PREVIEW_HEIGHT;
     } else {
-        m_nCurrImgWidth = 3280;
-        m_nCurrImgHeight = 2464;
+        m_nCurrImgWidth = FULLRES_WIDTH;
+        m_nCurrImgHeight = FULLRES_HEIGHT;
     }
 
     CLEAR(fmt);
@@ -314,7 +342,6 @@ int ZyrloCamera::initCamera()
     printf("Device opened: %s\n", DEVICE);
 
     struct v4l2_capability cap;
-    struct v4l2_format fmt;
 
     if(ioctl(m_fd, VIDIOC_QUERYCAP, &cap) < 0) {
         printf("Query capabilities error\n");
@@ -324,7 +351,7 @@ int ZyrloCamera::initCamera()
     printf("Capabilities %x   %x\n", cap.capabilities, cap.device_caps);
 
     SetMode(true);
-
+    setExposure(m_nExposure);
     return 0;
 }
 
@@ -363,41 +390,111 @@ int ZyrloCamera::releaseBuffer(int nBufferInd) {
 }
 
 int ZyrloCamera::AcquireImage() {
+    if(m_bPictReq) {
+        m_bPictReq = false;
+        AcquireFullResImage();
+        return 0;
+    }
+
     acquireBuffer(m_nCamBufInd);
 
-    if(m_bPictReq) {
-        //LOGI("Picture requested. Setting g_bPictReqAckRead_Frame\n");
-        cv::Mat img1(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[m_nCamBufInd].start);
-        char imgPath[MAX_PATH];
-        sprintf(imgPath, "/home/pi/CamTest/Kozel1.bmp");
-        printf("Writing to: %s\n", imgPath);
-        imwrite(imgPath, img1);
-        m_bPictReq = false;
-    }
-
     Mat img(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[m_nCamBufInd].start);
-    if(m_wb) {
-        m_wb = 0;
-        WB(img);
-    }
-   //BayerToDownsampledRG2BGR(img, imgSmall, 4);
+
+    //BayerToDownsampledRG2BGR(img, imgSmall, 4);
     BayerToDownsampledRG2Grey(img);
     pyrDown(m_previewImg, m_previewImgPyr1);
     pyrDown(m_previewImgPyr1, m_previewImgPyr2);
     Point2f mtn = GetMotion(m_previewImgPyr2);
     if(mtn.dot(mtn) >= 10.0f)
         printf("Motion: x = %f\ty = %f\n", mtn.x, mtn.y);
-    //imshow("baranWin", gr);
-    int c = 0;//waitKey(1);
-    if(c == int('w'))
-        m_wb = 1;
+    if(m_wb) {
+        m_wb = 0;
+        WB(img);
+    }
     releaseBuffer(m_nCamBufInd);
     m_nCamBufInd = (m_nCamBufInd + 1) % 4;
 
-    if(++m_nCnt == 10){
+    if(++m_nCnt == 10) {
         int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
         printf("FPS = %d\n", fps);
         m_nCnt = 0;
         m_timeStamp = GetTickCount();
     }
+    return 0;
 }
+
+int ZyrloCamera::setExposure(int nValue) {
+    struct v4l2_control ctrl;
+    ctrl.id = 0x00980911;
+    ctrl.value = nValue;
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
+int ZyrloCamera::adjustColorGains() {
+    struct v4l2_control ctrl;
+    ctrl.id = 0x009e0904;	// red
+    ctrl.value = 1023;
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL color gain error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    ctrl.id = 0x009e0904;
+    ctrl.value = 10;	// green/r
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL color gain error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    ctrl.id = 0x009e0906;
+    ctrl.value = 1023;	//blue
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL color gain error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    ctrl.id = 0x009e0904;
+    ctrl.value = 10;	// green/b
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL color gain error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+
+    printf("Color gains adjusted\n");
+    return 0;
+}
+
+void ZyrloCamera::flashLed() {
+    unsigned long h;
+    pthread_create(&h, NULL, [](void* param){digitalWrite(21, 1); qDebug() << "Led ON\n"; usleep(500000);digitalWrite(21, 0); qDebug() << "Led OFF\n";return (void*)NULL;}, (void *)NULL);
+}
+
+
+int ZyrloCamera::snapImage() {
+    m_bPictReq = true;
+}
+
+
+int ZyrloCamera::AcquireFullResImage() {
+    flashLed();
+    long int timeStamp = GetTickCount();
+
+    flashLed();
+    SwitchMode(false);
+    setExposure(300);
+    adjustColorGains();
+    acquireBuffer(0);
+    digitalWrite(21, 0);
+    timeStamp = GetTickCount() - timeStamp;
+    printf("PicTaken. Time: %ld\n", timeStamp);
+    setExposure(m_nExposure);
+    Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_fullResRawImg);
+
+    imwrite("FullResRawImg.bmp", m_fullResRawImg);
+
+    releaseBuffer(0);
+    SwitchMode(true);
+    return 0;
+}
+

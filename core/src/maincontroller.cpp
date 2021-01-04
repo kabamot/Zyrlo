@@ -67,3 +67,11 @@ OcrHandler &MainController::ocr()
 void MainController::previewImgUpdate(const Mat & prevImg) {
     emit previewUpdated(prevImg);
 }
+
+void MainController::snapImage() {
+    m_hwhandler->snapImage();
+}
+
+void MainController::flashLed() {
+    m_hwhandler->flashLed();
+}

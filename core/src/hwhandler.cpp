@@ -58,3 +58,12 @@ void HWHandler::run()
 //        }
     }
 }
+
+void HWHandler::snapImage() {
+    m_zcam.snapImage();
+}
+
+void HWHandler::flashLed() {
+    m_zcam.flashLed();
+}
+

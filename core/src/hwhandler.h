@@ -28,6 +28,8 @@ public:
     void stop();
 
     void run();
+    void snapImage();
+    void flashLed();
 
 signals:
     void imageReceived(const cv::Mat &image);

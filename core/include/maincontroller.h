@@ -25,6 +25,8 @@ public:
     MainController();
 
     void start(const QString &filename);
+    void snapImage();
+    void flashLed();
 
 signals:
     void textUpdated(const QString &text);

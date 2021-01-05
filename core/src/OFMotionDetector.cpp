@@ -128,7 +128,7 @@ Point2f COFMotionDetector::GetMotion(const Mat & grey){
 
 
 
-void build_histogram(const Mat & img, const Rect & frame,int *pHist){
+void build_histogram(const Mat & img, const Rect & frame,int *pHist) {
 	memset(pHist,0,sizeof(int)*256);
 	
 	Rect roi = Rect(1, 1, img.cols - 2, img.rows - 2) & frame;
@@ -140,7 +140,7 @@ void build_histogram(const Mat & img, const Rect & frame,int *pHist){
 }
 
 bool CalcMotionInRect(const Mat & currImg, const Mat & prevImg, const Mat & diffImg, const Rect & rect, int nPoints,
-					   float &fdx, float &fdy, float fSensitivity, bool bNoDir){
+                       float &fdx, float &fdy, float fSensitivity, bool bNoDir) {
 	
 	static int pHist[256];
 	build_histogram(diffImg, rect, pHist);

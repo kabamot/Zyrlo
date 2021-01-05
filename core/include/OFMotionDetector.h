@@ -30,4 +30,6 @@ public:
 	void Clear();
 };
 
+void build_histogram(const cv::Mat & img, const cv::Rect & frame,int *pHist);
+
 #endif

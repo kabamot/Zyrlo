@@ -17,6 +17,7 @@ class ZyrloCamera {
         int m_nCurrImgWidth = 0, m_nCurrImgHeight = 0, m_nCurrBytesPerLine = 0;
         int m_fd = -1;
         int m_cr = 256, m_cb = 256;
+        int m_nAvgTargetBrightness = 150, m_nMinExp = 100, m_nMaxExp = 2000;
 
         struct buffer {
                 void *start;
@@ -61,6 +62,7 @@ class ZyrloCamera {
         int SwitchMode(bool bModePreview);
         int acquireBuffer(int nBufferInd);
         int releaseBuffer(int nBufferInd);
+        int adjustExposure(const cv::Mat & img);
 
 public:
         ZyrloCamera();
@@ -73,12 +75,14 @@ public:
         cv::Point2f GetMotion(const cv::Mat & grey);
         void Clear();
         const cv::Mat & GetPreviewImg() const;
-        void PreviewProcessStep(const cv::Mat &prevFrame);
+        const cv::Mat & GetFullResRawImg() const;
+        int AcquireFrameStep();
         int AcquireImage();
         int setExposure(int nValue);
         int adjustColorGains();
         int snapImage();
         void flashLed();
+        void setLed(bool bOn);
         int AcquireFullResImage();
 };
 

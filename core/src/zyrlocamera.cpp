@@ -42,7 +42,7 @@ using namespace cv;
 #define CLEAR(x) memset(&(x), 0, sizeof((x)))
 
 #define PREVIEW_WIDTH   1920
-#define PREVIEW_HEIGHT  1080;
+#define PREVIEW_HEIGHT  1080
 #define FULLRES_WIDTH   3280
 #define FULLRES_HEIGHT  2464
 
@@ -53,6 +53,8 @@ unsigned long long GetTickCount(void)
     return 0;
   return (unsigned long long)now.tv_sec * 1000 + (unsigned long long)now.tv_nsec / 1000000;
 }
+
+int BaseCommAdapter();
 
 ZyrloCamera::ZyrloCamera() {
     m_fullResRawImg.create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8U);
@@ -129,6 +131,10 @@ const Mat & ZyrloCamera::GetPreviewImg() const {
     return m_previewImgPyr2;
 }
 
+const Mat & ZyrloCamera::GetFullResRawImg() const {
+    return m_fullResRawImg;
+}
+
 void ZyrloCamera::PrintMessage(const char *format, ...) {
     char buf[1024];
 
@@ -147,9 +153,13 @@ void ZyrloCamera::PrintMessage(const char *format, ...) {
     }
 }
 
-void ZyrloCamera::PreviewProcessStep(const Mat &prevFrame) {
+int ZyrloCamera::AcquireFrameStep() {
+    if(AcquireImage() == 1) // Full res snapshot
+        return 1;
     switch(m_eState) {
     case eLookingForTargetForCalibration:
+        if(adjustExposure(m_previewImgPyr2) == 0)
+            m_eState = eCalibrationExposure;
         break;
     case eCalibrationExposure:
         break;
@@ -158,9 +168,14 @@ void ZyrloCamera::PreviewProcessStep(const Mat &prevFrame) {
     case eLookingForStableimage:
         break;
     case eLookingForGestures:
-        if(m_bEnableGestureUI)
+        if(m_bEnableGestureUI) {
+            Point2f mtn = GetMotion(m_previewImgPyr2);
+            if(mtn.dot(mtn) >= 10.0f)
+                printf("Motion: x = %f\ty = %f\n", mtn.x, mtn.y);
+        }
         break;
     }
+    return 0;
 }
 
 void ZyrloCamera::init_mmap() {
@@ -334,6 +349,9 @@ int ZyrloCamera::SetMode(bool bModePreview)
 
 int ZyrloCamera::initCamera()
 {
+    wiringPiSetup();
+    pinMode(21, OUTPUT);
+    pinMode(25, OUTPUT);
     if( (m_fd = open(DEVICE, O_RDWR, O_NONBLOCK, 0)) < 0) {
         printf("Device open error: %s\n", DEVICE);
         return 1;
@@ -352,7 +370,7 @@ int ZyrloCamera::initCamera()
 
     SetMode(true);
     setExposure(m_nExposure);
-    return 0;
+     return 0;
 }
 
 int ZyrloCamera::acquireBuffer(int nBufferInd) {
@@ -389,11 +407,41 @@ int ZyrloCamera::releaseBuffer(int nBufferInd) {
     return 0;
 }
 
+int ZyrloCamera::adjustExposure(const Mat & img) {
+
+    if(m_nMaxExp - m_nMinExp <= 10)
+        return 0;
+    int pHist[256], i;
+    const Rect frame(0, 0, img.cols, img.rows);
+    build_histogram(img, frame, pHist);
+    int nSum = 0;
+    for(i = 0; i != 256; ++i)
+        nSum += pHist[i];
+    int nPercnt = nSum / 10, avg;
+    for(i = 0, nSum = 0; i != 256 && nSum < nPercnt; ++i) {
+        nSum += pHist[i];
+        avg += i * pHist[i];
+    }
+    if(nSum < 1)
+        return -1;
+    avg = avg / nSum;
+    if(avg < m_nAvgTargetBrightness) {
+        m_nMinExp = m_nExposure;
+    }
+    else if(avg > m_nAvgTargetBrightness)
+        m_nMaxExp = m_nExposure;
+    else
+        return 0;
+    m_nExposure = (m_nMinExp +  m_nMaxExp) / 2;
+    setExposure(m_nExposure);
+    return 1;
+}
+
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
         AcquireFullResImage();
-        return 0;
+        return 1;
     }
 
     acquireBuffer(m_nCamBufInd);
@@ -404,9 +452,6 @@ int ZyrloCamera::AcquireImage() {
     BayerToDownsampledRG2Grey(img);
     pyrDown(m_previewImg, m_previewImgPyr1);
     pyrDown(m_previewImgPyr1, m_previewImgPyr2);
-    Point2f mtn = GetMotion(m_previewImgPyr2);
-    if(mtn.dot(mtn) >= 10.0f)
-        printf("Motion: x = %f\ty = %f\n", mtn.x, mtn.y);
     if(m_wb) {
         m_wb = 0;
         WB(img);
@@ -414,12 +459,12 @@ int ZyrloCamera::AcquireImage() {
     releaseBuffer(m_nCamBufInd);
     m_nCamBufInd = (m_nCamBufInd + 1) % 4;
 
-    if(++m_nCnt == 10) {
-        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
-        printf("FPS = %d\n", fps);
-        m_nCnt = 0;
-        m_timeStamp = GetTickCount();
-    }
+//    if(++m_nCnt == 10) {
+//        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
+//        printf("FPS = %d\n", fps);
+//        m_nCnt = 0;
+//        m_timeStamp = GetTickCount();
+//    }
     return 0;
 }
 
@@ -470,9 +515,13 @@ void ZyrloCamera::flashLed() {
     pthread_create(&h, NULL, [](void* param){digitalWrite(21, 1); qDebug() << "Led ON\n"; usleep(500000);digitalWrite(21, 0); qDebug() << "Led OFF\n";return (void*)NULL;}, (void *)NULL);
 }
 
+void ZyrloCamera::setLed(bool bOn) {
+    digitalWrite(25, bOn ? 1 : 0);
+}
 
 int ZyrloCamera::snapImage() {
     m_bPictReq = true;
+    return 0;
 }
 
 
@@ -497,4 +546,3 @@ int ZyrloCamera::AcquireFullResImage() {
     SwitchMode(true);
     return 0;
 }
-

@@ -75,3 +75,7 @@ void MainController::snapImage() {
 void MainController::flashLed() {
     m_hwhandler->flashLed();
 }
+
+void MainController::setLed(bool bOn) {
+     m_hwhandler->setLed(bOn);
+}

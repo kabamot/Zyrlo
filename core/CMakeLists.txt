@@ -34,6 +34,7 @@ set(SRC_FILES
     src/hwhandler.h
     src/zyrlocamera.cpp
     src/OFMotionDetector.cpp
+    src/BaseComm.cpp
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h

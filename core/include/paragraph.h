@@ -28,10 +28,13 @@ public:
     void addLine(const QString &line);
     QString text() const;
 
+    bool isComplete() const;
+
 private:
     int m_id {-1};
     int m_firstLineNum {-1};
     int m_numLines {-1};
+    int m_addedNumLines {0};
     QStringList m_lines;
 };
 

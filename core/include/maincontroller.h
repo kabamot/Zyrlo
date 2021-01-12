@@ -31,7 +31,21 @@ signals:
 
 private:
     OcrHandler &ocr();
+    void startSpeaking();
+
+private slots:
+    void onNewTextExtracted();
+    void onSpeakingFinished();
+
+private:
     CerenceTTS *m_ttsEngine {nullptr};
     HWHandler  *m_hwhandler {nullptr};
+
+    int         m_positionInParagraph {0};
+    int         m_currentParagraphNum {-1};
+
+    int         m_wordPosition {0};
+    int         m_wordLength {0};
+    QString     m_currentText;
 };
 

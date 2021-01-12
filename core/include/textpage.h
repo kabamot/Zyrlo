@@ -24,6 +24,7 @@ public:
     Paragraph &paragraph(int num);
     const Paragraph &paragraph(int num) const;
     QString text() const;
+    QString getText(int paragraphNum, int position) const;
     QString formattedText() const;
 
 private:

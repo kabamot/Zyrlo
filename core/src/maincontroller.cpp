@@ -23,39 +23,72 @@ MainController::MainController()
         emit formattedTextUpdated(ocr().textPage()->formattedText());
     });
 
+    connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
+
     m_ttsEngine = new CerenceTTS(this);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
+    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, [this](int wordPosition, int wordLength){
+        m_wordPosition = wordPosition;
+        m_wordLength = wordLength;
+    });
+    connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
     m_hwhandler = new HWHandler(this);
-    connect(m_hwhandler, &HWHandler::imageReceived, this, [](const cv::Mat &image){
-        qDebug() << "received" << image.size;
-    }, Qt::QueuedConnection);
-    connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
-        qDebug() << "received" << (int)button;
-    }, Qt::QueuedConnection);
+//    connect(m_hwhandler, &HWHandler::imageReceived, this, [](const cv::Mat &image){
+//    }, Qt::QueuedConnection);
+//    connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
+//    }, Qt::QueuedConnection);
 
     m_hwhandler->start();
 }
 
 void MainController::start(const QString &filename)
 {
+    m_positionInParagraph = 0;
+    m_currentParagraphNum = -1;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
-//    m_ttsEngine->say("Hello world! My name is Ava");
-    m_ttsEngine->say(
-        "Audio support in Qt is actually quite rudimentary. The goal is to "
-        "have media playback at the lowest possible implementation and "
-        "maintenance cost. The situation is especially bad on windows, where I "
-        "think the ancient MME API is still employed for audio playback.  As a "
-        "result, the Qt audio API is very far from realtime, making it "
-        "particularly ill-suited for such applications. I recommend using "
-        "portaudio or rtaudio, which you can still wrap in Qt style IO devices "
-        "if you will. This will give you access to better performing platform "
-        "audio APIs and much better playback performance at very low "
-        "latency. ");
 }
 
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();
+}
+
+void MainController::startSpeaking()
+{
+    m_wordPosition = 0;
+    m_wordLength = 0;
+    while (true) {
+        qDebug() << __func__ << m_currentParagraphNum;
+        m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_positionInParagraph);
+        if (!m_currentText.isEmpty()) {
+            qDebug() << __func__ << m_currentText;
+            m_ttsEngine->say(m_currentText);
+        } else if (ocr().textPage()->paragraph(m_currentParagraphNum).isComplete() &&
+                   ++m_currentParagraphNum < ocr().textPage()->numParagraphs()) {
+           m_positionInParagraph = 0;
+           continue;
+        }
+
+        break;
+    }
+}
+
+void MainController::onNewTextExtracted()
+{
+    if (m_currentParagraphNum < 0) {
+        // Initialize current paragraph on the first text added
+        m_currentParagraphNum = 0;
+        startSpeaking();
+    } else if (m_ttsEngine->isStoppedSpeaking()) {
+        startSpeaking();
+    }
+}
+
+void MainController::onSpeakingFinished()
+{
+    m_positionInParagraph += m_currentText.size();
+    qDebug() << __func__ << m_positionInParagraph;
+    startSpeaking();
 }

@@ -7,6 +7,8 @@
 
 #include "textpage.h"
 
+#include <QRegularExpression>
+
 TextPage::TextPage(int numOfParagraphs)
     : m_paragraphs(numOfParagraphs)
 {
@@ -38,6 +40,19 @@ QString TextPage::text() const
     }
 
     return allText;
+}
+
+QString TextPage::getText(int paragraphNum, int position) const
+{
+    auto paragraphText = m_paragraphs[paragraphNum].text().mid(position);
+    if (!m_paragraphs[paragraphNum].isComplete()) {
+        static const QRegularExpression sentenceRe(R"([\.!?])");
+        const auto sentenceBoundaryPos = paragraphText.lastIndexOf(sentenceRe);
+        if (sentenceBoundaryPos >= 0) {
+            paragraphText.chop(paragraphText.size() - sentenceBoundaryPos - 1);
+        }
+    }
+    return paragraphText;
 }
 
 QString TextPage::formattedText() const

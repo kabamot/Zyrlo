@@ -31,6 +31,8 @@ public:
     void say(const QString &text);
     void stop();
 
+    bool isStoppedSpeaking() const;
+
     char *buffer();
     size_t bufferSize();
     VE_MARKINFO *markBuffer();

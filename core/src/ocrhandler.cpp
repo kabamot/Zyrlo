@@ -128,6 +128,8 @@ void OcrHandler::createTextPage()
 
     for (int i = 0; i < numParagraphs; ++i) {
         const auto numLines = zyrlo_proc_get_num_lines(i);
+        if (numLines <= 0)
+            continue;
         Q_ASSERT(numLines > 0);
         m_page->paragraph(i).setId(i);
         m_page->paragraph(i).setNumLines(numLines);

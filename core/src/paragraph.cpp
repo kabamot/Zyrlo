@@ -57,9 +57,15 @@ void Paragraph::addLine(const QString &line)
     }
 
     m_lines.append(newLine);
+    ++m_addedNumLines;
 }
 
 QString Paragraph::text() const
 {
     return m_lines.join("").trimmed();
+}
+
+bool Paragraph::isComplete() const
+{
+    return m_addedNumLines == m_numLines;
 }

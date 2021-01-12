@@ -14,7 +14,7 @@ TEST_CASE("TextPage")
 
     page.paragraph(0).setNumLines(3);
     page.paragraph(0).addLine("Hello world");
-    page.paragraph(0).addLine("one two three.");
+    page.paragraph(0).addLine("one two three. Starting");
 
     DOCTEST_SUBCASE("numParagraphs") {
         CHECK_EQ(page.numParagraphs(), 5);
@@ -26,5 +26,15 @@ TEST_CASE("TextPage")
 
     DOCTEST_SUBCASE("Empty paragrah 1") {
         CHECK(page.paragraph(1).text().isEmpty());
+    }
+
+
+    DOCTEST_SUBCASE("getText") {
+        CHECK_EQ(page.getText(0, 0), QString("Hello world one two three."));
+    }
+
+    DOCTEST_SUBCASE("getText2") {
+        page.paragraph(0).addLine("and finishing");
+        CHECK_EQ(page.getText(0, 0), QString("Hello world one two three. Starting and finishing"));
     }
 }

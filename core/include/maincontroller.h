@@ -29,6 +29,13 @@ signals:
     void finished();
     void wordNotify(int wordPosition, int wordLength);
 
+public slots:
+    void pauseResume();
+    void backWord();
+    void nextWord();
+    void backSentence();
+    void nextSentence();
+
 private:
     OcrHandler &ocr();
     void startSpeaking();

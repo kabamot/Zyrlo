@@ -44,6 +44,9 @@ QString TextPage::text() const
 
 QString TextPage::getText(int paragraphNum, int position) const
 {
+    if (paragraphNum >= m_paragraphs.size())
+        return QString();
+
     auto paragraphText = m_paragraphs[paragraphNum].text().mid(position);
     if (!m_paragraphs[paragraphNum].isComplete()) {
         static const QRegularExpression sentenceRe(R"([\.!?])");
@@ -59,7 +62,7 @@ QString TextPage::formattedText() const
 {
     QString allText;
     for (const auto &paragraph : m_paragraphs) {
-        allText.append(QStringLiteral("<p style='font-size:30px'>%1</p>").arg(paragraph.text()));
+        allText.append(QStringLiteral("<p style='font-size:14pt'>%1</p>").arg(paragraph.text()));
     }
 
     return allText;

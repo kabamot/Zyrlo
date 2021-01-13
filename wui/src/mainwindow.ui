@@ -34,6 +34,41 @@
       <item>
        <widget class="QLineEdit" name="fileNameLineEdit"/>
       </item>
+      <item>
+       <widget class="QPushButton" name="pauseButton">
+        <property name="text">
+         <string>Pause/Resume</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="backWordButton">
+        <property name="text">
+         <string>Prev word</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="nextWordButton">
+        <property name="text">
+         <string>Next word</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="backSentenceButton">
+        <property name="text">
+         <string>Prev sentence</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="nextSentenceButton">
+        <property name="text">
+         <string>Next sentence</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
     <item>

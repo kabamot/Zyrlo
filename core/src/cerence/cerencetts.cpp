@@ -121,8 +121,24 @@ void CerenceTTS::say(const QString &text)
 void CerenceTTS::stop()
 {
     m_audioOutput->stop();
+
     ve_ttsStop(m_hTtsInst);
     m_ttsFuture.waitForFinished();
+}
+
+bool CerenceTTS::pauseResume()
+{
+    qDebug() << __func__;
+    bool ok = false;
+    if (m_audioOutput->state() == QAudio::ActiveState) {
+        m_audioOutput->suspend();
+        ok = true;
+    } else if (m_audioOutput->state() == QAudio::SuspendedState) {
+        m_audioOutput->resume();
+        ok = true;
+    }
+
+    return ok;
 }
 
 bool CerenceTTS::isStoppedSpeaking() const

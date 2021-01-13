@@ -44,16 +44,46 @@ MainController::MainController()
 
 void MainController::start(const QString &filename)
 {
+    m_ttsEngine->stop();
+
     m_positionInParagraph = 0;
-    m_currentParagraphNum = -1;
+    m_currentParagraphNum = 0;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
+}
+
+void MainController::pauseResume()
+{
+    if (!m_ttsEngine->pauseResume()) {
+        startSpeaking();
+    }
+}
+
+void MainController::backWord()
+{
+
+}
+
+void MainController::nextWord()
+{
+
+}
+
+void MainController::backSentence()
+{
+
+}
+
+void MainController::nextSentence()
+{
+
 }
 
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();
 }
+
 
 void MainController::startSpeaking()
 {
@@ -63,12 +93,15 @@ void MainController::startSpeaking()
         qDebug() << __func__ << m_currentParagraphNum;
         m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_positionInParagraph);
         if (!m_currentText.isEmpty()) {
+            // Continue speaking if there is more text in the current paragraph
             qDebug() << __func__ << m_currentText;
             m_ttsEngine->say(m_currentText);
         } else if (ocr().textPage()->paragraph(m_currentParagraphNum).isComplete() &&
                    ++m_currentParagraphNum < ocr().textPage()->numParagraphs()) {
-           m_positionInParagraph = 0;
-           continue;
+            // Advance to the next paragraph if the current one is completed and
+            // all text pronounced
+            m_positionInParagraph = 0;
+            continue;
         }
 
         break;
@@ -77,11 +110,9 @@ void MainController::startSpeaking()
 
 void MainController::onNewTextExtracted()
 {
-    if (m_currentParagraphNum < 0) {
-        // Initialize current paragraph on the first text added
-        m_currentParagraphNum = 0;
-        startSpeaking();
-    } else if (m_ttsEngine->isStoppedSpeaking()) {
+    if (m_ttsEngine->isStoppedSpeaking()) {
+        qDebug() << __func__ << m_currentParagraphNum;
+        // If TTS stopped and there is more text extracted, then continue speaking
         startSpeaking();
     }
 }

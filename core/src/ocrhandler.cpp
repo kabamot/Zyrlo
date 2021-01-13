@@ -123,6 +123,10 @@ QString OcrHandler::getStatus() const
 
 void OcrHandler::createTextPage()
 {
+    if (m_page) {
+        destroyTextPage();
+    }
+
     const auto numParagraphs = zyrlo_proc_get_num_paragraphs();
     m_page = new TextPage(numParagraphs);
 

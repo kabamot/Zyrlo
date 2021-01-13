@@ -292,12 +292,12 @@ void CerenceTTS::initAudio()
                 // Error handling
                 qWarning() << __func__ << __LINE__ << m_audioOutput->error();
             }
-            emit sayFinished();
             break;
 
         case QAudio::IdleState:
             if (m_ttsFuture.isFinished()) {
                 m_audioOutput->stop();
+                emit sayFinished();
             }
             break;
 

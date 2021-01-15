@@ -67,5 +67,5 @@ QString Paragraph::text() const
 
 bool Paragraph::isComplete() const
 {
-    return m_addedNumLines == m_numLines;
+    return m_addedNumLines >= m_numLines;
 }

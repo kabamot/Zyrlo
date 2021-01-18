@@ -38,17 +38,20 @@ public slots:
 
 private:
     OcrHandler &ocr();
+    const OcrHandler &ocr() const;
     void startSpeaking();
+    const Paragraph &paragraph() const;
 
 private slots:
     void onNewTextExtracted();
     void onSpeakingFinished();
+    void setCurrentWord(int wordPosition, int wordLength);
 
 private:
     CerenceTTS *m_ttsEngine {nullptr};
     HWHandler  *m_hwhandler {nullptr};
 
-    int         m_positionInParagraph {0};
+    int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};
 
     int         m_wordPosition {0};

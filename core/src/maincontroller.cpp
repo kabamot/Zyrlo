@@ -27,10 +27,7 @@ MainController::MainController()
 
     m_ttsEngine = new CerenceTTS(this);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
-    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, [this](int wordPosition, int wordLength){
-        m_wordPosition = wordPosition;
-        m_wordLength = wordLength;
-    });
+    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
     connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
     m_hwhandler = new HWHandler(this);
@@ -46,7 +43,7 @@ void MainController::start(const QString &filename)
 {
     m_ttsEngine->stop();
 
-    m_positionInParagraph = 0;
+    m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
@@ -61,22 +58,76 @@ void MainController::pauseResume()
 
 void MainController::backWord()
 {
+    auto position = paragraph().prevWordPosition(m_wordPosition);
+    while (position < 0) {
+        if (--m_currentParagraphNum >= 0) {
+            // Go the the previous paragraph
+            position = paragraph().lastWordPosition();
+        } else {
+            // Go to the beginning of the page
+            m_currentParagraphNum = 0;
+            position = 0;
+        }
+    }
 
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
 }
 
 void MainController::nextWord()
 {
+    auto position = paragraph().nextWordPosition(m_wordPosition);
+    if (position < 0) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = 0;
+        } else {
+            // Page finished
+            m_ttsEngine->stop();
+            return;
+        }
+    }
 
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
 }
 
 void MainController::backSentence()
 {
+    auto position = paragraph().prevSentencePosition(m_wordPosition);
+    while (position < 0) {
+        if (--m_currentParagraphNum >= 0) {
+            // Go the the previous paragraph
+            position = paragraph().lastSentencePosition();
+        } else {
+            // Go to the beginning of the page
+            m_currentParagraphNum = 0;
+            position = 0;
+        }
+    }
 
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
 }
 
 void MainController::nextSentence()
 {
+    auto position = paragraph().nextSentencePosition(m_wordPosition);
+    if (position < 0) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = 0;
+        } else {
+            // Page finished
+            m_ttsEngine->stop();
+            return;
+        }
+    }
 
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
 }
 
 OcrHandler &MainController::ocr()
@@ -84,28 +135,39 @@ OcrHandler &MainController::ocr()
     return OcrHandler::instance();
 }
 
+const OcrHandler &MainController::ocr() const
+{
+    return OcrHandler::instance();
+}
+
 
 void MainController::startSpeaking()
 {
-    m_wordPosition = 0;
-    m_wordLength = 0;
     while (true) {
-        qDebug() << __func__ << m_currentParagraphNum;
-        m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_positionInParagraph);
+        qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
+
+        setCurrentWord(0, 0);
+        m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
+
         if (!m_currentText.isEmpty()) {
             // Continue speaking if there is more text in the current paragraph
             qDebug() << __func__ << m_currentText;
             m_ttsEngine->say(m_currentText);
-        } else if (ocr().textPage()->paragraph(m_currentParagraphNum).isComplete() &&
-                   ++m_currentParagraphNum < ocr().textPage()->numParagraphs()) {
+        } else if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Advance to the next paragraph if the current one is completed and
             // all text pronounced
-            m_positionInParagraph = 0;
+            ++m_currentParagraphNum;
+            m_ttsStartPositionInParagraph = 0;
             continue;
         }
 
         break;
     }
+}
+
+const Paragraph &MainController::paragraph() const
+{
+    return ocr().textPage()->paragraph(m_currentParagraphNum);
 }
 
 void MainController::onNewTextExtracted()
@@ -119,7 +181,13 @@ void MainController::onNewTextExtracted()
 
 void MainController::onSpeakingFinished()
 {
-    m_positionInParagraph += m_currentText.size();
-    qDebug() << __func__ << m_positionInParagraph;
+    m_ttsStartPositionInParagraph += m_currentText.size();
+    qDebug() << __func__ << m_ttsStartPositionInParagraph;
     startSpeaking();
+}
+
+void MainController::setCurrentWord(int wordPosition, int wordLength)
+{
+    m_wordPosition = m_ttsStartPositionInParagraph + wordPosition;
+    m_wordLength = wordLength;
 }

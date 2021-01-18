@@ -91,6 +91,11 @@ bool OcrHandler::isOcring() const
     return getStatus() == QStringLiteral("Ocring");
 }
 
+int OcrHandler::processingParagraphNum() const
+{
+    return m_processingParagraphNum;
+}
+
 const TextPage *OcrHandler::textPage() const
 {
     return m_page;
@@ -158,6 +163,7 @@ bool OcrHandler::getOcrResults()
         if (resultsCode == 0) {
             m_page->paragraph(textLine.nParagraphId).addLine(textLine.sText);
             hasNewResult = true;
+            m_processingParagraphNum = textLine.nParagraphId;
         }
     }
 

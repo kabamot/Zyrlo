@@ -38,6 +38,8 @@ public:
     bool isIdle() const;
     bool isOcring() const;
 
+    int  processingParagraphNum() const;
+
     const TextPage *textPage() const;
 
 signals:
@@ -57,6 +59,7 @@ private:
 
 private:
     int m_languageCode {1};
+    int m_processingParagraphNum {0};
     TextPage *m_page {nullptr};
     QTimer m_timer;
 };

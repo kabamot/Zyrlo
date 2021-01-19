@@ -253,8 +253,12 @@ void MainController::startSpeaking()
 {
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
-
+        if(m_currentParagraphNum < 0)
+            break;
         setCurrentWord(0, 0);
+        const TextPage *pTp = ocr().textPage();
+        if(!pTp)
+            break;
         m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
 
         if (!m_currentText.isEmpty()) {

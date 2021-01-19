@@ -28,8 +28,12 @@ MainController::MainController()
         emit formattedTextUpdated(ocr().textPage()->formattedText());
     });
 
+    connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
+
     m_ttsEngine = new CerenceTTS(this);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
+    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
+    connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
     m_hwhandler = new HWHandler(this);
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image){
@@ -55,20 +59,93 @@ MainController::MainController()
 
 void MainController::start(const QString &filename)
 {
+    m_ttsEngine->stop();
+
+    m_ttsStartPositionInParagraph = 0;
+    m_currentParagraphNum = 0;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
-//    m_ttsEngine->say("Hello world! My name is Ava");
-    m_ttsEngine->say(
-        "Audio support in Qt is actually quite rudimentary. The goal is to "
-        "have media playback at the lowest possible implementation and "
-        "maintenance cost. The situation is especially bad on windows, where I "
-        "think the ancient MME API is still employed for audio playback.  As a "
-        "result, the Qt audio API is very far from realtime, making it "
-        "particularly ill-suited for such applications. I recommend using "
-        "portaudio or rtaudio, which you can still wrap in Qt style IO devices "
-        "if you will. This will give you access to better performing platform "
-        "audio APIs and much better playback performance at very low "
-        "latency. ");
+}
+
+void MainController::pauseResume()
+{
+    if (!m_ttsEngine->pauseResume()) {
+        startSpeaking();
+    }
+}
+
+void MainController::backWord()
+{
+    auto position = paragraph().prevWordPosition(m_wordPosition);
+    while (position < 0) {
+        if (--m_currentParagraphNum >= 0) {
+            // Go the the previous paragraph
+            position = paragraph().lastWordPosition();
+        } else {
+            // Go to the beginning of the page
+            m_currentParagraphNum = 0;
+            position = 0;
+        }
+    }
+
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
+}
+
+void MainController::nextWord()
+{
+    auto position = paragraph().nextWordPosition(m_wordPosition);
+    if (position < 0) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = 0;
+        } else {
+            // Page finished
+            m_ttsEngine->stop();
+            return;
+        }
+    }
+
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
+}
+
+void MainController::backSentence()
+{
+    auto position = paragraph().prevSentencePosition(m_wordPosition);
+    while (position < 0) {
+        if (--m_currentParagraphNum >= 0) {
+            // Go the the previous paragraph
+            position = paragraph().lastSentencePosition();
+        } else {
+            // Go to the beginning of the page
+            m_currentParagraphNum = 0;
+            position = 0;
+        }
+    }
+
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
+}
+
+void MainController::nextSentence()
+{
+    auto position = paragraph().nextSentencePosition(m_wordPosition);
+    if (position < 0) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = 0;
+        } else {
+            // Page finished
+            m_ttsEngine->stop();
+            return;
+        }
+    }
+
+    m_ttsStartPositionInParagraph = position;
+    startSpeaking();
 }
 
 OcrHandler &MainController::ocr()
@@ -164,4 +241,61 @@ void MainController::readerReady() {
 void MainController::targetNotFound() {
     if(m_ttsEngine)
         m_ttsEngine->say(m_translator.GetString("CLEAR_SURF").c_str());
+}
+
+const OcrHandler &MainController::ocr() const
+{
+    return OcrHandler::instance();
+}
+
+
+void MainController::startSpeaking()
+{
+    while (true) {
+        qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
+
+        setCurrentWord(0, 0);
+        m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
+
+        if (!m_currentText.isEmpty()) {
+            // Continue speaking if there is more text in the current paragraph
+            qDebug() << __func__ << m_currentText;
+            m_ttsEngine->say(m_currentText);
+        } else if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Advance to the next paragraph if the current one is completed and
+            // all text pronounced
+            ++m_currentParagraphNum;
+            m_ttsStartPositionInParagraph = 0;
+            continue;
+        }
+
+        break;
+    }
+}
+
+const Paragraph &MainController::paragraph() const
+{
+    return ocr().textPage()->paragraph(m_currentParagraphNum);
+}
+
+void MainController::onNewTextExtracted()
+{
+    if (m_ttsEngine->isStoppedSpeaking()) {
+        qDebug() << __func__ << m_currentParagraphNum;
+        // If TTS stopped and there is more text extracted, then continue speaking
+        startSpeaking();
+    }
+}
+
+void MainController::onSpeakingFinished()
+{
+    m_ttsStartPositionInParagraph += m_currentText.size();
+    qDebug() << __func__ << m_ttsStartPositionInParagraph;
+    startSpeaking();
+}
+
+void MainController::setCurrentWord(int wordPosition, int wordLength)
+{
+    m_wordPosition = m_ttsStartPositionInParagraph + wordPosition;
+    m_wordLength = wordLength;
 }

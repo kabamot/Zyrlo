@@ -25,8 +25,13 @@ MainWindow::MainWindow(QWidget *parent)
             ui->textBrowser, &QTextBrowser::setHtml);
     connect(&m_controller, &MainController::previewUpdated, this, &MainWindow::updatePreview);
 
-//    ui->fileNameLineEdit->setText("/home/dilshodm/work/proj/upwork/leon/Zyrlo/tests/data/RawFull_000.jpg");
-    ui->fileNameLineEdit->setText("/home/pi/zyrlo/Images/RawFull_001.bmp");
+    connect(ui->pauseButton, &QPushButton::clicked, &m_controller, &MainController::pauseResume);
+    connect(ui->nextWordButton, &QPushButton::clicked, &m_controller, &MainController::nextWord);
+    connect(ui->backWordButton, &QPushButton::clicked, &m_controller, &MainController::backWord);
+    connect(ui->nextSentenceButton, &QPushButton::clicked, &m_controller, &MainController::nextSentence);
+    connect(ui->backSentenceButton, &QPushButton::clicked, &m_controller, &MainController::backSentence);
+
+    ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
 }
 
 MainWindow::~MainWindow()

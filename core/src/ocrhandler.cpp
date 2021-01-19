@@ -91,6 +91,11 @@ bool OcrHandler::isOcring() const
     return getStatus() == QStringLiteral("Ocring");
 }
 
+int OcrHandler::processingParagraphNum() const
+{
+    return m_processingParagraphNum;
+}
+
 const TextPage *OcrHandler::textPage() const
 {
     return m_page;
@@ -123,14 +128,18 @@ QString OcrHandler::getStatus() const
 
 void OcrHandler::createTextPage()
 {
+    if (m_page) {
+        destroyTextPage();
+    }
+
     const auto numParagraphs = zyrlo_proc_get_num_paragraphs();
     m_page = new TextPage(numParagraphs);
 
     for (int i = 0; i < numParagraphs; ++i) {
         const auto numLines = zyrlo_proc_get_num_lines(i);
-        if(numLines < 1)
+        if (numLines <= 0)
             continue;
-        //Q_ASSERT(numLines > 0);
+        Q_ASSERT(numLines > 0);
         m_page->paragraph(i).setId(i);
         m_page->paragraph(i).setNumLines(numLines);
     }
@@ -154,6 +163,7 @@ bool OcrHandler::getOcrResults()
         if (resultsCode == 0) {
             m_page->paragraph(textLine.nParagraphId).addLine(textLine.sText);
             hasNewResult = true;
+            m_processingParagraphNum = textLine.nParagraphId;
         }
     }
 

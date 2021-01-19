@@ -40,10 +40,33 @@ signals:
     void wordNotify(int wordPosition, int wordLength);
     void previewUpdated(const cv::Mat & img);
 
+public slots:
+    void pauseResume();
+    void backWord();
+    void nextWord();
+    void backSentence();
+    void nextSentence();
+
 private:
     OcrHandler &ocr();
+    const OcrHandler &ocr() const;
+    void startSpeaking();
+    const Paragraph &paragraph() const;
+
+private slots:
+    void onNewTextExtracted();
+    void onSpeakingFinished();
+    void setCurrentWord(int wordPosition, int wordLength);
+
+private:
     CerenceTTS *m_ttsEngine {nullptr};
     HWHandler  *m_hwhandler {nullptr};
+    int         m_ttsStartPositionInParagraph {0};
+    int         m_currentParagraphNum {-1};
+
+    int         m_wordPosition {0};
+    int         m_wordLength {0};
+    QString     m_currentText;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
 

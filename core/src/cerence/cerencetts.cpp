@@ -113,18 +113,37 @@ void CerenceTTS::say(const QString &text)
 
         QElapsedTimer timer;
         timer.start();
-        emit sayStarted();
         ve_ttsProcessText2Speech(m_hTtsInst, &inText);
-        emit sayFinished();
-        qDebug() << __func__ << "finished in" << timer.elapsed() << "ms";
+        qDebug() << "TTS processing finished in" << timer.elapsed() << "ms";
     });
 }
 
 void CerenceTTS::stop()
 {
     m_audioOutput->stop();
+
     ve_ttsStop(m_hTtsInst);
     m_ttsFuture.waitForFinished();
+}
+
+bool CerenceTTS::pauseResume()
+{
+    qDebug() << __func__;
+    bool ok = false;
+    if (m_audioOutput->state() == QAudio::ActiveState) {
+        m_audioOutput->suspend();
+        ok = true;
+    } else if (m_audioOutput->state() == QAudio::SuspendedState) {
+        m_audioOutput->resume();
+        ok = true;
+    }
+
+    return ok;
+}
+
+bool CerenceTTS::isStoppedSpeaking() const
+{
+    return m_audioOutput->state() == QAudio::StoppedState;
 }
 
 char *CerenceTTS::buffer()
@@ -281,6 +300,10 @@ void CerenceTTS::initAudio()
     connect(m_audioOutput, &QAudioOutput::stateChanged, this, [this](QAudio::State state) {
         qDebug() << "state" << state;
         switch (state) {
+        case QAudio::ActiveState:
+            emit sayStarted();
+            break;
+
         case QAudio::StoppedState:
             if (m_audioOutput->error() != QAudio::NoError) {
                 // Error handling
@@ -289,6 +312,10 @@ void CerenceTTS::initAudio()
             break;
 
         case QAudio::IdleState:
+            if (m_ttsFuture.isFinished()) {
+                m_audioOutput->stop();
+                emit sayFinished();
+            }
             break;
 
         default:

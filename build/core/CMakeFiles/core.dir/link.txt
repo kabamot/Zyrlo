@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcore.a CMakeFiles/core.dir/core_autogen/mocs_compilation.cpp.o CMakeFiles/core.dir/src/maincontroller.cpp.o CMakeFiles/core.dir/src/ocrhandler.cpp.o CMakeFiles/core.dir/src/textpage.cpp.o CMakeFiles/core.dir/src/paragraph.cpp.o CMakeFiles/core.dir/src/hwhandler.cpp.o CMakeFiles/core.dir/src/cerence/cerencetts.cpp.o
+/usr/bin/ranlib libcore.a

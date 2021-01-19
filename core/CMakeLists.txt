@@ -23,6 +23,11 @@ set(INC_FILES
     include/paragraph.h
     include/zyrlocamera.h
     include/OFMotionDetector.h
+    include/BaseComm.h
+    include/BTComm.h
+    3rd/tinyxml/tinystr.h
+    3rd/tinyxml/tinyxml.h
+    include/translator.h
 )
 
 set(SRC_FILES
@@ -35,9 +40,16 @@ set(SRC_FILES
     src/zyrlocamera.cpp
     src/OFMotionDetector.cpp
     src/BaseComm.cpp
+    src/BTComm.cpp
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h
+
+    3rd/tinyxml/tinystr.cpp
+    3rd/tinyxml/tinyxml.cpp
+    3rd/tinyxml/tinyxmlerror.cpp
+    3rd/tinyxml/tinyxmlparser.cpp
+    src/translator.cpp
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -71,6 +83,7 @@ target_link_libraries(${LIB_NAME}
         Qt${QT_VERSION_MAJOR}::Concurrent
         ${OpenCV_LIBS}
         wiringPi
+        bluetooth
 
     PRIVATE
         ${ZYRLO_OCR_LIB}
@@ -82,6 +95,7 @@ target_include_directories(${LIB_NAME}
     PUBLIC
         include
         ${OpenCV_INCLUDE_DIRS}/..
+        3rd/tinyxml
     PRIVATE
         ${CMAKE_SOURCE_DIR}/3rd/doctest
         3rd/locate

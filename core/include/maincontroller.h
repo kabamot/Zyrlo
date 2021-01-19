@@ -8,6 +8,8 @@
 #pragma once
 
 #include <QObject>
+#include <QSound>
+#include "translator.h"
 
 class OcrHandler;
 class Paragraph;
@@ -28,6 +30,7 @@ public:
     void snapImage();
     void flashLed();
     void setLed(bool bOn);
+    bool toggleAudioSink();
 
 signals:
     void textUpdated(const QString &text);
@@ -41,8 +44,12 @@ private:
     OcrHandler &ocr();
     CerenceTTS *m_ttsEngine {nullptr};
     HWHandler  *m_hwhandler {nullptr};
+    QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
+    Translator m_translator;
 
  private slots:
     void previewImgUpdate(const cv::Mat & prevImg);
+    void readerReady();
+    void targetNotFound();
 };
 

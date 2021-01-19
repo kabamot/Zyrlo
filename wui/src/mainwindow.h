@@ -9,8 +9,7 @@
 
 #include <QMainWindow>
 #include "maincontroller.h"
-#include "opencv2/opencv.hpp"
-#include <QSound>
+#include <opencv2/opencv.hpp>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -37,7 +36,6 @@ private:
     cv::Mat m_prevImg;
     QLabel *m_pLabelPreview;
     bool m_bSavePreviewImage = false;
-    QSound m_shutterSound;
 protected:
     void keyPressEvent(QKeyEvent *ev);
 };

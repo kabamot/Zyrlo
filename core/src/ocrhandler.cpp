@@ -56,7 +56,7 @@ bool OcrHandler::startProcess(const cv::Mat &image)
         emit finished();
         return false;
     }
-
+    imwrite("OrcrImg.bmp", image);
     const auto retCode = zyrlo_proc_start_with_bayer(image);
     if (retCode == 0) {
         m_timer.start();
@@ -128,7 +128,9 @@ void OcrHandler::createTextPage()
 
     for (int i = 0; i < numParagraphs; ++i) {
         const auto numLines = zyrlo_proc_get_num_lines(i);
-        Q_ASSERT(numLines > 0);
+        if(numLines < 1)
+            continue;
+        //Q_ASSERT(numLines > 0);
         m_page->paragraph(i).setId(i);
         m_page->paragraph(i).setNumLines(numLines);
     }

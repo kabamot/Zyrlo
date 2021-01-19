@@ -15,8 +15,7 @@ using namespace cv;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
-    , m_shutterSound("/home/pi/Data/camera-shutter-click-01.wav")
-{
+ {
     ui->setupUi(this);
     m_pLabelPreview = new QLabel();
     ui->gridLayout->addWidget(m_pLabelPreview, 1, 0, Qt::AlignCenter);
@@ -74,7 +73,6 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_T:
         m_controller.snapImage();
         qDebug() << "SnapShot\n";
-        m_shutterSound.play();
         break;
     case Qt::Key_L:
         if(ev->modifiers() & Qt::SHIFT) {
@@ -86,5 +84,8 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
             qDebug() << "Light ON\n";
         }
         break;
+    case Qt::Key_P:
+        m_controller.toggleAudioSink();
     }
+
 }

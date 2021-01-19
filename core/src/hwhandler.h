@@ -29,7 +29,7 @@ public:
     void run();
     void buttonThreadRun();
     void snapImage();
-    void flashLed();
+    void flashLed(int msecs);
     void setLed(bool bOn);
     void onButtonsDown(unsigned char down_val);
     void onButtonsUp(unsigned char up_val);
@@ -38,10 +38,12 @@ signals:
     void imageReceived(const cv::Mat &image);
     void buttonReceived(Button button);
     void previewImgUpdate(const cv::Mat &prevImg);
+    void readerReady();
+    void targetNotFound();
 
 private:
     std::atomic_bool    m_stop {false};
     QFuture<void>       m_future, m_buttonThread;
     ZyrloCamera m_zcam;
-    unsigned char m_nButtonMask = 0x40;
+    unsigned char m_nButtonMask = 0x42;
 };

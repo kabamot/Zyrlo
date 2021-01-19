@@ -250,6 +250,7 @@ void CerenceTTS::initAudio()
     }
 
     m_audioOutput = new QAudioOutput(format, this);
+
 //    m_audioOutput->setBufferSize(4096);
     m_audioOutput->setNotifyInterval(50);
     qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->notifyInterval();
@@ -297,4 +298,16 @@ void CerenceTTS::initAudio()
 
     m_audioIO = new QBuffer(this);
     m_audioIO->open(QIODevice::ReadOnly);
+}
+
+void CerenceTTS::stopAudio() {
+    if(m_audioIO)
+        delete m_audioIO;
+    if(m_audioOutput)
+        delete m_audioOutput;
+}
+
+void CerenceTTS::resetAudio() {
+    stopAudio();
+    initAudio();
 }

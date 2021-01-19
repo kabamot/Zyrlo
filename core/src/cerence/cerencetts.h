@@ -36,6 +36,7 @@ public:
     VE_MARKINFO *markBuffer();
     size_t markBufferSize();
     void bufferDone(size_t sizePcm, size_t sizeMarks);
+    void resetAudio();
 
 signals:
     void sayStarted();

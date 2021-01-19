@@ -8,11 +8,11 @@
 extern "C" {
 
 typedef struct _text_line {
-	int nLineId;    // Line ID is unique for the page
-	int nParagraphId;
-	char sText[MAX_LINE_LENGTH];
-	bool isHeader;
-	bool isNewLine;
+    int nLineId;    // Line ID is unique for the page
+    int nParagraphId;
+    char sText[MAX_LINE_LENGTH];
+    bool isHeader;
+    bool isNewLine;
 } text_line;
 
 // Initializer the library. Call after boot.
@@ -31,6 +31,12 @@ int zyrlo_proc_start(const char *sImgPath);
 // return 	0 if OK and line is returned
 //		<0 if error
 int zyrlo_proc_start_with_bayer(const cv::Mat &bayer);
+
+// Start processing image.
+// Params: bayer OpenCV image in grey format.
+// return 	0 if OK and line is returned
+//		<0 if error
+int zyrlo_proc_start_img(const cv::Mat &img);
 
 // Clean up before shutdown/restart
 void zyrlo_proc_end();
@@ -66,17 +72,15 @@ int zyrlo_proc_get_status(char *sStatus);
 // Cancel processing. Should be called before starting new image if status is not Idle
 int zyrlo_proc_cancel();
 
-
 // Set OCR language. For now set only one language.
 // Parameter:	nLanguage - language ID defined in Languages.h
 // return 	0 if OK and line is returned
 //		<0 if error
 int zyrlo_proc_set_ocr_language(int nLanguage);
 
-
 // Get text of a whole page
 // caller should call delete() to free memory
-char *zyrlo_proc_get_text();
+char* zyrlo_proc_get_text();
 
 // Jump to nParagraph even if current paragraph OCR is not complete
 // return 	0 if OK and line is returned

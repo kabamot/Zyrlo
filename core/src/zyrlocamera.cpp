@@ -46,6 +46,8 @@ using namespace cv;
 #define FULLRES_WIDTH   3280
 #define FULLRES_HEIGHT  2464
 
+#define TARGET_IMG_PATH "/opt/zyrlo/Distrib/Data/Target.bmp"
+
 unsigned long long GetTickCount(void)
 {
   struct timespec now;
@@ -56,9 +58,19 @@ unsigned long long GetTickCount(void)
 
 int BaseCommAdapter();
 
-ZyrloCamera::ZyrloCamera() {
-    m_fullResRawImg.create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8U);
- }
+ZyrloCamera::ZyrloCamera()
+    : m_targetPos(0, 0) {
+    m_targetImg = imread(TARGET_IMG_PATH, IMREAD_GRAYSCALE);
+    m_targetCorr.create(PREVIEW_HEIGHT / 8, PREVIEW_WIDTH / 8, CV_32F);
+    m_vFullResRawImgs.resize(m_nFullResImgNum);
+    m_vFullResGreyImgs.resize(m_nFullResImgNum);
+    m_vFullResImgs.resize(m_nFullResImgNum);
+    for(auto i = m_vFullResRawImgs.begin(), j = m_vFullResGreyImgs.begin(), k = m_vFullResImgs.begin(); i != m_vFullResRawImgs.end(); ++i) {
+        i->create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8U);
+        j->create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8U);
+        k->create(FULLRES_HEIGHT, FULLRES_WIDTH, CV_8UC3);
+    }
+}
 
 ZyrloCamera::~ZyrloCamera() {
     if(m_fd > 0) {
@@ -131,8 +143,8 @@ const Mat & ZyrloCamera::GetPreviewImg() const {
     return m_previewImgPyr2;
 }
 
-const Mat & ZyrloCamera::GetFullResRawImg() const {
-    return m_fullResRawImg;
+const Mat & ZyrloCamera::GetFullResRawImg(int indx) const {
+    return m_vFullResRawImgs[indx];
 }
 
 void ZyrloCamera::PrintMessage(const char *format, ...) {
@@ -153,21 +165,62 @@ void ZyrloCamera::PrintMessage(const char *format, ...) {
     }
 }
 
-int ZyrloCamera::AcquireFrameStep() {
+//eCalibration = 0,
+//eLookinForTarget,
+//eReadyOnTarget,
+//eLookingForStableimage,
+//eLookingForGestures
+
+ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
     if(AcquireImage() == 1) // Full res snapshot
-        return 1;
+        return eStartOcr;
+    Zcevent zcev = eShowPreviewImge;
     switch(m_eState) {
-    case eLookingForTargetForCalibration:
-        if(adjustExposure(m_previewImgPyr2) == 0)
-            m_eState = eCalibrationExposure;
+    case eCalibration:
+        if(--m_nDelayCount == 0) {
+            m_nDelayCount = 30;
+            if(adjustExposure(m_previewImgPyr2) == 0) {
+                m_wb = true;
+                m_eState = eLookinForTarget;
+            }
+        }
         break;
-    case eCalibrationExposure:
+    case eLookinForTarget:
+        if(LookForTarget(m_previewImgPyr2, m_targetImg, -1) > m_fLookForTargetHighThreshold) {
+            m_eState = eReadyOnTarget;
+            zcev = eReaderReady;
+            qDebug() << "Target found\n";
+        }
+        else if(++m_nLookingForTargetCount == m_nMaxLookingForTargetCount) {
+            zcev = eTargetNotFound;
+        }
         break;
     case eReadyOnTarget:
+        if(LookForTarget(m_previewImgPyr2, m_targetImg, 10) < m_fLookForTargetLowThreshold) {
+            m_eState = eLookingForStableImage;
+            qDebug() << "Looking For Stable Image\n";
+        }
         break;
-    case eLookingForStableimage:
+    case eLookingForStableImage:
+        if(LookForTarget(m_previewImgPyr2, m_targetImg, 10) > m_fLookForTargetHighThreshold) {
+            m_eState = eReadyOnTarget;
+            zcev = eReaderReady;
+            qDebug() << "Target found\n";
+            break;
+        }
+        DetectImageChange(m_previewImgPyr2);
+        if(m_nNoChange == MOTION_DETECTOR_STEADY_STATE_COUNT_PREVIEW) {
+            m_bPictReq = true;
+            m_eState = eLookingForGestures;
+        }
         break;
     case eLookingForGestures:
+        if(LookForTarget(m_previewImgPyr2, m_targetImg, 10) > m_fLookForTargetHighThreshold) {
+            m_eState = eReadyOnTarget;
+            zcev = eReaderReady;
+            qDebug() << "Target found\n";
+            break;
+        }
         if(m_bEnableGestureUI) {
             Point2f mtn = GetMotion(m_previewImgPyr2);
             if(mtn.dot(mtn) >= 10.0f)
@@ -175,7 +228,7 @@ int ZyrloCamera::AcquireFrameStep() {
         }
         break;
     }
-    return 0;
+    return zcev;
 }
 
 void ZyrloCamera::init_mmap() {
@@ -369,6 +422,7 @@ int ZyrloCamera::initCamera()
     printf("Capabilities %x   %x\n", cap.capabilities, cap.device_caps);
 
     SetMode(true);
+    setGain(m_nGain);
     setExposure(m_nExposure);
      return 0;
 }
@@ -408,23 +462,26 @@ int ZyrloCamera::releaseBuffer(int nBufferInd) {
 }
 
 int ZyrloCamera::adjustExposure(const Mat & img) {
+    //qDebug() << "adjustExposure first "<< m_nExposure << " " << m_nAvgTargetBrightness << " " << m_nMaxExp << " " << m_nMinExp << Qt::endl;
+    if(m_nMaxExp - m_nMinExp <= 10) {
 
-    if(m_nMaxExp - m_nMinExp <= 10)
         return 0;
+    }
     int pHist[256], i;
     const Rect frame(0, 0, img.cols, img.rows);
     build_histogram(img, frame, pHist);
     int nSum = 0;
     for(i = 0; i != 256; ++i)
         nSum += pHist[i];
-    int nPercnt = nSum / 10, avg;
-    for(i = 0, nSum = 0; i != 256 && nSum < nPercnt; ++i) {
+    int nPercnt = nSum / 2, avg = 0;
+    for(i = 255, nSum = 0; i >= 0 && nSum < nPercnt; --i) {
         nSum += pHist[i];
         avg += i * pHist[i];
     }
     if(nSum < 1)
         return -1;
     avg = avg / nSum;
+    qDebug() << "adjustExposure Exp = " << m_nExposure << " avg = " <<  avg  << Qt::endl;
     if(avg < m_nAvgTargetBrightness) {
         m_nMinExp = m_nExposure;
     }
@@ -440,7 +497,13 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
-        AcquireFullResImage();
+        flashLed(1000);
+        AcquireFullResImage(300, 200, 0);
+        //AcquireFullResImage(100, 2500, 1);
+        SwitchMode(true);
+        setGain(m_nGain);
+        setExposure(m_nExposure);
+        digitalWrite(21, 0);
         return 1;
     }
 
@@ -453,7 +516,7 @@ int ZyrloCamera::AcquireImage() {
     pyrDown(m_previewImg, m_previewImgPyr1);
     pyrDown(m_previewImgPyr1, m_previewImgPyr2);
     if(m_wb) {
-        m_wb = 0;
+        m_wb = false;
         WB(img);
     }
     releaseBuffer(m_nCamBufInd);
@@ -469,6 +532,7 @@ int ZyrloCamera::AcquireImage() {
 }
 
 int ZyrloCamera::setExposure(int nValue) {
+    //4 - 3522
     struct v4l2_control ctrl;
     ctrl.id = 0x00980911;
     ctrl.value = nValue;
@@ -510,9 +574,10 @@ int ZyrloCamera::adjustColorGains() {
     return 0;
 }
 
-void ZyrloCamera::flashLed() {
+void ZyrloCamera::flashLed(int msecs) {
     unsigned long h;
-    pthread_create(&h, NULL, [](void* param){digitalWrite(21, 1); qDebug() << "Led ON\n"; usleep(500000);digitalWrite(21, 0); qDebug() << "Led OFF\n";return (void*)NULL;}, (void *)NULL);
+    static int time_out = msecs * 1000;
+    pthread_create(&h, NULL, [](void* param){digitalWrite(21, 1); qDebug() << "Led ON\n"; usleep(*((int*)param));digitalWrite(21, 0); qDebug() << "Led OFF\n";return (void*)NULL;}, (void *)&time_out);
 }
 
 void ZyrloCamera::setLed(bool bOn) {
@@ -524,25 +589,196 @@ int ZyrloCamera::snapImage() {
     return 0;
 }
 
-
-int ZyrloCamera::AcquireFullResImage() {
-    flashLed();
-    long int timeStamp = GetTickCount();
-
-    flashLed();
-    SwitchMode(false);
-    setExposure(300);
-    adjustColorGains();
-    acquireBuffer(0);
-    digitalWrite(21, 0);
-    timeStamp = GetTickCount() - timeStamp;
-    printf("PicTaken. Time: %ld\n", timeStamp);
-    setExposure(m_nExposure);
-    Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_fullResRawImg);
-
-    imwrite("FullResRawImg.bmp", m_fullResRawImg);
-
-    releaseBuffer(0);
-    SwitchMode(true);
+int ZyrloCamera::setGain(int nValue)
+{
+    struct v4l2_control ctrl;
+    ctrl.id = 0x009e0903;
+    ctrl.value = nValue;
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
     return 0;
 }
+
+void ZyrloCamera::ReserExposureLimits() {
+    m_nMinExp = m_nMaxExpValue;
+    m_nMaxExp = m_nMaxExpValue;
+}
+
+
+int ZyrloCamera::AcquireFullResImage(int nGain, int nExposure, int indx) {
+    long int timeStamp = GetTickCount();
+
+    //flashLed();
+    SwitchMode(false);
+    setGain(nGain);
+    setExposure(nExposure);
+    //adjustColorGains();
+    acquireBuffer(0);
+    //digitalWrite(21, 0);
+    timeStamp = GetTickCount() - timeStamp;
+    printf("PicTaken. Time: %ld\n", timeStamp);
+    Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_vFullResRawImgs[indx]);
+    char fname[256];
+    sprintf(fname, "FullResRawImg_%d.bmp", indx);
+    //imwrite(fname, m_vFullResRawImgs[indx]);
+
+    releaseBuffer(0);
+    return 0;
+}
+
+const Mat & ZyrloCamera::GetImageForOcr() {
+    qDebug() << "GetImageForOcr 0\n";
+    for(auto i = m_vFullResRawImgs.begin(), j = m_vFullResImgs.begin(); i != m_vFullResRawImgs.end(); ++i, ++j) {
+        adjustWb(*i);
+        //cvtColor(*i, *j, COLOR_BayerBG2BGR_EA);
+    }
+   //imwrite("CVDEMOSAIC_0.bmp", m_vFullResImgs[0]);
+   //imwrite("CVDEMOSAIC_1.bmp", m_vFullResImgs[1]);
+//   Ptr<MergeMertens> merge_mertens = createMergeMertens();
+//     DemosaicGrey(m0, images[0]);//dm0);
+//    DemosaicGrey(m1, images[1]);//dm1);
+    //static Mat tmp, tmp1;
+//    merge_mertens->process(m_vFullResGreyImgs, tmp);
+    //tmp.convertTo(m_ocrImg, CV_8U, 255.0);
+    //imwrite("fusion1.png", fusion * 255);
+    //cvtColor(m_vFullResImgs[0], m_ocrImg, COLOR_BGR2GRAY);
+    qDebug() << "GetImageForOcr 1\n";
+    return m_vFullResRawImgs[0];
+}
+
+float ZyrloCamera::LookForTarget(const Mat & fastPreviewImgBW, const Mat & targetBitmapBW, int nRadius) {
+    //qDebug() << "LookForTarget " << targetBitmapBW.cols << targetBitmapBW.rows << "\n";
+    if(m_bForceCorrelation)
+        return 1.0f;
+    int nX = 0, nY = 0;
+    int W = fastPreviewImgBW.cols;
+    int H = fastPreviewImgBW.rows;
+    int w = targetBitmapBW.cols;
+    int h = targetBitmapBW.rows;
+
+    if (nRadius >= 0) {
+        nX = max(0, m_targetPos.x - nRadius);
+        nY = max(0, m_targetPos.y - nRadius);
+        W = min(fastPreviewImgBW.cols - nX, targetBitmapBW.cols + (2 * nRadius));
+        H = min(fastPreviewImgBW.rows - nY, targetBitmapBW.rows + (2 * nRadius));
+    }
+    Rect previewRect(nX, nY, W, H), targetCorrRect(w / 2, h / 2, W - w + 1, H - h + 1);
+    Mat previewRoi = fastPreviewImgBW(previewRect);
+    Mat targetCorrRoi = m_targetCorr(targetCorrRect);
+    matchTemplate(previewRoi, targetBitmapBW, targetCorrRoi, CV_TM_CCOEFF_NORMED);
+
+    double min_val, max_val;
+    Point min_loc, max_loc;
+    minMaxLoc(targetCorrRoi, &min_val, &max_val, &min_loc, &max_loc);
+
+    if (nRadius < 0) {
+        m_targetPos = max_loc;
+    }
+    //qDebug() << "LookForTarget " << targetBitmapBW.cols << targetBitmapBW.rows << "MaxVal = " << max_val << "\n";
+    return (fabs(max_val - 1.0) < 1.0e-6) ? 0 : max_val;
+}
+
+static void wbRow(UCHAR *pRow, int nLength, int c) {
+    for(UCHAR *pE = pRow + nLength; pRow < pE; pRow += 2)
+       *pRow  = min((*pRow * c) >> 8, 255);
+}
+
+
+void  ZyrloCamera::adjustWb(Mat & bayer) {
+    int W = (bayer.cols & ~1), H = (bayer.rows & ~1);
+    for(int i = 0; i < H; i += 2) {
+        wbRow(bayer.ptr(i), W, m_cr);
+        wbRow(bayer.ptr(i + 1) + 1, W - 1, m_cb);
+    }
+}
+
+static UINT GetNHighestVal(const UINT *pHist, int nN) {
+    int nCount = 0;
+    for(int i = 255; i >= 0; --i) {
+        nCount += pHist[i];
+        if(nCount >= nN) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+static UINT GetNMinVal(const UINT *pHist, int nN) {
+    int nCount = 0;
+    for(int i = 0; i < 256; ++i) {
+        nCount += pHist[i];
+        if(nCount >= nN) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+static float RegionDiff(const Mat &img1, const Mat & img2, int nStep, Rect region) {
+    UINT pHist[256] = {0}, pDiffHist[256] = {0};
+
+    const UCHAR *pC1, *pC2, *pC1e;
+    int nPixDiff;
+    region.x &= ~1;
+    region.y &= ~1;
+    region.width &= ~1;
+    region.height &= ~1;
+
+    Mat roi1 = img1(region), roi2 = img2(region);
+    int nPixCount = 0;
+    for(int i = 0; i < region.height; i += nStep) {
+        pC1 = roi1.ptr(i);
+        pC2 = roi2.ptr(i);
+        pC1e = pC1 + region.width;
+        for( ; pC1 < pC1e; pC1 += nStep, pC2 += nStep) {
+            nPixDiff = abs(int(*pC1) - int(*pC2));
+            ++pHist[*pC1];
+            ++pDiffHist[nPixDiff];
+            ++nPixCount;
+        }
+    }
+    int nFraction = nPixCount / 20;
+    int nBright = GetNHighestVal(pHist, nFraction);
+    int nDiff = GetNHighestVal(pDiffHist, nFraction);
+    if(nBright < 1) return 255.0f;
+    return float(nDiff * nDiff) / float(nBright);
+}
+
+static float MaxRegionDiff(const Mat & img1, const Mat & img2, int nStep, int nRegionsX, int nRegionsY, int nMargins) {
+    //WriteToLog("MaxRegionDiff %d", 1);
+    Size s(img1.cols, img1.rows);
+    int nRegionWidth = (s.width - nMargins * 2) / nRegionsX;
+    int nRegionHeight = (s.height - nMargins * 2) / nRegionsY;
+
+    float fMaxDiff = 0.0f, fDiff;
+    for(int i = 0; i < nRegionsY; ++i) {
+        for(int j = 0; j < nRegionsX; ++j) {
+            Rect region(nMargins + j * nRegionWidth, nMargins + i * nRegionHeight, nRegionWidth, nRegionHeight);
+            fDiff = RegionDiff(img1, img2, nStep, region);
+            if(fDiff > fMaxDiff) {
+                fMaxDiff = fDiff;
+            }
+        }
+    }
+    return fMaxDiff;
+}
+
+bool ZyrloCamera::DetectImageChange(const Mat & img) {
+    if(m_firstStableImg.empty()) {
+        img.copyTo(m_firstStableImg);
+        return false;
+    }
+    float fImgChange = MaxRegionDiff(m_firstStableImg, img, 2, 4, 3, 20);
+    if(fImgChange < m_fImageChangeSensitivity) {
+        ++m_nNoChange;
+        m_nMotionDetected = 0;
+        return FALSE;
+    }
+    m_nNoChange = 0;
+    ++m_nMotionDetected;
+    img.copyTo(m_firstStableImg);
+    return TRUE;
+}
+

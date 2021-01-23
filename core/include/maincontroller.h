@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QSound>
 #include "translator.h"
+#include "textposition.h"
 
 class OcrHandler;
 class Paragraph;
@@ -37,7 +38,7 @@ signals:
     void formattedTextUpdated(const QString &text);
 //    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
-    void wordNotify(int wordPosition, int wordLength);
+    void wordPositionChanged(const TextPosition &position);
     void previewUpdated(const cv::Mat & img);
 
 public slots:
@@ -52,6 +53,7 @@ private:
     const OcrHandler &ocr() const;
     void startSpeaking();
     const Paragraph &paragraph() const;
+    void setCurrentWordPosition(const TextPosition &textPosition);
 
 private slots:
     void onNewTextExtracted();
@@ -63,10 +65,8 @@ private:
     HWHandler  *m_hwhandler {nullptr};
     int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};
-
-    int         m_wordPosition {0};
-    int         m_wordLength {0};
     QString     m_currentText;
+    TextPosition m_currentWordPosition;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
 

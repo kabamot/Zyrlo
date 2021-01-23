@@ -27,6 +27,21 @@ void Paragraph::setId(int id)
     m_id = id;
 }
 
+int Paragraph::paragraphPosition() const
+{
+    return m_paragraphPosition;
+}
+
+void Paragraph::setParagraphPosition(int pos)
+{
+    m_paragraphPosition = pos;
+}
+
+int Paragraph::length() const
+{
+    return text().length();
+}
+
 int Paragraph::firstLineNum() const
 {
     return m_firstLineNum;
@@ -80,44 +95,59 @@ bool Paragraph::hasText() const
     return m_addedNumLines > 0;
 }
 
-int Paragraph::prevWordPosition(int pos) const
+TextPosition Paragraph::prevWordPosition(int pos) const
 {
     return prevPosition(m_words, pos);
 }
 
-int Paragraph::nextWordPosition(int pos) const
+TextPosition Paragraph::nextWordPosition(int pos) const
 {
     return nextPosition(m_words, pos);
 }
 
-int Paragraph::lastWordPosition() const
+TextPosition Paragraph::currentWordPosition(int pos) const
+{
+    return currentPosition(m_words, pos);
+}
+
+TextPosition Paragraph::firstWordPosition() const
+{
+    return firstPosition(m_words);
+}
+
+TextPosition Paragraph::lastWordPosition() const
 {
     return lastPosition(m_words);
 }
 
-int Paragraph::prevSentencePosition(int pos) const
+TextPosition Paragraph::prevSentencePosition(int pos) const
 {
     return prevPosition(m_sentences, pos);
 }
 
-int Paragraph::nextSentencePosition(int pos) const
+TextPosition Paragraph::nextSentencePosition(int pos) const
 {
     return nextPosition(m_sentences, pos);
 }
 
-int Paragraph::currentSentencePosition(int pos) const
+TextPosition Paragraph::currentSentencePosition(int pos) const
 {
     return currentPosition(m_sentences, pos);
 }
 
-int Paragraph::lastSentencePosition() const
+TextPosition Paragraph::firstSentencePosition() const
+{
+    return firstPosition(m_sentences);
+}
+
+TextPosition Paragraph::lastSentencePosition() const
 {
     return lastPosition(m_sentences);
 }
 
 void Paragraph::parseWords()
 {
-    const static QRegularExpression re(R"(([\w]{3,}|(\w*\d+\w*)+))");
+    const static QRegularExpression re(R"([\w\d]+)");
     m_words = parseToPositions(text(), re);
 }
 
@@ -131,54 +161,63 @@ Positions Paragraph::parseToPositions(const QString &text, const QRegularExpress
 {
     Positions positions;
 
-    int pos = 0;
+    int nextPos = 0;
 
     while (true) {
-        auto match = re.match(text, pos);
+        auto match = re.match(text, nextPos);
         if (!match.hasMatch()) {
             break;
         }
 
-        pos = match.capturedStart();
-        positions.push_back(pos);
+        positions.push_back(TextPosition(match.capturedStart(),
+                                         match.capturedLength(),
+                                         paragraphPosition()));
 
-        pos = match.capturedEnd();
+        nextPos = match.capturedEnd();
     }
 
     return positions;
 }
 
-int Paragraph::prevPosition(const Positions &positions, int pos) const
+TextPosition Paragraph::prevPosition(const Positions &positions, int pos) const
 {
     int index = indexByTextPosition(positions, pos);
     if (index <= 0)
-        return -1;
+        return TextPosition{};
 
     return positions[index - 1];
 }
 
-int Paragraph::nextPosition(const Positions &positions, int pos) const
+TextPosition Paragraph::nextPosition(const Positions &positions, int pos) const
 {
     int index = indexByTextPosition(positions, pos);
     if (index < 0 || index == positions.size() - 1)
-        return -1;
+        return TextPosition{};
 
     return positions[index + 1];
 }
 
-int Paragraph::currentPosition(const Positions &positions, int pos) const
+TextPosition Paragraph::currentPosition(const Positions &positions, int pos) const
 {
     int index = indexByTextPosition(positions, pos);
     if (index < 0)
-        return -1;
+        return TextPosition{};
 
     return positions[index];
 }
 
-int Paragraph::lastPosition(const Positions &positions) const
+TextPosition Paragraph::firstPosition(const Positions &positions) const
 {
     if (positions.empty())
-        return -1;
+        return TextPosition{};
+
+    return positions.front();
+}
+
+TextPosition Paragraph::lastPosition(const Positions &positions) const
+{
+    if (positions.empty())
+        return TextPosition{};
 
     return positions.back();
 }
@@ -189,7 +228,7 @@ int Paragraph::indexByTextPosition(const Positions &positions, int currentPositi
 {
     int currentIndex = 0;
     for (; currentIndex < positions.size(); ++currentIndex) {
-        if (positions[currentIndex] > currentPosition) {
+        if (positions[currentIndex].parPos() > currentPosition) {
             break;
         }
     }

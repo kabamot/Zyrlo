@@ -26,7 +26,6 @@ MainController::MainController()
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
 
     m_ttsEngine = new CerenceTTS(this);
-    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
     connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
@@ -181,6 +180,7 @@ void MainController::setCurrentWordPosition(int posInParagraph)
 void MainController::setCurrentWordPosition(const TextPosition &textPosition)
 {
     m_currentWordPosition = textPosition;
+    emit wordPositionChanged(m_currentWordPosition);
 }
 
 void MainController::onNewTextExtracted()
@@ -194,7 +194,7 @@ void MainController::onNewTextExtracted()
 
 void MainController::onSpeakingFinished()
 {
-    m_ttsStartPositionInParagraph += m_currentText.size();
+    m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
     qDebug() << __func__ << m_ttsStartPositionInParagraph;
     startSpeaking();
 }

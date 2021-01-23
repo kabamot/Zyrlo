@@ -28,7 +28,7 @@ signals:
     void formattedTextUpdated(const QString &text);
 //    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
-    void wordNotify(int wordPosition, int wordLength);
+    void wordPositionChanged(const TextPosition &position);
 
 public slots:
     void pauseResume();

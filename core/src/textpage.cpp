@@ -92,8 +92,9 @@ void TextPage::addParagraphLine(int paragraphNum, const QString &text)
                 m_paragraphs[paragraphNum].setParagraphPosition(0);
             } else {
                 const auto &prevParagraph = m_paragraphs[paragraphNum - 1];
+                // Added 1 to the length due to newline character between paragraphs
                 m_paragraphs[paragraphNum].setParagraphPosition(
-                    prevParagraph.paragraphPosition() + prevParagraph.length());
+                    prevParagraph.paragraphPosition() + prevParagraph.length() + 1);
             }
         }
 

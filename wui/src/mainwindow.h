@@ -8,11 +8,16 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QTextCharFormat>
+
 #include "maincontroller.h"
+#include "textposition.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class QTextCursor;
 
 class MainWindow : public QMainWindow
 {
@@ -24,8 +29,14 @@ public:
 
 private slots:
     void start();
+    void highlighWord(const TextPosition &position);
+
+private:
+    void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);
 
 private:
     Ui::MainWindow *ui;
     MainController m_controller;
+    TextPosition m_prevPosition;
+    QTextCharFormat m_prevFormat;
 };

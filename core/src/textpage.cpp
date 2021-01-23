@@ -85,6 +85,19 @@ void TextPage::setParagraphNumLines(int paragraphNum, int numLines)
 void TextPage::addParagraphLine(int paragraphNum, const QString &text)
 {
     if (paragraphNum < numParagraphs()) {
+        // Order is important:
+        // First set paragraph's position in the page if it was not yet initialized
+        if (m_paragraphs[paragraphNum].paragraphPosition() < 0) {
+            if (paragraphNum == 0) {
+                m_paragraphs[paragraphNum].setParagraphPosition(0);
+            } else {
+                const auto &prevParagraph = m_paragraphs[paragraphNum - 1];
+                m_paragraphs[paragraphNum].setParagraphPosition(
+                    prevParagraph.paragraphPosition() + prevParagraph.length());
+            }
+        }
+
+        // Then add the line
         m_paragraphs[paragraphNum].addLine(text);
     } else {
         qWarning() << __func__ << __LINE__ << "wrong paragraph number" << paragraphNum;

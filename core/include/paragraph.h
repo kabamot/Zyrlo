@@ -29,6 +29,11 @@ public:
     int id() const;
     void setId(int id);
 
+    int paragraphPosition() const;
+    void setParagraphPosition(int pos);
+
+    int length() const;
+
     int firstLineNum() const;
     void setFirstLineNum(int firstLine);
 
@@ -69,7 +74,7 @@ private:
     int m_firstLineNum {-1};
     int m_numLines {-1};
     int m_addedNumLines {0};
-    int m_paragraphPosition {0};
+    int m_paragraphPosition {-1};
     QStringList m_lines;
 
     Positions m_words;

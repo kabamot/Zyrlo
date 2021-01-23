@@ -27,6 +27,21 @@ void Paragraph::setId(int id)
     m_id = id;
 }
 
+int Paragraph::paragraphPosition() const
+{
+    return m_paragraphPosition;
+}
+
+void Paragraph::setParagraphPosition(int pos)
+{
+    m_paragraphPosition = pos;
+}
+
+int Paragraph::length() const
+{
+    return text().length();
+}
+
 int Paragraph::firstLineNum() const
 {
     return m_firstLineNum;

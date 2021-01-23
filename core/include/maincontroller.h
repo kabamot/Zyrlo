@@ -42,7 +42,6 @@ private:
     const OcrHandler &ocr() const;
     void startSpeaking();
     const Paragraph &paragraph() const;
-    void setCurrentWordPosition(int posInParagraph);
     void setCurrentWordPosition(const TextPosition &textPosition);
 
 private slots:

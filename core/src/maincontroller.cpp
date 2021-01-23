@@ -108,7 +108,7 @@ void MainController::backSentence()
         }
     }
 
-    setCurrentWordPosition(position.parPos());
+    setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
     startSpeaking();
 }
@@ -128,7 +128,7 @@ void MainController::nextSentence()
         }
     }
 
-    setCurrentWordPosition(position.parPos());
+    setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
     startSpeaking();
 }
@@ -148,7 +148,6 @@ void MainController::startSpeaking()
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
 
-        setCurrentWord(0, 0);
         m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
 
         if (!m_currentText.isEmpty()) {
@@ -170,11 +169,6 @@ void MainController::startSpeaking()
 const Paragraph &MainController::paragraph() const
 {
     return ocr().textPage()->paragraph(m_currentParagraphNum);
-}
-
-void MainController::setCurrentWordPosition(int posInParagraph)
-{
-    setCurrentWordPosition(paragraph().currentWordPosition(posInParagraph));
 }
 
 void MainController::setCurrentWordPosition(const TextPosition &textPosition)

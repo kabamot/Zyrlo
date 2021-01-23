@@ -8,23 +8,19 @@
 #include "textpage.h"
 
 #include <QRegularExpression>
+#include <QDebug>
 
 TextPage::TextPage(int numOfParagraphs)
     : m_paragraphs(numOfParagraphs)
 {
     for (int i = 0; i < m_paragraphs.size(); ++i) {
-        paragraph(i).setId(i);
+        setParagraphId(i, i);
     }
 }
 
 int TextPage::numParagraphs() const
 {
     return m_paragraphs.size();
-}
-
-Paragraph &TextPage::paragraph(int num)
-{
-    return m_paragraphs[num];
 }
 
 const Paragraph &TextPage::paragraph(int num) const
@@ -66,6 +62,33 @@ QString TextPage::formattedText() const
     }
 
     return allText;
+}
+
+void TextPage::setParagraphId(int paragraphNum, int id)
+{
+    if (paragraphNum < numParagraphs()) {
+        m_paragraphs[paragraphNum].setId(id);
+    } else {
+        qWarning() << __func__ << __LINE__ << "wrong paragraph number" << paragraphNum;
+    }
+}
+
+void TextPage::setParagraphNumLines(int paragraphNum, int numLines)
+{
+    if (paragraphNum < numParagraphs()) {
+        m_paragraphs[paragraphNum].setNumLines(numLines);
+    } else {
+        qWarning() << __func__ << __LINE__ << "wrong paragraph number" << paragraphNum;
+    }
+}
+
+void TextPage::addParagraphLine(int paragraphNum, const QString &text)
+{
+    if (paragraphNum < numParagraphs()) {
+        m_paragraphs[paragraphNum].addLine(text);
+    } else {
+        qWarning() << __func__ << __LINE__ << "wrong paragraph number" << paragraphNum;
+    }
 }
 
 bool TextPage::isNumOk(int num) const

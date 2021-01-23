@@ -10,7 +10,15 @@
 #include <QString>
 #include <QStringList>
 
-using Positions = QVector<int>; // Represents starting position of words/sentences in the paragraph
+struct TextPosition {
+    int parPos {-1};
+    int absPos {-1};
+    int length {0};
+
+    bool isValid() const { return parPos >= 0; }
+};
+
+using Positions = QVector<TextPosition>; // Represents starting position of words/sentences in the paragraph
 
 class Paragraph
 {
@@ -33,24 +41,27 @@ public:
     bool isComplete() const;
     bool hasText() const;
 
-    int prevWordPosition(int pos) const;
-    int nextWordPosition(int pos) const;
-    int lastWordPosition() const;
+    TextPosition prevWordPosition(int pos) const;
+    TextPosition nextWordPosition(int pos) const;
+    TextPosition firstWordPosition() const;
+    TextPosition lastWordPosition() const;
 
-    int prevSentencePosition(int pos) const;
-    int nextSentencePosition(int pos) const;
-    int currentSentencePosition(int pos) const;
-    int lastSentencePosition() const;
+    TextPosition prevSentencePosition(int pos) const;
+    TextPosition nextSentencePosition(int pos) const;
+    TextPosition currentSentencePosition(int pos) const;
+    TextPosition firstSentencePosition() const;
+    TextPosition lastSentencePosition() const;
 
 private:
     void parseWords();
     void parseSenteces();
     Positions parseToPositions(const QString &text, const QRegularExpression &re);
 
-    int prevPosition(const Positions &positions, int pos) const;
-    int nextPosition(const Positions &positions, int pos) const;
-    int currentPosition(const Positions &positions, int pos) const;
-    int lastPosition(const Positions &positions) const;
+    TextPosition prevPosition(const Positions &positions, int pos) const;
+    TextPosition nextPosition(const Positions &positions, int pos) const;
+    TextPosition currentPosition(const Positions &positions, int pos) const;
+    TextPosition firstPosition(const Positions &positions) const;
+    TextPosition lastPosition(const Positions &positions) const;
     int indexByTextPosition(const Positions &positions, int currentPosition) const;
 
 private:
@@ -58,6 +69,7 @@ private:
     int m_firstLineNum {-1};
     int m_numLines {-1};
     int m_addedNumLines {0};
+    int m_paragraphPosition {0};
     QStringList m_lines;
 
     Positions m_words;

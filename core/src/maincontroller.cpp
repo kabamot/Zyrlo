@@ -59,29 +59,29 @@ void MainController::pauseResume()
 void MainController::backWord()
 {
     auto position = paragraph().prevWordPosition(m_wordPosition);
-    while (position < 0) {
+    while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
             // Go the the previous paragraph
             position = paragraph().lastWordPosition();
         } else {
             // Go to the beginning of the page
             m_currentParagraphNum = 0;
-            position = 0;
+            position.parPos = position.absPos =0;
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
+    m_ttsStartPositionInParagraph = position.parPos;
     startSpeaking();
 }
 
 void MainController::nextWord()
 {
     auto position = paragraph().nextWordPosition(m_wordPosition);
-    if (position < 0) {
+    if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Go the the next paragraph
             ++m_currentParagraphNum;
-            position = 0;
+            position = paragraph().firstWordPosition();
         } else {
             // Page finished
             m_ttsEngine->stop();
@@ -89,36 +89,36 @@ void MainController::nextWord()
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
+    m_ttsStartPositionInParagraph = position.parPos;
     startSpeaking();
 }
 
 void MainController::backSentence()
 {
     auto position = paragraph().prevSentencePosition(m_wordPosition);
-    while (position < 0) {
+    while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
             // Go the the previous paragraph
             position = paragraph().lastSentencePosition();
         } else {
             // Go to the beginning of the page
             m_currentParagraphNum = 0;
-            position = 0;
+            position.parPos = position.absPos =0;
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
+    m_ttsStartPositionInParagraph = position.parPos;
     startSpeaking();
 }
 
 void MainController::nextSentence()
 {
     auto position = paragraph().nextSentencePosition(m_wordPosition);
-    if (position < 0) {
+    if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Go the the next paragraph
             ++m_currentParagraphNum;
-            position = 0;
+            position = paragraph().firstSentencePosition();
         } else {
             // Page finished
             m_ttsEngine->stop();
@@ -126,7 +126,7 @@ void MainController::nextSentence()
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
+    m_ttsStartPositionInParagraph = position.parPos;
     startSpeaking();
 }
 
@@ -139,7 +139,6 @@ const OcrHandler &MainController::ocr() const
 {
     return OcrHandler::instance();
 }
-
 
 void MainController::startSpeaking()
 {

@@ -21,6 +21,7 @@ set(INC_FILES
     include/ocrhandler.h
     include/textpage.h
     include/paragraph.h
+    include/textposition.h
 )
 
 set(SRC_FILES

@@ -10,13 +10,7 @@
 #include <QString>
 #include <QStringList>
 
-struct TextPosition {
-    int parPos {-1};
-    int absPos {-1};
-    int length {0};
-
-    bool isValid() const { return parPos >= 0; }
-};
+#include "textposition.h"
 
 using Positions = QVector<TextPosition>; // Represents starting position of words/sentences in the paragraph
 
@@ -48,6 +42,7 @@ public:
 
     TextPosition prevWordPosition(int pos) const;
     TextPosition nextWordPosition(int pos) const;
+    TextPosition currentWordPosition(int pos) const;
     TextPosition firstWordPosition() const;
     TextPosition lastWordPosition() const;
 

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <QObject>
+#include "textposition.h"
 
 class OcrHandler;
 class Paragraph;
@@ -41,6 +42,8 @@ private:
     const OcrHandler &ocr() const;
     void startSpeaking();
     const Paragraph &paragraph() const;
+    void setCurrentWordPosition(int posInParagraph);
+    void setCurrentWordPosition(const TextPosition &textPosition);
 
 private slots:
     void onNewTextExtracted();
@@ -53,9 +56,7 @@ private:
 
     int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};
-
-    int         m_wordPosition {0};
-    int         m_wordLength {0};
     QString     m_currentText;
+    TextPosition m_currentWordPosition;
 };
 

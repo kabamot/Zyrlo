@@ -105,6 +105,11 @@ TextPosition Paragraph::nextWordPosition(int pos) const
     return nextPosition(m_words, pos);
 }
 
+TextPosition Paragraph::currentWordPosition(int pos) const
+{
+    return currentPosition(m_words, pos);
+}
+
 TextPosition Paragraph::firstWordPosition() const
 {
     return firstPosition(m_words);
@@ -164,11 +169,9 @@ Positions Paragraph::parseToPositions(const QString &text, const QRegularExpress
             break;
         }
 
-        TextPosition tp;
-        tp.parPos = match.capturedStart();;
-        tp.absPos = tp.parPos + m_paragraphPosition;
-        tp.length = match.capturedLength();
-        positions.push_back(tp);
+        positions.push_back(TextPosition(match.capturedStart(),
+                                         match.capturedLength(),
+                                         paragraphPosition()));
 
         nextPos = match.capturedEnd();
     }
@@ -225,7 +228,7 @@ int Paragraph::indexByTextPosition(const Positions &positions, int currentPositi
 {
     int currentIndex = 0;
     for (; currentIndex < positions.size(); ++currentIndex) {
-        if (positions[currentIndex].parPos > currentPosition) {
+        if (positions[currentIndex].parPos() > currentPosition) {
             break;
         }
     }

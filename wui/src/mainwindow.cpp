@@ -18,10 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
-    connect(&m_controller, &MainController::formattedTextUpdated,
-            ui->textBrowser, &QTextBrowser::setHtml);
-    connect(&m_controller, &MainController::wordPositionChanged,
-            this, &MainWindow::highlighWord);
+    connect(&m_controller, &MainController::textUpdated, this, &MainWindow::updateText);
+    connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
 
     connect(ui->pauseButton, &QPushButton::clicked, &m_controller, &MainController::pauseResume);
     connect(ui->nextWordButton, &QPushButton::clicked, &m_controller, &MainController::nextWord);
@@ -40,6 +38,25 @@ MainWindow::~MainWindow()
 void MainWindow::start()
 {
     m_controller.start(ui->fileNameLineEdit->text());
+}
+
+void MainWindow::updateText(QString text)
+{
+    const auto currentText = ui->textBrowser->toPlainText();
+    if (text.left(currentText.size()) == currentText) {
+        // Remove the currentText from the text
+        text.remove(0, currentText.size());
+    } else {
+        // text is not according to the current text, will clear and replace it
+        ui->textBrowser->clear();
+    }
+
+    QTextCharFormat fmt;
+    fmt.setFontPointSize(14);
+
+    QTextCursor cursor(ui->textBrowser->document());
+    cursor.movePosition(QTextCursor::End);
+    cursor.insertText(text, fmt);
 }
 
 void MainWindow::highlighWord(const TextPosition &position)

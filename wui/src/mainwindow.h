@@ -29,6 +29,7 @@ public:
 
 private slots:
     void start();
+    void updateText(QString text);
     void highlighWord(const TextPosition &position);
 
 private:

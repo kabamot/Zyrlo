@@ -32,7 +32,13 @@ QString TextPage::text() const
 {
     QString allText;
     for (const auto &paragraph : m_paragraphs) {
-        allText.append(paragraph.text());
+        const auto parText = paragraph.text();
+        if (!parText.isEmpty()) {
+            if (!allText.isEmpty()) {
+                allText.append('\n');
+            }
+            allText.append(paragraph.text());
+        }
     }
 
     return allText;

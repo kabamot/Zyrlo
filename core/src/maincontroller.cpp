@@ -57,6 +57,9 @@ void MainController::pauseResume()
 
 void MainController::backWord()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().prevWordPosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -80,6 +83,9 @@ void MainController::backWord()
 
 void MainController::nextWord()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().nextWordPosition(m_currentWordPosition.parPos());
     if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
@@ -104,6 +110,9 @@ void MainController::nextWord()
 
 void MainController::backSentence()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().prevSentencePosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -127,6 +136,9 @@ void MainController::backSentence()
 
 void MainController::nextSentence()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().nextSentencePosition(m_currentWordPosition.parPos());
     if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
@@ -161,6 +173,9 @@ const OcrHandler &MainController::ocr() const
 
 void MainController::startSpeaking()
 {
+    if (!isPageValid())
+        return;
+
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
 
@@ -191,6 +206,11 @@ void MainController::setCurrentWordPosition(const TextPosition &textPosition)
 {
     m_currentWordPosition = textPosition;
     emit wordPositionChanged(m_currentWordPosition);
+}
+
+bool MainController::isPageValid() const
+{
+    return ocr().textPage() != nullptr;
 }
 
 void MainController::onNewTextExtracted()

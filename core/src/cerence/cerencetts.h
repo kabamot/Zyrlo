@@ -32,6 +32,8 @@ public:
     void stop();
     bool pauseResume();
 
+    bool isSpeaking() const;
+    bool isPaused() const;
     bool isStoppedSpeaking() const;
 
     char *buffer();

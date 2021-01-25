@@ -71,7 +71,11 @@ void MainController::backWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextWord()
@@ -91,7 +95,11 @@ void MainController::nextWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::backSentence()
@@ -110,7 +118,11 @@ void MainController::backSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextSentence()
@@ -130,7 +142,11 @@ void MainController::nextSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 OcrHandler &MainController::ocr()

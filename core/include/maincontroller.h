@@ -54,6 +54,7 @@ private:
     void startSpeaking();
     const Paragraph &paragraph() const;
     void setCurrentWordPosition(const TextPosition &textPosition);
+    bool isPageValid() const;
 
 private slots:
     void onNewTextExtracted();

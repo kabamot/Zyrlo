@@ -75,6 +75,9 @@ void MainController::pauseResume()
 
 void MainController::backWord()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().prevWordPosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -89,11 +92,18 @@ void MainController::backWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextWord()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().nextWordPosition(m_currentWordPosition.parPos());
     if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
@@ -109,11 +119,18 @@ void MainController::nextWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::backSentence()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().prevSentencePosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -128,11 +145,18 @@ void MainController::backSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextSentence()
 {
+    if (!isPageValid())
+        return;
+
     auto position = paragraph().nextSentencePosition(m_currentWordPosition.parPos());
     if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
@@ -148,7 +172,11 @@ void MainController::nextSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    startSpeaking();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 OcrHandler &MainController::ocr()
@@ -239,6 +267,9 @@ const OcrHandler &MainController::ocr() const
 
 void MainController::startSpeaking()
 {
+    if (!isPageValid())
+        return;
+
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
         if(m_currentParagraphNum < 0)
@@ -274,6 +305,11 @@ void MainController::setCurrentWordPosition(const TextPosition &textPosition)
 {
     m_currentWordPosition = textPosition;
     emit wordPositionChanged(m_currentWordPosition);
+}
+
+bool MainController::isPageValid() const
+{
+    return ocr().textPage() != nullptr;
 }
 
 void MainController::onNewTextExtracted()

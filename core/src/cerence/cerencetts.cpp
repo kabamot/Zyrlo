@@ -141,6 +141,16 @@ bool CerenceTTS::pauseResume()
     return ok;
 }
 
+bool CerenceTTS::isSpeaking() const
+{
+    return m_audioOutput->state() == QAudio::ActiveState;
+}
+
+bool CerenceTTS::isPaused() const
+{
+    return m_audioOutput->state() == QAudio::SuspendedState;
+}
+
 bool CerenceTTS::isStoppedSpeaking() const
 {
     return m_audioOutput->state() == QAudio::StoppedState;

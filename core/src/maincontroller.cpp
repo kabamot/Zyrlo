@@ -156,10 +156,6 @@ OcrHandler &MainController::ocr()
     return OcrHandler::instance();
 }
 
-void MainController::previewImgUpdate(const Mat & prevImg) {
-    emit previewUpdated(prevImg);
-}
-
 void MainController::snapImage() {
     m_hwhandler->snapImage();
 }
@@ -236,16 +232,6 @@ bool MainController::toggleAudioSink() {
     return bret;
 }
 
-void MainController::readerReady() {
-    if(m_ttsEngine)
-        m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
-}
-
-void MainController::targetNotFound() {
-    if(m_ttsEngine)
-        m_ttsEngine->say(m_translator.GetString("CLEAR_SURF").c_str());
-}
-
 const OcrHandler &MainController::ocr() const
 {
     return OcrHandler::instance();
@@ -313,4 +299,18 @@ void MainController::setCurrentWord(int wordPosition, int wordLength)
                          paragraph().paragraphPosition()};
 
     setCurrentWordPosition(wordPos);
+}
+
+void MainController::previewImgUpdate(const Mat & prevImg) {
+    emit previewUpdated(prevImg);
+}
+
+void MainController::readerReady() {
+    if(m_ttsEngine)
+        m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
+}
+
+void MainController::targetNotFound() {
+    if(m_ttsEngine)
+        m_ttsEngine->say(m_translator.GetString("CLEAR_SURF").c_str());
 }

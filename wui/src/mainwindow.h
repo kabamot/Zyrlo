@@ -30,6 +30,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+protected:
+    void keyPressEvent(QKeyEvent *ev);
+
 private slots:
     void start();
     void updateText(QString text);
@@ -47,6 +50,4 @@ private:
     cv::Mat m_prevImg;
     QLabel *m_pLabelPreview;
     bool m_bSavePreviewImage = false;
-protected:
-    void keyPressEvent(QKeyEvent *ev);
 };

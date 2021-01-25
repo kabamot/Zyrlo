@@ -59,6 +59,9 @@ private slots:
     void onNewTextExtracted();
     void onSpeakingFinished();
     void setCurrentWord(int wordPosition, int wordLength);
+    void previewImgUpdate(const cv::Mat & prevImg);
+    void readerReady();
+    void targetNotFound();
 
 private:
     CerenceTTS *m_ttsEngine {nullptr};
@@ -69,10 +72,5 @@ private:
     TextPosition m_currentWordPosition;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
-
- private slots:
-    void previewImgUpdate(const cv::Mat & prevImg);
-    void readerReady();
-    void targetNotFound();
 };
 

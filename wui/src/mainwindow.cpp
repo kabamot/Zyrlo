@@ -41,6 +41,45 @@ MainWindow::~MainWindow()
     delete m_pLabelPreview;
 }
 
+void MainWindow::keyPressEvent(QKeyEvent *ev) {
+    switch(ev->key()) {
+    case Qt::Key_S:
+        if(ev->modifiers() & Qt::CTRL) {
+            m_pLabelPreview->setVisible(true);
+            qDebug() << "Preview ON\n";
+        }
+        else {
+            m_bSavePreviewImage = true;
+            qDebug() << "Saving preview image\n";
+        }
+        break;
+    case Qt::Key_H:
+        m_pLabelPreview->setVisible(false);
+        qDebug() << "Preview OFF\n";
+        break;
+    case Qt::Key_F:
+        m_controller.flashLed();
+        qDebug() << "Flash Led\n";
+        break;
+    case Qt::Key_T:
+        m_controller.snapImage();
+        qDebug() << "SnapShot\n";
+        break;
+    case Qt::Key_L:
+        if(ev->modifiers() & Qt::SHIFT) {
+            m_controller.setLed(false);
+            qDebug() << "Light OFF\n";
+        }
+        else {
+            m_controller.setLed(true);
+            qDebug() << "Light ON\n";
+        }
+        break;
+    case Qt::Key_P:
+        m_controller.toggleAudioSink();
+    }
+}
+
 void MainWindow::start()
 {
     m_controller.start(ui->fileNameLineEdit->text());
@@ -105,44 +144,4 @@ void MainWindow::updatePreview(const Mat &img) {
         m_bSavePreviewImage = false;
         imwrite("PreviewImage.bmp", img);
     }
-}
-
-void MainWindow::keyPressEvent(QKeyEvent *ev) {
-    switch(ev->key()) {
-    case Qt::Key_S:
-        if(ev->modifiers() & Qt::CTRL) {
-            m_pLabelPreview->setVisible(true);
-            qDebug() << "Preview ON\n";
-        }
-        else {
-            m_bSavePreviewImage = true;
-            qDebug() << "Saving preview image\n";
-        }
-        break;
-    case Qt::Key_H:
-        m_pLabelPreview->setVisible(false);
-        qDebug() << "Preview OFF\n";
-        break;
-    case Qt::Key_F:
-        m_controller.flashLed();
-        qDebug() << "Flash Led\n";
-        break;
-    case Qt::Key_T:
-        m_controller.snapImage();
-        qDebug() << "SnapShot\n";
-        break;
-    case Qt::Key_L:
-        if(ev->modifiers() & Qt::SHIFT) {
-            m_controller.setLed(false);
-            qDebug() << "Light OFF\n";
-        }
-        else {
-            m_controller.setLed(true);
-            qDebug() << "Light ON\n";
-        }
-        break;
-    case Qt::Key_P:
-        m_controller.toggleAudioSink();
-    }
-
 }

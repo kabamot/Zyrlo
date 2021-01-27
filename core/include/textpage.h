@@ -21,11 +21,14 @@ public:
 
     int numParagraphs() const;
 
-    Paragraph &paragraph(int num);
     const Paragraph &paragraph(int num) const;
     QString text() const;
     QString getText(int paragraphNum, int position) const;
     QString formattedText() const;
+
+    void setParagraphId(int paragraphNum, int id);
+    void setParagraphNumLines(int paragraphNum, int numLines);
+    void addParagraphLine(int paragraphNum, const QString &text);
 
 private:
     bool isNumOk(int num) const;

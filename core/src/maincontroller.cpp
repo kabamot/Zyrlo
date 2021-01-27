@@ -34,7 +34,6 @@ MainController::MainController()
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
 
     m_ttsEngine = new CerenceTTS(this);
-    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::wordNotify);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
     connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
@@ -89,30 +88,41 @@ void MainController::pauseResume()
 
 void MainController::backWord()
 {
-    auto position = paragraph().prevWordPosition(m_wordPosition);
-    while (position < 0) {
+    if (!isPageValid())
+        return;
+
+    auto position = paragraph().prevWordPosition(m_currentWordPosition.parPos());
+    while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
             // Go the the previous paragraph
             position = paragraph().lastWordPosition();
         } else {
             // Go to the beginning of the page
             m_currentParagraphNum = 0;
-            position = 0;
+            position = paragraph().firstWordPosition();
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
-    startSpeaking();
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextWord()
 {
-    auto position = paragraph().nextWordPosition(m_wordPosition);
-    if (position < 0) {
+    if (!isPageValid())
+        return;
+
+    auto position = paragraph().nextWordPosition(m_currentWordPosition.parPos());
+    if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Go the the next paragraph
             ++m_currentParagraphNum;
-            position = 0;
+            position = paragraph().firstWordPosition();
         } else {
             // Page finished
             m_ttsEngine->stop();
@@ -120,36 +130,52 @@ void MainController::nextWord()
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
-    startSpeaking();
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::backSentence()
 {
-    auto position = paragraph().prevSentencePosition(m_wordPosition);
-    while (position < 0) {
+    if (!isPageValid())
+        return;
+
+    auto position = paragraph().prevSentencePosition(m_currentWordPosition.parPos());
+    while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
             // Go the the previous paragraph
             position = paragraph().lastSentencePosition();
         } else {
             // Go to the beginning of the page
             m_currentParagraphNum = 0;
-            position = 0;
+            position = paragraph().firstSentencePosition();
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
-    startSpeaking();
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 void MainController::nextSentence()
 {
-    auto position = paragraph().nextSentencePosition(m_wordPosition);
-    if (position < 0) {
+    if (!isPageValid())
+        return;
+
+    auto position = paragraph().nextSentencePosition(m_currentWordPosition.parPos());
+    if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Go the the next paragraph
             ++m_currentParagraphNum;
-            position = 0;
+            position = paragraph().firstSentencePosition();
         } else {
             // Page finished
             m_ttsEngine->stop();
@@ -157,17 +183,18 @@ void MainController::nextSentence()
         }
     }
 
-    m_ttsStartPositionInParagraph = position;
-    startSpeaking();
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+    if (m_ttsEngine->isSpeaking()) {
+        startSpeaking();
+    } else if (m_ttsEngine->isPaused()) {
+        m_ttsEngine->stop();
+    }
 }
 
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();
-}
-
-void MainController::previewImgUpdate(const Mat & prevImg) {
-    emit previewUpdated(prevImg);
 }
 
 void MainController::snapImage() {
@@ -263,17 +290,13 @@ const OcrHandler &MainController::ocr() const
     return OcrHandler::instance();
 }
 
-
 void MainController::startSpeaking()
 {
+    if (!isPageValid() || m_currentParagraphNum < 0)
+        return;
+
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
-        if(m_currentParagraphNum < 0)
-            break;
-        setCurrentWord(0, 0);
-        const TextPage *pTp = ocr().textPage();
-        if(!pTp)
-            break;
         m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
 
         if (!m_currentText.isEmpty()) {
@@ -297,6 +320,17 @@ const Paragraph &MainController::paragraph() const
     return ocr().textPage()->paragraph(m_currentParagraphNum);
 }
 
+void MainController::setCurrentWordPosition(const TextPosition &textPosition)
+{
+    m_currentWordPosition = textPosition;
+    emit wordPositionChanged(m_currentWordPosition);
+}
+
+bool MainController::isPageValid() const
+{
+    return ocr().textPage() != nullptr;
+}
+
 void MainController::onNewTextExtracted()
 {
     stopBeeping();
@@ -309,15 +343,22 @@ void MainController::onNewTextExtracted()
 
 void MainController::onSpeakingFinished()
 {
-    m_ttsStartPositionInParagraph += m_currentText.size();
+    m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
     qDebug() << __func__ << m_ttsStartPositionInParagraph;
     startSpeaking();
 }
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
-    m_wordPosition = m_ttsStartPositionInParagraph + wordPosition;
-    m_wordLength = wordLength;
+    TextPosition wordPos{m_ttsStartPositionInParagraph + wordPosition,
+                         wordLength,
+                         paragraph().paragraphPosition()};
+
+    setCurrentWordPosition(wordPos);
+}
+
+void MainController::previewImgUpdate(const Mat & prevImg) {
+    emit previewUpdated(prevImg);
 }
 
 void MainController::startBeeping() {

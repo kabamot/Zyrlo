@@ -12,9 +12,9 @@ TEST_CASE("TextPage")
 {
     TextPage page(5);
 
-    page.paragraph(0).setNumLines(3);
-    page.paragraph(0).addLine("Hello world");
-    page.paragraph(0).addLine("one two three. Starting");
+    page.setParagraphNumLines(0, 3);
+    page.addParagraphLine(0, "Hello world");
+    page.addParagraphLine(0, "one two three. Starting");
 
     DOCTEST_SUBCASE("numParagraphs") {
         CHECK_EQ(page.numParagraphs(), 5);
@@ -34,7 +34,7 @@ TEST_CASE("TextPage")
     }
 
     DOCTEST_SUBCASE("getText2") {
-        page.paragraph(0).addLine("and finishing");
+        page.addParagraphLine(0, "and finishing");
         CHECK_EQ(page.getText(0, 0), QString("Hello world one two three. Starting and finishing"));
     }
 }

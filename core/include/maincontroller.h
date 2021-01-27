@@ -11,6 +11,7 @@
 #include <QSound>
 #include <QFuture>
 #include "translator.h"
+#include "textposition.h"
 
 class OcrHandler;
 class Paragraph;
@@ -38,7 +39,7 @@ signals:
     void formattedTextUpdated(const QString &text);
 //    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
-    void wordNotify(int wordPosition, int wordLength);
+    void wordPositionChanged(const TextPosition &position);
     void previewUpdated(const cv::Mat & img);
 
 public slots:
@@ -57,21 +58,26 @@ private:
     void stopBeeping();
     void startLongPressTimer(void (*action)(void), int nDelay);
     void stopLongPressTimer();
+    void setCurrentWordPosition(const TextPosition &textPosition);
+    bool isPageValid() const;
 
 private slots:
     void onNewTextExtracted();
     void onSpeakingFinished();
     void setCurrentWord(int wordPosition, int wordLength);
+    void previewImgUpdate(const cv::Mat & prevImg);
+    void readerReady();
+    void targetNotFound();
+    void onBtButton(int nButton, bool bDown);
+    void onBtBattery(int nVal);
 
 private:
     CerenceTTS *m_ttsEngine {nullptr};
     HWHandler  *m_hwhandler {nullptr};
     int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};
-
-    int         m_wordPosition {0};
-    int         m_wordLength {0};
     QString     m_currentText;
+    TextPosition m_currentWordPosition;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
     bool m_bKeepBeeping = false;
@@ -79,11 +85,5 @@ private:
     bool m_squareLeftDown = false, m_squareRightDown = false, m_voiceDown = false,  m_ignoreVoice = false;
     int m_nLongPressCount = -1;
 
- private slots:
-    void previewImgUpdate(const cv::Mat & prevImg);
-    void readerReady();
-    void targetNotFound();
-    void onBtButton(int nButton, bool bDown);
-    void onBtBattery(int nVal);
- };
+};
 

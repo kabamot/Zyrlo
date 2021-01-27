@@ -140,8 +140,8 @@ void OcrHandler::createTextPage()
         if (numLines <= 0)
             continue;
         Q_ASSERT(numLines > 0);
-        m_page->paragraph(i).setId(i);
-        m_page->paragraph(i).setNumLines(numLines);
+        m_page->setParagraphId(i, i);
+        m_page->setParagraphNumLines(i, numLines);
     }
 }
 
@@ -161,7 +161,7 @@ bool OcrHandler::getOcrResults()
     while (resultsCode == 0) {
         resultsCode = zyrlo_proc_get_result(&textLine);
         if (resultsCode == 0) {
-            m_page->paragraph(textLine.nParagraphId).addLine(textLine.sText);
+            m_page->addParagraphLine(textLine.nParagraphId, textLine.sText);
             hasNewResult = true;
             m_processingParagraphNum = textLine.nParagraphId;
         }

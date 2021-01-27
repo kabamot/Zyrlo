@@ -141,6 +141,16 @@ bool CerenceTTS::pauseResume()
     return ok;
 }
 
+bool CerenceTTS::isSpeaking() const
+{
+    return m_audioOutput->state() == QAudio::ActiveState;
+}
+
+bool CerenceTTS::isPaused() const
+{
+    return m_audioOutput->state() == QAudio::SuspendedState;
+}
+
 bool CerenceTTS::isStoppedSpeaking() const
 {
     return m_audioOutput->state() == QAudio::StoppedState;
@@ -269,13 +279,12 @@ void CerenceTTS::initAudio()
     }
 
     m_audioOutput = new QAudioOutput(format, this);
-
-//    m_audioOutput->setBufferSize(4096);
+    m_audioOutput->setBufferSize(4096 * 4); // Give some buffer to remove stutter
     m_audioOutput->setNotifyInterval(50);
     qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->notifyInterval();
 
     connect(m_audioOutput, &QAudioOutput::notify, this, [this](){
-        const auto elapsedSamples = m_audioOutput->elapsedUSecs() *
+        const auto elapsedSamples = m_audioOutput->processedUSecs() *
                 m_audioOutput->format().sampleRate() / 1'000'000;
         auto newCurrentWord = m_currentWord;
 

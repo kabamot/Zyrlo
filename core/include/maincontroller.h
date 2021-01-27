@@ -33,6 +33,7 @@ public:
     void flashLed();
     void setLed(bool bOn);
     bool toggleAudioSink();
+    void toggleAudioSinkVoid();
 
 signals:
     void textUpdated(const QString &text);
@@ -56,7 +57,7 @@ private:
     const Paragraph &paragraph() const;
     void startBeeping();
     void stopBeeping();
-    void startLongPressTimer(void (*action)(void), int nDelay);
+    void startLongPressTimer(void (MainController::*action)(void), int nDelay);
     void stopLongPressTimer();
     void setCurrentWordPosition(const TextPosition &textPosition);
     bool isPageValid() const;
@@ -82,7 +83,7 @@ private:
     Translator m_translator;
     bool m_bKeepBeeping = false;
     QFuture<void> m_beepingThread, m_longPressTimerThread;
-    bool m_squareLeftDown = false, m_squareRightDown = false, m_voiceDown = false,  m_ignoreVoice = false;
+    bool m_squareLeftDown = false, m_squareRightDown = false, m_buttonUpRessed = false, m_voiceDown = false,  m_ignoreVoice = false;
     int m_nLongPressCount = -1;
 
 };

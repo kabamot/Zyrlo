@@ -248,17 +248,19 @@ bool MainController::toggleAudioSink() {
     fp = popen(cmd, "r");
     if (fp == NULL) {
         qDebug() << "Failed to run command\n";
-        bret = false;
+        return false;
     }
     else {
         /* Read the output a line at a time - output it. */
         while (fgets(path, sizeof(path), fp) != NULL) {
             bret = false;
             qDebug() << path;
-        }
+         }
     }
     /* close */
     pclose(fp);
+    if(!bret)
+        return false;
     if(m_shutterSound) {
         delete m_shutterSound;
         m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
@@ -267,16 +269,22 @@ bool MainController::toggleAudioSink() {
         delete m_beepSound;
         m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
      }
-    if(bret && m_ttsEngine) {
+    if(m_ttsEngine) {
         m_ttsEngine->resetAudio();
     }
     return bret;
 }
 
+void MainController::toggleAudioSinkVoid() {
+      //toggleAudioSink();
+      m_beepSound->play();
+}
+
 void MainController::readerReady() {
-    startBeeping();
+    stopBeeping();
     if(m_ttsEngine)
         m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
+    m_currentParagraphNum = -1;
     ocr().stopProcess();
 }
 
@@ -350,6 +358,8 @@ void MainController::onSpeakingFinished()
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
+    if(m_currentParagraphNum < 0)
+        return;
     TextPosition wordPos{m_ttsStartPositionInParagraph + wordPosition,
                          wordLength,
                          paragraph().paragraphPosition()};
@@ -372,14 +382,14 @@ void MainController::startBeeping() {
         });
 }
 
-void MainController::startLongPressTimer(void (*action)(void), int nDelay) {
+void MainController::startLongPressTimer(void (MainController::*action)(void), int nDelay) {
     const int intvl = 100;
     m_nLongPressCount = nDelay / intvl;
     if (!m_longPressTimerThread.isRunning())
         m_longPressTimerThread = QtConcurrent::run([this, action]() {
             for(; m_nLongPressCount >= 0; --m_nLongPressCount, QThread::msleep(intvl)) {
                 if(m_nLongPressCount == 0) {
-                    action();
+                    (this->*action)();
                     break;
                 }
             }
@@ -425,11 +435,12 @@ void MainController::onBtButton(int nButton, bool bDown) {
             pauseResume();
             break;
         case KP_BUTTON_UP       :
+            m_buttonUpRessed = true;
             if(m_voiceDown) {
                 m_ignoreVoice = true;
-                toggleAudioSink();
+                startLongPressTimer(&MainController::toggleAudioSinkVoid, 3000);
+                break;
             }
-
             if(m_squareLeftDown) {
                 //SaveImage(2);
                 break;
@@ -459,6 +470,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
             break;
         case KP_BUTTON_ROUND_L  :
             m_voiceDown = true;
+            if(m_buttonUpRessed) {
+                m_ignoreVoice = true;
+                startLongPressTimer(&MainController::toggleAudioSinkVoid, 3000);
+                break;
+            }
             break;
         case KP_BUTTON_ROUND_R  :
             //Spell
@@ -472,7 +488,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
          }
     }
     else {
+        stopLongPressTimer();
         switch(nButton) {
+        case KP_BUTTON_UP       :
+            m_buttonUpRessed = false;
+            break;
         case KP_BUTTON_ROUND_L  :
             m_voiceDown = false;
             if(m_ignoreVoice) {

@@ -25,6 +25,7 @@ HWHandler::~HWHandler()
 {
     stop();
     m_future.waitForFinished();
+    m_buttonBtThread.waitForFinished();
     m_buttonThread.waitForFinished();
 }
 
@@ -52,7 +53,9 @@ void HWHandler::start()
         m_future = QtConcurrent::run([this](){ run(); });
     if (!m_buttonThread.isRunning())
         m_buttonThread = QtConcurrent::run([this](){ buttonThreadRun(); });
-}
+    if (!m_buttonBtThread.isRunning())
+        m_buttonBtThread = QtConcurrent::run([this](){ buttonBtThreadRun(); });
+ }
 
 void HWHandler::stop()
 {
@@ -106,11 +109,40 @@ void HWHandler::onButtonsUp(byte up_val) {
     qDebug() << "onButtonsUp " << up_val << '\n';
 }
 
+void HWHandler::buttonBtThreadRun() {
+    BTComm btc;
+    int nVal;
+    btc.init();
+    for(;!m_stop; QThread::msleep(100)) {
+        btc.btConnect();
+        bool bCont = true;
+        for(; !m_stop && bCont; QThread::msleep(100)) {
+            switch(btc.receiveLoopStep(nVal)) {
+            case 0:
+                break;
+            case 1:
+                qDebug() << "onButtonsDown " << nVal << '\n';
+                emit onBtButton(nVal, true);
+                break;
+            case 2:
+                qDebug() << "onButtonsUp " << nVal << '\n';
+                emit onBtButton(nVal, false);
+                break;
+            case 3:
+                qDebug() << "onBattery " << nVal << '\n';
+                emit onBtBattery(nVal);
+                break;
+            case -1:
+                bCont = false;
+                break;
+            }
+        }
+    }
+}
+
 void HWHandler::buttonThreadRun() {
     byte reply, xor_val, up_val, down_val;
     BaseComm bc;
-    BTComm btc;
-    btc.init();
     bc.init();
     bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, &reply);
     for(; !m_stop; QThread::msleep(50)) {

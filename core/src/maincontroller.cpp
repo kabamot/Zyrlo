@@ -15,6 +15,9 @@
 #include <QDebug>
 #include <QTextToSpeech>
 #include <QPluginLoader>
+#include <QtConcurrent>
+#include "BTComm.h"
+
 
 using namespace cv;
 
@@ -38,10 +41,16 @@ MainController::MainController()
     m_hwhandler = new HWHandler(this);
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image){
         qDebug() << "imageReceived 0\n";
+        m_ttsEngine->stop();
+
+        m_ttsStartPositionInParagraph = 0;
+        m_currentParagraphNum = 0;
+
         ocr().startProcess(image);
         qDebug() << "imageReceived 2\n";
         if(m_shutterSound)
             m_shutterSound->play();
+        startBeeping();
 
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
@@ -51,9 +60,13 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::onBtButton, this, &MainController::onBtButton, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
 
     m_translator.Init();
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
+    m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
+
     m_hwhandler->start();
 }
 
@@ -234,8 +247,10 @@ bool MainController::toggleAudioSink() {
 }
 
 void MainController::readerReady() {
+    startBeeping();
     if(m_ttsEngine)
         m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
+    ocr().stopProcess();
 }
 
 void MainController::targetNotFound() {
@@ -284,6 +299,7 @@ const Paragraph &MainController::paragraph() const
 
 void MainController::onNewTextExtracted()
 {
+    stopBeeping();
     if (m_ttsEngine->isStoppedSpeaking()) {
         qDebug() << __func__ << m_currentParagraphNum;
         // If TTS stopped and there is more text extracted, then continue speaking
@@ -302,4 +318,138 @@ void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
     m_wordPosition = m_ttsStartPositionInParagraph + wordPosition;
     m_wordLength = wordLength;
+}
+
+void MainController::startBeeping() {
+     if(!m_beepSound)
+        return;
+    if (!m_beepingThread.isRunning())
+        m_beepingThread = QtConcurrent::run([this]() {
+           for(m_bKeepBeeping = true, QThread::msleep(1000); m_bKeepBeeping; QThread::msleep(1000)) {
+               m_beepSound->play();
+           }
+        });
+}
+
+void MainController::startLongPressTimer(void (*action)(void), int nDelay) {
+    const int intvl = 100;
+    m_nLongPressCount = nDelay / intvl;
+    if (!m_longPressTimerThread.isRunning())
+        m_longPressTimerThread = QtConcurrent::run([this, action]() {
+            for(; m_nLongPressCount >= 0; --m_nLongPressCount, QThread::msleep(intvl)) {
+                if(m_nLongPressCount == 0) {
+                    action();
+                    break;
+                }
+            }
+        });
+}
+
+void MainController::stopLongPressTimer() {
+    m_nLongPressCount = -1;
+}
+
+void MainController::stopBeeping() {
+    qDebug() << __func__ << "beep\n";
+    m_bKeepBeeping = false;
+}
+
+//#define KP_BUTTON_PRESSED     0x01
+//#define KP_BUTTON_RELEASED    0x02
+//#define KP_BATTERY_INFO       0x03
+//#define KP_POWERING_DOWN      0x04
+
+
+//#define KP_BUTTON_CENTER      0x01
+//#define KP_BUTTON_UP          0x02
+//#define KP_BUTTON_DOWN        0x03
+//#define KP_BUTTON_LEFT        0x04
+//#define KP_BUTTON_RIGHT       0x05
+//#define KP_BUTTON_HELP        0x06
+//#define KP_BUTTON_ROUND_L     0x07
+//#define KP_BUTTON_ROUND_R     0x08
+//#define KP_BUTTON_SQUARE_L    0x09
+void MainController::onBtButton(int nButton, bool bDown) {
+    if(bDown) {
+        switch(nButton) {
+        case KP_BUTTON_CENTER   :
+            if(m_squareLeftDown) {
+                //SaveImage(1);
+                break;
+            }
+            if(m_squareRightDown) {
+                //ReadImage(1);
+                break;
+            }
+            pauseResume();
+            break;
+        case KP_BUTTON_UP       :
+            if(m_voiceDown) {
+                m_ignoreVoice = true;
+                toggleAudioSink();
+            }
+
+            if(m_squareLeftDown) {
+                //SaveImage(2);
+                break;
+            }
+            if(m_squareRightDown) {
+                //ReadImage(2);
+                break;
+            }
+            backSentence();
+            break;
+        case KP_BUTTON_DOWN     :
+            if(m_squareLeftDown) {
+                break;
+            }
+            nextSentence();
+            break;
+        case KP_BUTTON_LEFT     :
+            if(m_squareLeftDown) {
+                break;
+            }
+            backWord();
+            break;
+        case KP_BUTTON_RIGHT    :
+            nextWord();
+            break;
+        case KP_BUTTON_HELP     :
+            break;
+        case KP_BUTTON_ROUND_L  :
+            m_voiceDown = true;
+            break;
+        case KP_BUTTON_ROUND_R  :
+            //Spell
+            break;
+        case KP_BUTTON_SQUARE_L :
+            m_squareLeftDown = true;
+            break;
+        case KP_BUTTON_SQUARE_R :
+            m_squareRightDown = true;
+            break;
+         }
+    }
+    else {
+        switch(nButton) {
+        case KP_BUTTON_ROUND_L  :
+            m_voiceDown = false;
+            if(m_ignoreVoice) {
+                m_ignoreVoice = false;
+            }
+            else
+            //SwitchVoice();
+            break;
+        case KP_BUTTON_SQUARE_L :
+            m_squareLeftDown = false;
+            break;
+        case KP_BUTTON_SQUARE_R :
+            m_squareRightDown = false;
+            break;
+          }
+    }
+}
+
+void MainController::onBtBattery(int nVal) {
+
 }

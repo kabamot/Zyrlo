@@ -28,6 +28,7 @@ public:
 
     void run();
     void buttonThreadRun();
+    void buttonBtThreadRun();
     void snapImage();
     void flashLed(int msecs);
     void setLed(bool bOn);
@@ -40,10 +41,12 @@ signals:
     void previewImgUpdate(const cv::Mat &prevImg);
     void readerReady();
     void targetNotFound();
+    void onBtButton(int nButton, bool bDown);
+    void onBtBattery(int nVal);
 
 private:
     std::atomic_bool    m_stop {false};
-    QFuture<void>       m_future, m_buttonThread;
+    QFuture<void>       m_future, m_buttonThread, m_buttonBtThread;
     ZyrloCamera m_zcam;
     unsigned char m_nButtonMask = 0x42;
 };

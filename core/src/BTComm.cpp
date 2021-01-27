@@ -47,11 +47,13 @@ int BTComm::init()
 	m_exitRequest = 0;
 	m_eStatus = eStatusIdle;
 
-	iRet = pthread_create(&m_ConnectThread, NULL, BtCommThread, (void *)this);
-	if(iRet) {
-		LOGI("Error: pthread_create camLoopThread\n");
-		return -1;
-	}
+    m_eStatus = eStatusDisconnected;
+
+//	iRet = pthread_create(&m_ConnectThread, NULL, BtCommThread, (void *)this);
+//	if(iRet) {
+//		LOGI("Error: pthread_create camLoopThread\n");
+//		return -1;
+//	}
 
 	return 0;
 }
@@ -81,23 +83,56 @@ int readByteFromSocket(int sd, unsigned char *val)
 	return n;
 }
 
+int BTComm::receiveLoopStep(int & nVal)
+{
+    int status = readByteFromSocket(m_s, &m_readBuffer[0]);
+    if(status < 0) {
+        close(m_s);
+        m_eStatus = eStatusDisconnected;
+        return -1;
+    }
+    if(status > 0) {
+           qDebug() << "Received: " <<  status << m_readBuffer[0] << m_readBuffer[1] << "\n";
+           nVal = m_readBuffer[1];
+           return (int)m_readBuffer[0];
+    }
+    return 0;
+}
+
+int BTComm::btConnect() {
+    int status;
+    qDebug() << "btConnect 0\n";
+    do {
+        qDebug() << "btConnect 1\n";
+        m_s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+
+        m_addr.rc_family = AF_BLUETOOTH;
+        m_addr.rc_channel = (uint8_t) 1;
+        str2ba( keypadMacStr, &m_addr.rc_bdaddr );
+
+        status = connect(m_s, (struct sockaddr *)&m_addr, sizeof(m_addr));
+        if( status < 0 ) perror("Connect err: "); else printf("Connected\n");
+        sleep(1);
+
+    } while(status < 0);
+    qDebug() << "btConnect 2\n";
+    m_eStatus = eStatusConnected;
+    return status;
+}
+
 int BTComm::receiveLoop()
 {
-	struct sockaddr_rc addr = { 0 };
 	int s, status;
-	unsigned char readBuffer[10];
-
    
-	m_eStatus = eStatusDisconnected;
 	while(!m_exitRequest) {
 		do {
 			s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
 			
-			addr.rc_family = AF_BLUETOOTH;
-    	addr.rc_channel = (uint8_t) 1;
-    	str2ba( keypadMacStr, &addr.rc_bdaddr );
+            m_addr.rc_family = AF_BLUETOOTH;
+        m_addr.rc_channel = (uint8_t) 1;
+        str2ba( keypadMacStr, &m_addr.rc_bdaddr );
 
-			status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
+            status = connect(s, (struct sockaddr *)&m_addr, sizeof(m_addr));
 			if( status < 0 ) perror("Connect err: "); else printf("Connected\n");
 			sleep(1);
 
@@ -111,10 +146,10 @@ int BTComm::receiveLoop()
 				return 0;
 			}
 			
-			status = readByteFromSocket(s, &readBuffer[0]);
+            status = readByteFromSocket(s, &m_readBuffer[0]);
 			if(status > 0) {
                     //printf("Received: %d  %d %d\n", status, readBuffer[0], readBuffer[1]);
-                    qDebug() << "Received: " <<  status << readBuffer[0] << readBuffer[1] << "\n";
+                    qDebug() << "Received: " <<  status << m_readBuffer[0] << m_readBuffer[1] << "\n";
 			}
 			usleep(100000);
 /*

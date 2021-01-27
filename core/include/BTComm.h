@@ -1,4 +1,10 @@
+#ifndef __BT_COMM_H__
+#define __BT_COMM_H__
+
 #include <pthread.h>
+#include <sys/socket.h>
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/rfcomm.h>
 
 // Packet format
 // <HEADER><DATA1>
@@ -32,6 +38,10 @@ typedef enum {
 
 class BTComm 
 {
+    struct sockaddr_rc m_addr = { 0 };
+    unsigned char m_readBuffer[10];
+    int m_s;
+
 public:
 
 	int m_exitRequest;
@@ -40,12 +50,16 @@ public:
 
 	char keypadMacStr[18];
 
+
 	int init();
 	int receiveLoop();
 	void btStop() { m_exitRequest = 1; };
+    int receiveLoopStep(int & nVal);
+    int btConnect();
 
 
 	
 
 };
 
+#endif // __BT_COMM_H__

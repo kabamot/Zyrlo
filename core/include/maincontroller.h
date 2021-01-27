@@ -9,6 +9,7 @@
 
 #include <QObject>
 #include <QSound>
+#include <QFuture>
 #include "translator.h"
 
 class OcrHandler;
@@ -52,6 +53,10 @@ private:
     const OcrHandler &ocr() const;
     void startSpeaking();
     const Paragraph &paragraph() const;
+    void startBeeping();
+    void stopBeeping();
+    void startLongPressTimer(void (*action)(void), int nDelay);
+    void stopLongPressTimer();
 
 private slots:
     void onNewTextExtracted();
@@ -69,10 +74,16 @@ private:
     QString     m_currentText;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
+    bool m_bKeepBeeping = false;
+    QFuture<void> m_beepingThread, m_longPressTimerThread;
+    bool m_squareLeftDown = false, m_squareRightDown = false, m_voiceDown = false,  m_ignoreVoice = false;
+    int m_nLongPressCount = -1;
 
  private slots:
     void previewImgUpdate(const cv::Mat & prevImg);
     void readerReady();
     void targetNotFound();
-};
+    void onBtButton(int nButton, bool bDown);
+    void onBtBattery(int nVal);
+ };
 

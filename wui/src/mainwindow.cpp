@@ -32,12 +32,14 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->backSentenceButton, &QPushButton::clicked, &m_controller, &MainController::backSentence);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
+    m_controller.setLed(true);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
     delete m_pLabelPreview;
+    m_controller.setLed(false);
 }
 
 void MainWindow::start()

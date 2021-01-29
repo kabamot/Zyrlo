@@ -25,7 +25,7 @@ const char RFCOMM_FILE[] =	"/dev/rfcomm0";
 
 
 
-int BTComm::init() 
+int BTComm::init()
 {
 	int iRet;
 	FILE *fp = fopen(KEYPAD_CONFIG_FILE, "r");
@@ -72,7 +72,7 @@ int readByteFromSocket(int sd, unsigned char *val)
 //printf(".\n");
 	int x = fcntl(sd, F_GETFL, 0);
 	fcntl(sd, F_SETFL, x | O_NONBLOCK);
-	if ( (n = read (sd, val, 2)) < 0) { 
+	if ( (n = read (sd, val, 2)) < 0) {
 			if(errno == EWOULDBLOCK)
 				return 0;
 			else {
@@ -99,7 +99,7 @@ int BTComm::receiveLoopStep(int & nVal)
     return 0;
 }
 
-int BTComm::btConnect() {
+int BTComm::btConnect(const std::atomic_bool &isStop) {
     int status;
     qDebug() << "btConnect 0\n";
     do {
@@ -114,20 +114,24 @@ int BTComm::btConnect() {
         if( status < 0 ) perror("Connect err: "); else printf("Connected\n");
         sleep(1);
 
-    } while(status < 0);
+    } while(status < 0 && !isStop);
+
     qDebug() << "btConnect 2\n";
-    m_eStatus = eStatusConnected;
+    if (status >= 0) {
+        m_eStatus = eStatusConnected;
+    }
+
     return status;
 }
 
 int BTComm::receiveLoop()
 {
 	int s, status;
-   
+
 	while(!m_exitRequest) {
 		do {
 			s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-			
+
             m_addr.rc_family = AF_BLUETOOTH;
         m_addr.rc_channel = (uint8_t) 1;
         str2ba( keypadMacStr, &m_addr.rc_bdaddr );
@@ -145,7 +149,7 @@ int BTComm::receiveLoop()
 				m_eStatus = eStatusOff;
 				return 0;
 			}
-			
+
             status = readByteFromSocket(s, &m_readBuffer[0]);
 			if(status > 0) {
                     //printf("Received: %d  %d %d\n", status, readBuffer[0], readBuffer[1]);
@@ -159,9 +163,9 @@ int BTComm::receiveLoop()
 				if(status > 0) {
 					printf("Received:  %d %d\n", status, readBuffer[0], readBuffer[1]);
 				}
-*/ 
+*/
 		} while(status >=0);
-		
+
 		perror("Read error: ");
 		close(s);
 		m_eStatus = eStatusDisconnected;

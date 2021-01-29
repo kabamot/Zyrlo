@@ -102,7 +102,7 @@ void HWHandler::buttonBtThreadRun() {
     int nVal;
     btc.init();
     for(;!m_stop; QThread::msleep(100)) {
-        btc.btConnect();
+        btc.btConnect(m_stop);
         bool bCont = true;
         for(; !m_stop && bCont; QThread::msleep(100)) {
             switch(btc.receiveLoopStep(nVal)) {

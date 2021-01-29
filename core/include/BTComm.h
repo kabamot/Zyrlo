@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
+#include <atomic>
 
 // Packet format
 // <HEADER><DATA1>
@@ -36,7 +37,7 @@ typedef enum {
 	eStatusOff
 } eBtCommStatus;
 
-class BTComm 
+class BTComm
 {
     struct sockaddr_rc m_addr = { 0 };
     unsigned char m_readBuffer[10];
@@ -55,10 +56,10 @@ public:
 	int receiveLoop();
 	void btStop() { m_exitRequest = 1; };
     int receiveLoopStep(int & nVal);
-    int btConnect();
+    int btConnect(const std::atomic_bool &isStop);
 
 
-	
+
 
 };
 

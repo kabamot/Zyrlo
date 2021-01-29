@@ -22,6 +22,7 @@ public:
     inline int absPos() const { return m_absPos; }
     inline int length() const { return m_length; }
     inline bool isValid() const { return m_parPos >= 0; }
+    inline void clear() { m_parPos = -1; m_absPos = -1; m_length = 0; }
 
 private:
     int m_parPos {-1};

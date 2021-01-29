@@ -91,7 +91,7 @@ CerenceTTS::~CerenceTTS()
     vplatform_ReleaseInterfaces(&m_stInstall);
 }
 
-void CerenceTTS::say(const QString &text)
+void CerenceTTS::say(const QString &text, int delayMs)
 {
     stop();
 
@@ -99,7 +99,6 @@ void CerenceTTS::say(const QString &text)
     m_wordMarks.clear();
     m_audioIO->buffer().clear();
     m_audioIO->reset();
-    m_audioOutput->start(m_audioIO);
 
     m_ttsFuture = QtConcurrent::run([this, text](){
         qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->format() ;
@@ -116,29 +115,27 @@ void CerenceTTS::say(const QString &text)
         ve_ttsProcessText2Speech(m_hTtsInst, &inText);
         qDebug() << "TTS processing finished in" << timer.elapsed() << "ms";
     });
+
+    m_speakingStartTimer.start(delayMs);
 }
 
 void CerenceTTS::stop()
 {
+    m_speakingStartTimer.stop();
     m_audioOutput->stop();
 
     ve_ttsStop(m_hTtsInst);
     m_ttsFuture.waitForFinished();
 }
 
-bool CerenceTTS::pauseResume()
+void CerenceTTS::pause()
 {
-    qDebug() << __func__;
-    bool ok = false;
-    if (m_audioOutput->state() == QAudio::ActiveState) {
-        m_audioOutput->suspend();
-        ok = true;
-    } else if (m_audioOutput->state() == QAudio::SuspendedState) {
-        m_audioOutput->resume();
-        ok = true;
-    }
+    m_audioOutput->suspend();
+}
 
-    return ok;
+void CerenceTTS::resume()
+{
+    m_audioOutput->resume();
 }
 
 bool CerenceTTS::isSpeaking() const
@@ -334,6 +331,12 @@ void CerenceTTS::initAudio()
 
     m_audioIO = new QBuffer(this);
     m_audioIO->open(QIODevice::ReadOnly);
+
+    m_speakingStartTimer.setSingleShot(true);
+    connect(&m_speakingStartTimer, &QTimer::timeout, this, [this](){
+        m_audioOutput->start(m_audioIO);
+    });
+
 }
 
 void CerenceTTS::stopAudio() {

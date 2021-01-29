@@ -13,6 +13,7 @@
 #include <QBuffer>
 #include <QFuture>
 #include <QVector>
+#include <QTimer>
 
 #include <ve_ttsapi.h>
 #include <ve_platform.h>
@@ -28,9 +29,10 @@ public:
     CerenceTTS(QObject *parent);
     ~CerenceTTS();
 
-    void say(const QString &text);
+    void say(const QString &text, int delayMs = 0);
     void stop();
-    bool pauseResume();
+    void pause();
+    void resume();
 
     bool isSpeaking() const;
     bool isPaused() const;
@@ -76,5 +78,6 @@ private:
     int                     m_currentWord {-1};
 
     QMutex                  m_wordMarksMutex;
+    QTimer                  m_speakingStartTimer;
 };
 

@@ -25,6 +25,13 @@ namespace cv {
 class MainController : public QObject
 {
     Q_OBJECT
+
+    enum class State {
+        Stopped,
+        Speaking,
+        Paused,
+    };
+
 public:
     MainController();
 
@@ -38,7 +45,6 @@ public:
 signals:
     void textUpdated(const QString &text);
     void formattedTextUpdated(const QString &text);
-//    void paragraphUpdated(const Paragrah &paragraph);
     void finished();
     void wordPositionChanged(const TextPosition &position);
     void previewUpdated(const cv::Mat & img);
@@ -59,7 +65,7 @@ public slots:
 private:
     OcrHandler &ocr();
     const OcrHandler &ocr() const;
-    void startSpeaking();
+    void startSpeaking(int delayMs = 0);
     const Paragraph &paragraph() const;
     void startBeeping();
     void stopBeeping();
@@ -95,6 +101,7 @@ private:
     int         m_currentParagraphNum {-1};
     QString     m_currentText;
     TextPosition m_currentWordPosition;
+    State       m_state {State::Stopped};
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator, m_help;
     bool m_bKeepBeeping = false;

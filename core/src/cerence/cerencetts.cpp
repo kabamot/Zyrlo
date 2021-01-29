@@ -126,19 +126,14 @@ void CerenceTTS::stop()
     m_ttsFuture.waitForFinished();
 }
 
-bool CerenceTTS::pauseResume()
+void CerenceTTS::pause()
 {
-    qDebug() << __func__;
-    bool ok = false;
-    if (m_audioOutput->state() == QAudio::ActiveState) {
-        m_audioOutput->suspend();
-        ok = true;
-    } else if (m_audioOutput->state() == QAudio::SuspendedState) {
-        m_audioOutput->resume();
-        ok = true;
-    }
+    m_audioOutput->suspend();
+}
 
-    return ok;
+void CerenceTTS::resume()
+{
+    m_audioOutput->resume();
 }
 
 bool CerenceTTS::isSpeaking() const

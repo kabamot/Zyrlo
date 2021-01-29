@@ -30,7 +30,8 @@ public:
 
     void say(const QString &text);
     void stop();
-    bool pauseResume();
+    void pause();
+    void resume();
 
     bool isSpeaking() const;
     bool isPaused() const;

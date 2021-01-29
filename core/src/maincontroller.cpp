@@ -77,12 +77,32 @@ void MainController::start(const QString &filename)
     m_currentParagraphNum = 0;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
+    m_state = State::Speaking;
 }
 
 void MainController::pauseResume()
 {
-    if (!m_ttsEngine->pauseResume()) {
+    switch (m_state) {
+    case State::Stopped:
+        m_state = State::Speaking;
         startSpeaking();
+        break;
+
+    case State::Speaking:
+        m_state = State::Paused;
+        if (m_ttsEngine->isSpeaking()) {
+            m_ttsEngine->pause();
+        }
+        break;
+
+    case State::Paused:
+        m_state = State::Speaking;
+        if (m_ttsEngine->isPaused()) {
+            m_ttsEngine->resume();
+        } else {
+            startSpeaking();
+        }
+        break;
     }
 }
 
@@ -105,9 +125,10 @@ void MainController::backWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    if (m_ttsEngine->isSpeaking()) {
+
+    if (m_state == State::Speaking) {
         startSpeaking();
-    } else if (m_ttsEngine->isPaused()) {
+    } else {
         m_ttsEngine->stop();
     }
 }
@@ -132,9 +153,10 @@ void MainController::nextWord()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    if (m_ttsEngine->isSpeaking()) {
+
+    if (m_state == State::Speaking) {
         startSpeaking();
-    } else if (m_ttsEngine->isPaused()) {
+    } else {
         m_ttsEngine->stop();
     }
 }
@@ -158,9 +180,10 @@ void MainController::backSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    if (m_ttsEngine->isSpeaking()) {
+
+    if (m_state == State::Speaking) {
         startSpeaking();
-    } else if (m_ttsEngine->isPaused()) {
+    } else {
         m_ttsEngine->stop();
     }
 }
@@ -185,9 +208,10 @@ void MainController::nextSentence()
 
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
-    if (m_ttsEngine->isSpeaking()) {
+
+    if (m_state == State::Speaking) {
         startSpeaking();
-    } else if (m_ttsEngine->isPaused()) {
+    } else {
         m_ttsEngine->stop();
     }
 }
@@ -317,6 +341,10 @@ void MainController::startSpeaking()
             ++m_currentParagraphNum;
             m_ttsStartPositionInParagraph = 0;
             continue;
+        } else {
+            // Page finished
+            m_state = State::Stopped;
+            emit finished();
         }
 
         break;
@@ -342,7 +370,7 @@ bool MainController::isPageValid() const
 void MainController::onNewTextExtracted()
 {
     stopBeeping();
-    if (m_ttsEngine->isStoppedSpeaking()) {
+    if (m_state == State::Speaking && m_ttsEngine->isStoppedSpeaking()) {
         qDebug() << __func__ << m_currentParagraphNum;
         // If TTS stopped and there is more text extracted, then continue speaking
         startSpeaking();

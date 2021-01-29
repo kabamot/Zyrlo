@@ -62,7 +62,7 @@ public slots:
     void nextWord();
     void backSentence();
     void nextSentence();
-    void sayText(const QString &text);
+    void sayText(QString text);
 
 private:
     OcrHandler &ocr();

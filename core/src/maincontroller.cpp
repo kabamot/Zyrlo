@@ -111,6 +111,10 @@ void MainController::pauseResume()
 
     case State::SpeakingText:
         // Don't react to pause/resume in this state
+        if (!m_ttsEngine->isSpeaking()) {
+            m_state = State::SpeakingPage;
+            startSpeaking();
+        }
         break;
 
     case State::Paused:
@@ -129,6 +133,7 @@ void MainController::backWord()
     if (!isPageValid())
         return;
 
+    bool isPageBoundary = false;
     auto position = paragraph().prevWordPosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -136,6 +141,7 @@ void MainController::backWord()
             position = paragraph().lastWordPosition();
         } else {
             // Go to the beginning of the page
+            isPageBoundary = true;
             m_currentParagraphNum = 0;
             position = paragraph().firstWordPosition();
         }
@@ -144,7 +150,9 @@ void MainController::backWord()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage) {
+    if (isPageBoundary) {
+        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
+    } else if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
@@ -162,9 +170,9 @@ void MainController::nextWord()
             // Go the the next paragraph
             ++m_currentParagraphNum;
             position = paragraph().firstWordPosition();
-        } else {
+        } else if (ocr().isIdle()) {
             // Page finished
-            m_ttsEngine->stop();
+            sayText(m_translator.GetString("END_OF_TEXT").c_str());
             return;
         }
     }
@@ -184,6 +192,7 @@ void MainController::backSentence()
     if (!isPageValid())
         return;
 
+    bool isPageBoundary = false;
     auto position = paragraph().prevSentencePosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
@@ -191,6 +200,7 @@ void MainController::backSentence()
             position = paragraph().lastSentencePosition();
         } else {
             // Go to the beginning of the page
+            isPageBoundary = true;
             m_currentParagraphNum = 0;
             position = paragraph().firstSentencePosition();
         }
@@ -199,7 +209,9 @@ void MainController::backSentence()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage) {
+    if (isPageBoundary) {
+        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
+    } else if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
@@ -217,9 +229,9 @@ void MainController::nextSentence()
             // Go the the next paragraph
             ++m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
-        } else {
+        } else if (ocr().isIdle()) {
             // Page finished
-            m_ttsEngine->stop();
+            sayText(m_translator.GetString("END_OF_TEXT").c_str());
             return;
         }
     }
@@ -234,7 +246,7 @@ void MainController::nextSentence()
     }
 }
 
-void MainController::sayText(const QString &text)
+void MainController::sayText(QString text)
 {
     if (m_ttsEngine) {
         if (m_state != State::SpeakingText) {
@@ -243,6 +255,13 @@ void MainController::sayText(const QString &text)
             m_prevState = m_state;
             m_state = State::SpeakingText;
         }
+
+        // Workaround: enu eva prounounces "the" very short, so it can't be played correctly
+        // so we add period if this is the only word
+        if (text.toLower() == "the") {
+            text.append('.');
+        }
+
         m_ttsEngine->say(text);
     } else {
         qDebug() << "TTS engine is not created";
@@ -379,6 +398,7 @@ void MainController::startSpeaking(int delayMs)
             // Page finished
             qDebug() << "Page finished";
             m_state = State::Stopped;
+            sayText(m_translator.GetString("END_OF_TEXT").c_str());
             emit finished();
         }
 
@@ -414,14 +434,18 @@ void MainController::onNewTextExtracted()
 
 void MainController::onSpeakingFinished()
 {
+    bool isAdvance = true;
     if (m_state == State::SpeakingText) {
         qDebug() << __func__ << "changing state to" << (int)m_prevState;
         m_state = m_prevState;
+        isAdvance = false;
     }
 
     qDebug() << __func__ << "state" << (int)m_state;
     if (m_state == State::SpeakingPage) {
-        m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
+        if (isAdvance) {
+            m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
+        }
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking();
     }
@@ -475,7 +499,7 @@ void MainController::stopLongPressTimer() {
 }
 
 void MainController::stopBeeping() {
-    qDebug() << __func__ << "beep\n";
+//    qDebug() << __func__ << "beep\n";
     m_bKeepBeeping = false;
 }
 

@@ -147,7 +147,7 @@ void MainController::backWord()
     if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
-        m_ttsEngine->stop();
+        sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
 
@@ -175,7 +175,7 @@ void MainController::nextWord()
     if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
-        m_ttsEngine->stop();
+        sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
 
@@ -202,7 +202,7 @@ void MainController::backSentence()
     if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
-        m_ttsEngine->stop();
+        sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
 
@@ -230,15 +230,19 @@ void MainController::nextSentence()
     if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
-        m_ttsEngine->stop();
+        sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
 
 void MainController::sayText(const QString &text)
 {
     if (m_ttsEngine) {
-        m_prevState = m_state;
-        m_state = State::SpeakingText;
+        if (m_state != State::SpeakingText) {
+            qDebug() << __func__ << "saving current state" << (int)m_state
+                     << "and speaking text:" << text;
+            m_prevState = m_state;
+            m_state = State::SpeakingText;
+        }
         m_ttsEngine->say(text);
     } else {
         qDebug() << "TTS engine is not created";
@@ -411,6 +415,7 @@ void MainController::onNewTextExtracted()
 void MainController::onSpeakingFinished()
 {
     if (m_state == State::SpeakingText) {
+        qDebug() << __func__ << "changing state to" << (int)m_prevState;
         m_state = m_prevState;
     }
 

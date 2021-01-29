@@ -33,7 +33,7 @@ public:
     void flashLed();
     void setLed(bool bOn);
     bool toggleAudioSink();
-    void toggleAudioSinkVoid();
+    void onToggleVoice();
 
 signals:
     void textUpdated(const QString &text);
@@ -42,6 +42,12 @@ signals:
     void finished();
     void wordPositionChanged(const TextPosition &position);
     void previewUpdated(const cv::Mat & img);
+    void toggleAudioOutput();
+    void spellCurrentWord();
+    void resetDevice();
+    void toggleGestures();
+    void toggleVoice();
+    void readHelp();
 
 public slots:
     void pauseResume();
@@ -61,6 +67,11 @@ private:
     void stopLongPressTimer();
     void setCurrentWordPosition(const TextPosition &textPosition);
     bool isPageValid() const;
+    void SaveImage(int indx);
+    void ReadImage(int indx);
+    void onReadHelp();
+    void onSpellCurrentWord();
+    void changeVoiceSpeed(int nStep);
 
 private slots:
     void onNewTextExtracted();
@@ -70,7 +81,12 @@ private slots:
     void readerReady();
     void targetNotFound();
     void onBtButton(int nButton, bool bDown);
+    void onButton(int nButton, bool bDown);
     void onBtBattery(int nVal);
+    void onToggleAudioSink();
+    void onResetDevice();
+    void onToggleGestures();
+    void onToggleSingleColumn();
 
 private:
     CerenceTTS *m_ttsEngine {nullptr};
@@ -80,10 +96,11 @@ private:
     QString     m_currentText;
     TextPosition m_currentWordPosition;
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
-    Translator m_translator;
+    Translator m_translator, m_help;
     bool m_bKeepBeeping = false;
     QFuture<void> m_beepingThread, m_longPressTimerThread;
-    bool m_squareLeftDown = false, m_squareRightDown = false, m_buttonUpRessed = false, m_voiceDown = false,  m_ignoreVoice = false;
+    bool m_ignoreRelease = false;
+    unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;
     int m_nLongPressCount = -1;
 
 };

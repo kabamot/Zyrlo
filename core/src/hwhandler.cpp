@@ -89,10 +89,12 @@ void HWHandler::run()
 
 void HWHandler::onButtonsDown(byte down_val) {
     qDebug() << "onButtonsDown " << down_val << '\n';
+    emit onButton(down_val, true);
 }
 
 void HWHandler::onButtonsUp(byte up_val) {
     qDebug() << "onButtonsUp " << up_val << '\n';
+    emit onButton(up_val, false);
 }
 
 void HWHandler::buttonBtThreadRun() {
@@ -134,6 +136,10 @@ void HWHandler::buttonThreadRun() {
     for(; !m_stop; QThread::msleep(50)) {
         if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
             qDebug() << "BaseComm error\n";
+            continue;
+        }
+        if(m_nButtonMask < 0) {
+            m_nButtonMask = reply;
             continue;
         }
         xor_val = m_nButtonMask ^ reply;

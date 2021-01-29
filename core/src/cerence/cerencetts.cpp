@@ -347,3 +347,24 @@ void CerenceTTS::resetAudio() {
     stopAudio();
     initAudio();
 }
+
+void CerenceTTS::setSpeechRate(int nRate) {
+    VE_PARAM prm;
+    prm.eID = VE_PARAM_SPEECHRATE;
+    prm.uValue.usValue = nRate;
+    auto nErrcode = ve_ttsSetParamList(m_hTtsInst, &prm, 1);
+    if (nErrcode != NUAN_OK)
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+}
+
+int CerenceTTS::getSpeechRate() {
+    VE_PARAM prm;
+    prm.eID = VE_PARAM_SPEECHRATE;
+    prm.uValue.usValue = 0;
+    auto nErrcode = ve_ttsGetParamList(m_hTtsInst, &prm, 1);
+    if (nErrcode != NUAN_OK)
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+    return (int) prm.uValue.usValue;
+}
+
+

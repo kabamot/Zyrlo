@@ -17,12 +17,15 @@
 #include <QPluginLoader>
 #include <QtConcurrent>
 #include "BTComm.h"
+#include "BaseComm.h"
 
 
 using namespace cv;
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
+#define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
+#define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 
 MainController::MainController()
 {
@@ -32,6 +35,12 @@ MainController::MainController()
     });
 
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
+    connect(this, &MainController::toggleAudioOutput, this, &MainController::onToggleAudioSink);
+    connect(this, &MainController::spellCurrentWord, this, &MainController::onSpellCurrentWord);
+    connect(this, &MainController::resetDevice, this, &MainController::onResetDevice);
+    connect(this, &MainController::toggleGestures, this, &MainController::onToggleGestures);
+    connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
+    connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
 
     m_ttsEngine = new CerenceTTS(this);
     connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
@@ -60,9 +69,11 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtButton, this, &MainController::onBtButton, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::onButton, this, &MainController::onButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
 
-    m_translator.Init();
+    m_translator.Init(TRANSLATION_FILE);
+    m_help.Init(HELP_FILE);
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
 
@@ -275,8 +286,8 @@ bool MainController::toggleAudioSink() {
     return bret;
 }
 
-void MainController::toggleAudioSinkVoid() {
-      //toggleAudioSink();
+void MainController::onToggleAudioSink() {
+      toggleAudioSink();
       m_beepSound->play();
 }
 
@@ -384,12 +395,14 @@ void MainController::startBeeping() {
 
 void MainController::startLongPressTimer(void (MainController::*action)(void), int nDelay) {
     const int intvl = 100;
+    m_ignoreRelease = true;
     m_nLongPressCount = nDelay / intvl;
     if (!m_longPressTimerThread.isRunning())
         m_longPressTimerThread = QtConcurrent::run([this, action]() {
             for(; m_nLongPressCount >= 0; --m_nLongPressCount, QThread::msleep(intvl)) {
                 if(m_nLongPressCount == 0) {
-                    (this->*action)();
+                    emit (this->*action)();
+                    m_ignoreRelease = true;
                     break;
                 }
             }
@@ -405,112 +418,216 @@ void MainController::stopBeeping() {
     m_bKeepBeeping = false;
 }
 
-//#define KP_BUTTON_PRESSED     0x01
-//#define KP_BUTTON_RELEASED    0x02
-//#define KP_BATTERY_INFO       0x03
-//#define KP_POWERING_DOWN      0x04
+void MainController::SaveImage(int indx) {
 
+}
 
-//#define KP_BUTTON_CENTER      0x01
-//#define KP_BUTTON_UP          0x02
-//#define KP_BUTTON_DOWN        0x03
-//#define KP_BUTTON_LEFT        0x04
-//#define KP_BUTTON_RIGHT       0x05
-//#define KP_BUTTON_HELP        0x06
-//#define KP_BUTTON_ROUND_L     0x07
-//#define KP_BUTTON_ROUND_R     0x08
-//#define KP_BUTTON_SQUARE_L    0x09
+void MainController::ReadImage(int indx) {
+
+}
+
+void MainController::onReadHelp() {
+    if(!m_ttsEngine)
+        return;
+    m_ttsEngine->say(m_help.GetString("BUTTON_HELP").c_str());
+}
+
 void MainController::onBtButton(int nButton, bool bDown) {
     if(bDown) {
+        m_keypadButtonMask |= (1 << nButton);
         switch(nButton) {
         case KP_BUTTON_CENTER   :
-            if(m_squareLeftDown) {
-                //SaveImage(1);
-                break;
-            }
-            if(m_squareRightDown) {
-                //ReadImage(1);
-                break;
-            }
             pauseResume();
             break;
         case KP_BUTTON_UP       :
-            m_buttonUpRessed = true;
-            if(m_voiceDown) {
-                m_ignoreVoice = true;
-                startLongPressTimer(&MainController::toggleAudioSinkVoid, 3000);
+            if((1 << KP_BUTTON_ROUND_L) & m_keypadButtonMask) {
+                 startLongPressTimer(&MainController::toggleAudioOutput, 3000);
                 break;
             }
-            if(m_squareLeftDown) {
-                //SaveImage(2);
+            if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
+                SaveImage(1);
                 break;
             }
-            if(m_squareRightDown) {
-                //ReadImage(2);
+            if((1 << KP_BUTTON_SQUARE_R) & m_keypadButtonMask) {
+                ReadImage(1);
                 break;
             }
             backSentence();
             break;
         case KP_BUTTON_DOWN     :
-            if(m_squareLeftDown) {
+            if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
+                SaveImage(2);
+                break;
+            }
+            if((1 << KP_BUTTON_SQUARE_R) & m_keypadButtonMask) {
+                ReadImage(2);
                 break;
             }
             nextSentence();
             break;
         case KP_BUTTON_LEFT     :
-            if(m_squareLeftDown) {
+            if((1 << KP_BUTTON_RIGHT) & m_keypadButtonMask) {
+                onToggleSingleColumn();
+                break;
+            }
+            if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
+                SaveImage(3);
+                break;
+            }
+            if((1 << KP_BUTTON_SQUARE_R) & m_keypadButtonMask) {
+                ReadImage(3);
                 break;
             }
             backWord();
             break;
         case KP_BUTTON_RIGHT    :
+            if((1 << KP_BUTTON_LEFT) & m_keypadButtonMask) {
+                onToggleSingleColumn();
+                break;
+            }
+            if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
+                SaveImage(4);
+                break;
+            }
+            if((1 << KP_BUTTON_SQUARE_R) & m_keypadButtonMask) {
+                ReadImage(4);
+                break;
+            }
             nextWord();
             break;
         case KP_BUTTON_HELP     :
+            startLongPressTimer(&MainController::readHelp, 3000);
             break;
         case KP_BUTTON_ROUND_L  :
-            m_voiceDown = true;
-            if(m_buttonUpRessed) {
-                m_ignoreVoice = true;
-                startLongPressTimer(&MainController::toggleAudioSinkVoid, 3000);
+            if((1 << KP_BUTTON_UP) & m_keypadButtonMask) {
+                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
                 break;
             }
             break;
         case KP_BUTTON_ROUND_R  :
-            //Spell
-            break;
-        case KP_BUTTON_SQUARE_L :
-            m_squareLeftDown = true;
-            break;
-        case KP_BUTTON_SQUARE_R :
-            m_squareRightDown = true;
+            startLongPressTimer(&MainController::spellCurrentWord, 3000);
             break;
          }
     }
     else {
+        m_keypadButtonMask &= ~(1 << nButton);
         stopLongPressTimer();
-        switch(nButton) {
-        case KP_BUTTON_UP       :
-            m_buttonUpRessed = false;
-            break;
-        case KP_BUTTON_ROUND_L  :
-            m_voiceDown = false;
-            if(m_ignoreVoice) {
-                m_ignoreVoice = false;
+        if(m_ignoreRelease) {
+            if(m_keypadButtonMask == 0)
+                m_ignoreRelease = false;
+        }
+        else {
+            switch(nButton) {
+            case KP_BUTTON_ROUND_L  :
+                 onToggleVoice();
+                 break;
+            case KP_BUTTON_SQUARE_L :
+                break;
+            case KP_BUTTON_SQUARE_R :
+                break;
             }
-            else
-            //SwitchVoice();
+        }
+    }
+}
+
+void MainController::onButton(int nButton, bool bDown) {
+    if(bDown) {
+        m_deviceButtonsMask |= (1 << nButton);
+        switch(nButton) {
+        case BUTTON_PAUSE_MASK   :
+            if((1 << BUTTON_RATE_UP_MASK) & m_keypadButtonMask) {
+                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                break;
+            }
+            if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
+                startLongPressTimer(&MainController::toggleVoice, 3000);
+                break;
+            }
+            startLongPressTimer(&MainController::toggleGestures, 3000);
             break;
-        case KP_BUTTON_SQUARE_L :
-            m_squareLeftDown = false;
+        case BUTTON_BACK_MASK       :
+            startLongPressTimer(&MainController::resetDevice, 3000);
             break;
-        case KP_BUTTON_SQUARE_R :
-            m_squareRightDown = false;
+        case BUTTON_RATE_UP_MASK     :
+            if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
+                m_ignoreRelease = true;
+                onToggleSingleColumn();
+                break;
+            }
+            if((1 << BUTTON_PAUSE_MASK) & m_keypadButtonMask) {
+                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                break;
+            }
             break;
-          }
+        case BUTTON_RATE_DN_MASK     :
+            if((1 << BUTTON_RATE_UP_MASK) & m_keypadButtonMask) {
+                m_ignoreRelease = true;
+                onToggleSingleColumn();
+                break;
+            }
+            break;
+
+         }
+    }
+    else {
+         m_deviceButtonsMask &= ~(1 << nButton);
+        stopLongPressTimer();
+        if(m_ignoreRelease) {
+            if(m_deviceButtonsMask == 0)
+                m_ignoreRelease = false;
+        }
+        else {
+            switch(nButton) {
+            case BUTTON_PAUSE_MASK   :
+                pauseResume();
+                break;
+            case BUTTON_BACK_MASK       :
+                backSentence();
+                break;
+            case BUTTON_RATE_UP_MASK     :
+                changeVoiceSpeed(10);
+                break;
+            case BUTTON_RATE_DN_MASK     :
+                changeVoiceSpeed(-10);
+                break;
+
+             }
+        }
     }
 }
 
 void MainController::onBtBattery(int nVal) {
 
+}
+
+void MainController::onToggleVoice() {
+
+}
+
+void MainController::onSpellCurrentWord() {
+
+}
+
+void MainController::changeVoiceSpeed(int nStep) {
+    if(!m_ttsEngine)
+        return;
+    int nCurrRate = m_ttsEngine->getSpeechRate();
+    qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
+    m_ttsEngine->setSpeechRate(nCurrRate + nStep);
+}
+
+void MainController::onResetDevice() {
+    if(m_beepSound)
+        m_beepSound->play();
+    system("reboot");
+}
+
+void MainController::onToggleGestures() {
+    if(m_beepSound)
+        m_beepSound->play();
+}
+
+void MainController::onToggleSingleColumn() {
+    if(m_beepSound)
+        m_beepSound->play();
 }

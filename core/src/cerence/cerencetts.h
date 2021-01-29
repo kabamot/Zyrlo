@@ -42,6 +42,8 @@ public:
     size_t markBufferSize();
     void bufferDone(size_t sizePcm, size_t sizeMarks);
     void resetAudio();
+    void setSpeechRate(int nRate); //Range 50 - 400
+    int getSpeechRate();
 
 signals:
     void sayStarted();

@@ -7,7 +7,7 @@ class Translator : public std::map<std::string, std::map<std::string, std::strin
     std::string m_sCurrLang = "enu";
 public:
     Translator();
-    bool Init();
+    bool Init(std::string sFileName);
     void SetLanguage(const std::string & sLang);
     std::string GetString(const std::string & sTag) const;
 };

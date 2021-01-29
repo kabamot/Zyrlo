@@ -2,21 +2,20 @@
 #include "tinyxml.h"
 #include <QDebug>
 
-#define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
-
 using namespace std;
 
 Translator::Translator()
 {
 }
 
-bool Translator::Init() {
+bool Translator::Init(string sFileName) {
     clear();
-    TiXmlDocument doc(TRANSLATION_FILE);
+    TiXmlDocument doc(sFileName.c_str());
 
     if(!doc.LoadFile())
         return false;
-    TiXmlNode *spRoot = doc.FirstChild("ZyrloTranslate");
+    TiXmlNode *spRoot;
+    for(spRoot = doc.FirstChild(); spRoot && !strstr(spRoot->Value(), "Zyrlo"); spRoot = spRoot->NextSibling());
     if (!spRoot)
         return false;
     for(TiXmlNode *pTag = spRoot->FirstChild(); pTag; pTag = pTag->NextSibling()) {

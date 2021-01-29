@@ -24,6 +24,8 @@ using namespace cv;
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
 
+constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
+
 MainController::MainController()
 {
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
@@ -127,7 +129,7 @@ void MainController::backWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::Speaking) {
-        startSpeaking();
+        startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         m_ttsEngine->stop();
     }
@@ -155,7 +157,7 @@ void MainController::nextWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::Speaking) {
-        startSpeaking();
+        startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         m_ttsEngine->stop();
     }
@@ -182,7 +184,7 @@ void MainController::backSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::Speaking) {
-        startSpeaking();
+        startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         m_ttsEngine->stop();
     }
@@ -210,7 +212,7 @@ void MainController::nextSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::Speaking) {
-        startSpeaking();
+        startSpeaking(DELAY_ON_NAVIGATION);
     } else {
         m_ttsEngine->stop();
     }
@@ -322,7 +324,7 @@ const OcrHandler &MainController::ocr() const
     return OcrHandler::instance();
 }
 
-void MainController::startSpeaking()
+void MainController::startSpeaking(int delayMs)
 {
     if (!isPageValid() || m_currentParagraphNum < 0)
         return;
@@ -334,7 +336,7 @@ void MainController::startSpeaking()
         if (!m_currentText.isEmpty()) {
             // Continue speaking if there is more text in the current paragraph
             qDebug() << __func__ << m_currentText;
-            m_ttsEngine->say(m_currentText);
+            m_ttsEngine->say(m_currentText, delayMs);
         } else if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Advance to the next paragraph if the current one is completed and
             // all text pronounced

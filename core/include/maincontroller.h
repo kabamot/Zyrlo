@@ -59,7 +59,7 @@ public slots:
 private:
     OcrHandler &ocr();
     const OcrHandler &ocr() const;
-    void startSpeaking();
+    void startSpeaking(int delayMs = 0);
     const Paragraph &paragraph() const;
     void startBeeping();
     void stopBeeping();

@@ -77,6 +77,7 @@ void MainController::start(const QString &filename)
 
     m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
+    m_currentWordPosition.clear();
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
@@ -345,7 +346,8 @@ void MainController::startSpeaking(int delayMs)
         return;
 
     while (true) {
-        qDebug() << __func__ << "current paragraph" << m_currentParagraphNum;
+        qDebug() << __func__ << "current paragraph" << m_currentParagraphNum
+                 << "position in paragraph" << m_ttsStartPositionInParagraph;
         m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
 
         if (!m_currentText.isEmpty()) {
@@ -358,8 +360,9 @@ void MainController::startSpeaking(int delayMs)
             ++m_currentParagraphNum;
             m_ttsStartPositionInParagraph = 0;
             continue;
-        } else {
+        } else if (ocr().isIdle()) {
             // Page finished
+            qDebug() << "Page finished";
             m_state = State::Stopped;
             emit finished();
         }
@@ -400,9 +403,10 @@ void MainController::onSpeakingFinished()
         m_state = m_prevState;
     }
 
+    qDebug() << __func__ << "state" << (int)m_state;
     if (m_state == State::SpeakingPage) {
         m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
-        qDebug() << __func__ << m_ttsStartPositionInParagraph;
+        qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking();
     }
 }

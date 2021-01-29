@@ -84,6 +84,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
 
 void MainWindow::start()
 {
+    m_prevPosition.clear();
     m_controller.start(ui->fileNameLineEdit->text());
 }
 

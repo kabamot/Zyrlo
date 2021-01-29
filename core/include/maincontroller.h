@@ -63,6 +63,7 @@ public slots:
     void backSentence();
     void nextSentence();
     void sayText(QString text);
+    void spellText(const QString &text);
 
 private:
     OcrHandler &ocr();

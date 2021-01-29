@@ -268,6 +268,11 @@ void MainController::sayText(QString text)
     }
 }
 
+void MainController::spellText(const QString &text)
+{
+    sayText(QStringLiteral("\x1b\\tn=spell\\%1").arg(text));
+}
+
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();
@@ -689,8 +694,16 @@ void MainController::onToggleVoice() {
 
 }
 
-void MainController::onSpellCurrentWord() {
+void MainController::onSpellCurrentWord()
+{
+    // Don't start spelling current word if it's already speaking
+    if (!isPageValid() || m_state == State::SpeakingPage || m_state == State::SpeakingText)
+        return;
 
+    auto position = paragraph().currentWordPosition(m_currentWordPosition.parPos());
+    if (position.isValid()) {
+        spellText(paragraph().text().mid(position.parPos(), position.length()));
+    }
 }
 
 void MainController::changeVoiceSpeed(int nStep) {

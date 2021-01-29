@@ -69,6 +69,13 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="spellWordButton">
+        <property name="text">
+         <string>Spell word</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </item>
     <item row="1" column="0">
@@ -82,7 +89,7 @@
      <x>0</x>
      <y>0</y>
      <width>1072</width>
-     <height>22</height>
+     <height>21</height>
     </rect>
    </property>
   </widget>

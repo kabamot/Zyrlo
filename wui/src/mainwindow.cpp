@@ -31,6 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->backWordButton, &QPushButton::clicked, &m_controller, &MainController::backWord);
     connect(ui->nextSentenceButton, &QPushButton::clicked, &m_controller, &MainController::nextSentence);
     connect(ui->backSentenceButton, &QPushButton::clicked, &m_controller, &MainController::backSentence);
+    connect(ui->spellWordButton, &QPushButton::clicked, &m_controller, &MainController::spellCurrentWord);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);

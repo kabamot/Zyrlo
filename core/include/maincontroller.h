@@ -28,7 +28,8 @@ class MainController : public QObject
 
     enum class State {
         Stopped,
-        Speaking,
+        SpeakingPage,
+        SpeakingText,   // speaking arbitrary short/auxiliary text retaining current place in page
         Paused,
     };
 
@@ -55,6 +56,7 @@ public slots:
     void nextWord();
     void backSentence();
     void nextSentence();
+    void sayText(const QString &text);
 
 private:
     OcrHandler &ocr();
@@ -85,6 +87,7 @@ private:
     int         m_currentParagraphNum {-1};
     QString     m_currentText;
     TextPosition m_currentWordPosition;
+    State       m_prevState {State::Stopped};
     State       m_state {State::Stopped};
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator;
@@ -92,6 +95,5 @@ private:
     QFuture<void> m_beepingThread, m_longPressTimerThread;
     bool m_squareLeftDown = false, m_squareRightDown = false, m_buttonUpRessed = false, m_voiceDown = false,  m_ignoreVoice = false;
     int m_nLongPressCount = -1;
-
 };
 

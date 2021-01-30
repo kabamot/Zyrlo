@@ -255,13 +255,6 @@ void MainController::sayText(QString text)
             m_prevState = m_state;
             m_state = State::SpeakingText;
         }
-
-        // Workaround: enu eva prounounces "the" very short, so it can't be played correctly
-        // so we add period if this is the only word
-        if (text.toLower() == "the") {
-            text.append('.');
-        }
-
         m_ttsEngine->say(text);
     } else {
         qDebug() << "TTS engine is not created";

@@ -89,6 +89,7 @@ void MainController::start(const QString &filename)
     m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
+    m_wordNavigationWithDelay = false;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
@@ -152,9 +153,8 @@ void MainController::backWord()
 
     if (isPageBoundary) {
         sayTranslationTag("TOP_OF_PAGE");
-    } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
     } else {
+        m_wordNavigationWithDelay = m_state == State::SpeakingPage;
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
@@ -180,11 +180,8 @@ void MainController::nextWord()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
-    } else {
-        sayText(paragraph().text().mid(position.parPos(), position.length()));
-    }
+    m_wordNavigationWithDelay = m_state == State::SpeakingPage;
+    sayText(paragraph().text().mid(position.parPos(), position.length()));
 }
 
 void MainController::backSentence()
@@ -212,7 +209,7 @@ void MainController::backSentence()
     if (isPageBoundary) {
         sayTranslationTag("TOP_OF_PAGE");
     } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking();
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -240,7 +237,7 @@ void MainController::nextSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking();
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -459,10 +456,13 @@ void MainController::onSpeakingFinished()
         if (isAdvance) {
             // Continue with the next word
             m_ttsStartPositionInParagraph += m_currentWordPosition.length();
+            qDebug() << "advancing text to" << m_currentWordPosition.length();
         }
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
-        startSpeaking();
+        startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
     }
+
+    m_wordNavigationWithDelay = false;
 }
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)

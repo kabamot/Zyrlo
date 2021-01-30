@@ -111,6 +111,7 @@ private:
     State       m_state {State::Stopped};
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
     Translator m_translator, m_help;
+    bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
     bool m_bKeepBeeping = false;
     QFuture<void> m_beepingThread, m_longPressTimerThread;
     bool m_ignoreRelease = false;

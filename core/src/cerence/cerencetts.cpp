@@ -103,7 +103,6 @@ void CerenceTTS::say(const QString &text, int delayMs)
     m_audioIO->reset();
 
     m_ttsFuture = QtConcurrent::run([this, text](){
-        qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->format() ;
         auto textBytes = text.toUtf8();
 
         VE_INTEXT inText;
@@ -177,7 +176,6 @@ size_t CerenceTTS::markBufferSize()
 
 void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
 {
-    qDebug() << __func__ << sizePcm;
     if (sizePcm > 0) {
         auto totalSize = sizePcm;
         const auto audioBuffSize = static_cast<size_t>(m_audioOutput->bufferSize());
@@ -261,10 +259,6 @@ void CerenceTTS::initAudio()
     m_stOutDevInfo.pfOutNotify = vout_Write;
 
     ve_ttsSetOutDevice(m_hTtsInst, &m_stOutDevInfo);
-
-//    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-//    for (const QAudioDeviceInfo &deviceInfo : deviceInfos)
-//        qDebug() << "Device name: " << deviceInfo.deviceName();
 
     // Setup audioOut
     QAudioFormat format;

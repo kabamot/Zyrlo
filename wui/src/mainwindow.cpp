@@ -10,6 +10,7 @@
 #include <QDebug>
 #include <QtGui>
 #include <QTextBlock>
+#include <QSpinBox>
 
 using namespace cv;
 
@@ -32,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->nextSentenceButton, &QPushButton::clicked, &m_controller, &MainController::nextSentence);
     connect(ui->backSentenceButton, &QPushButton::clicked, &m_controller, &MainController::backSentence);
     connect(ui->spellWordButton, &QPushButton::clicked, &m_controller, &MainController::spellCurrentWord);
+    connect(ui->delaySpinBox, qOverload<int>(&QSpinBox::valueChanged), &m_controller, &MainController::setDelay);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);

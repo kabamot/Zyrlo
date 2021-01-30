@@ -64,6 +64,7 @@ public slots:
     void nextSentence();
     void sayText(QString text);
     void spellText(const QString &text);
+    void setDelay(int delayMs);
 
 private:
     OcrHandler &ocr();
@@ -113,5 +114,6 @@ private:
     bool m_ignoreRelease = false;
     unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;
     int m_nLongPressCount = -1;
+    int m_delay = 0;
 };
 

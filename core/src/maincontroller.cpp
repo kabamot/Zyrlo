@@ -30,6 +30,7 @@ using namespace cv;
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 
 MainController::MainController()
+    : m_delay(DELAY_ON_NAVIGATION)
 {
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
@@ -153,7 +154,7 @@ void MainController::backWord()
     if (isPageBoundary) {
         sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
     } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking(m_delay);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -181,7 +182,7 @@ void MainController::nextWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking(m_delay);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -212,7 +213,7 @@ void MainController::backSentence()
     if (isPageBoundary) {
         sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
     } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking(m_delay);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -240,7 +241,7 @@ void MainController::nextSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking(m_delay);
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -271,6 +272,11 @@ void MainController::sayText(QString text)
 void MainController::spellText(const QString &text)
 {
     sayText(QStringLiteral("\x1b\\tn=spell\\%1").arg(text));
+}
+
+void MainController::setDelay(int delayMs)
+{
+    m_delay = delayMs;
 }
 
 OcrHandler &MainController::ocr()

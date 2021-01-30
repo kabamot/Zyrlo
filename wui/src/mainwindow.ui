@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1072</width>
+    <width>1110</width>
     <height>808</height>
    </rect>
   </property>
@@ -33,6 +33,23 @@
       </item>
       <item>
        <widget class="QLineEdit" name="fileNameLineEdit"/>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Delay</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSpinBox" name="delaySpinBox">
+        <property name="maximum">
+         <number>1999</number>
+        </property>
+        <property name="value">
+         <number>1000</number>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="pauseButton">
@@ -88,7 +105,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1072</width>
+     <width>1110</width>
      <height>21</height>
     </rect>
    </property>

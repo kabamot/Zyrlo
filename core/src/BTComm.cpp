@@ -88,6 +88,7 @@ int BTComm::receiveLoopStep(int & nVal)
     int status = readByteFromSocket(m_s, &m_readBuffer[0]);
     if(status < 0) {
         close(m_s);
+        m_s = -1;
         m_eStatus = eStatusDisconnected;
         return -1;
     }
@@ -102,10 +103,8 @@ int BTComm::receiveLoopStep(int & nVal)
 int BTComm::btConnect(const std::atomic_bool &isStop) {
     int status;
     qDebug() << "btConnect 0\n";
+    m_s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
     do {
-        qDebug() << "btConnect 1\n";
-        m_s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
-
         m_addr.rc_family = AF_BLUETOOTH;
         m_addr.rc_channel = (uint8_t) 1;
         str2ba( keypadMacStr, &m_addr.rc_bdaddr );
@@ -116,9 +115,12 @@ int BTComm::btConnect(const std::atomic_bool &isStop) {
 
     } while(status < 0 && !isStop);
 
-    qDebug() << "btConnect 2\n";
     if (status >= 0) {
         m_eStatus = eStatusConnected;
+    }
+    else {
+        close(m_s);
+        m_s = -1;
     }
 
     return status;

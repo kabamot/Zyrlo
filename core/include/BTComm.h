@@ -41,7 +41,7 @@ class BTComm
 {
     struct sockaddr_rc m_addr = { 0 };
     unsigned char m_readBuffer[10];
-    int m_s;
+    int m_s = -1;
 
 public:
 

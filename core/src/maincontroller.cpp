@@ -56,12 +56,12 @@ MainController::MainController()
         m_ttsStartPositionInParagraph = 0;
         m_currentParagraphNum = 0;
 
-        ocr().startProcess(image);
         qDebug() << "imageReceived 2\n";
         if(m_shutterSound)
             m_shutterSound->play();
         startBeeping();
-
+        ocr().startProcess(image);
+        m_state = State::SpeakingPage;
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
         qDebug() << "received" << (int)button;
@@ -485,7 +485,6 @@ void MainController::startBeeping() {
 
 void MainController::startLongPressTimer(void (MainController::*action)(void), int nDelay) {
     const int intvl = 100;
-    m_ignoreRelease = true;
     m_nLongPressCount = nDelay / intvl;
     if (!m_longPressTimerThread.isRunning())
         m_longPressTimerThread = QtConcurrent::run([this, action]() {
@@ -602,19 +601,20 @@ void MainController::onBtButton(int nButton, bool bDown) {
     else {
         m_keypadButtonMask &= ~(1 << nButton);
         stopLongPressTimer();
-        if(m_ignoreRelease) {
-            if(m_keypadButtonMask == 0)
+        if(m_keypadButtonMask == 0) {
+            if(m_ignoreRelease) {
                 m_ignoreRelease = false;
-        }
-        else {
-            switch(nButton) {
-            case KP_BUTTON_ROUND_L  :
-                 onToggleVoice();
-                 break;
-            case KP_BUTTON_SQUARE_L :
-                break;
-            case KP_BUTTON_SQUARE_R :
-                break;
+            }
+            else {
+                switch(nButton) {
+                case KP_BUTTON_ROUND_L  :
+                    onToggleVoice();
+                    break;
+                case KP_BUTTON_SQUARE_L :
+                    break;
+                case KP_BUTTON_SQUARE_R :
+                    break;
+                }
             }
         }
     }
@@ -660,28 +660,29 @@ void MainController::onButton(int nButton, bool bDown) {
          }
     }
     else {
-         m_deviceButtonsMask &= ~(1 << nButton);
+        m_deviceButtonsMask &= ~(1 << nButton);
         stopLongPressTimer();
-        if(m_ignoreRelease) {
-            if(m_deviceButtonsMask == 0)
+        if(m_deviceButtonsMask == 0) {
+            if(m_ignoreRelease) {
                 m_ignoreRelease = false;
-        }
-        else {
-            switch(nButton) {
-            case BUTTON_PAUSE_MASK   :
-                pauseResume();
-                break;
-            case BUTTON_BACK_MASK       :
-                backSentence();
-                break;
-            case BUTTON_RATE_UP_MASK     :
-                changeVoiceSpeed(10);
-                break;
-            case BUTTON_RATE_DN_MASK     :
-                changeVoiceSpeed(-10);
-                break;
-
              }
+            else {
+                switch(nButton) {
+                case BUTTON_PAUSE_MASK   :
+                    pauseResume();
+                    break;
+                case BUTTON_BACK_MASK       :
+                    backSentence();
+                    break;
+                case BUTTON_RATE_UP_MASK     :
+                    changeVoiceSpeed(20);
+                    break;
+                case BUTTON_RATE_DN_MASK     :
+                    changeVoiceSpeed(-20);
+                    break;
+
+                }
+            }
         }
     }
 }
@@ -709,9 +710,12 @@ void MainController::onSpellCurrentWord()
 void MainController::changeVoiceSpeed(int nStep) {
     if(!m_ttsEngine)
         return;
+    if (m_ttsEngine->isSpeaking())
+        m_ttsEngine->pause();
     int nCurrRate = m_ttsEngine->getSpeechRate();
     qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
     m_ttsEngine->setSpeechRate(nCurrRate + nStep);
+    m_ttsEngine->say(m_translator.GetString((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN").c_str());
 }
 
 void MainController::onResetDevice() {

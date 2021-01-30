@@ -28,6 +28,7 @@ using namespace cv;
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
+constexpr int LONG_PRESS_DELAY = 3000;
 
 MainController::MainController()
 {
@@ -49,15 +50,16 @@ MainController::MainController()
     connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
 
     m_hwhandler = new HWHandler(this);
-    connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image){
+    connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
         qDebug() << "imageReceived 0\n";
-        m_ttsEngine->stop();
+        if(bPlayShutterSound)
+            m_ttsEngine->stop();
 
         m_ttsStartPositionInParagraph = 0;
         m_currentParagraphNum = 0;
 
         qDebug() << "imageReceived 2\n";
-        if(m_shutterSound)
+        if(m_shutterSound && bPlayShutterSound)
             m_shutterSound->play();
         startBeeping();
         ocr().startProcess(image);
@@ -458,7 +460,7 @@ void MainController::onSpeakingFinished()
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
-    if(m_state == State::SpeakingText || m_currentParagraphNum < 0)
+     if(!isPageValid() || m_state == State::SpeakingText || m_currentParagraphNum < 0)
         return;
 
     TextPosition wordPos{m_ttsStartPositionInParagraph + wordPosition,
@@ -473,13 +475,14 @@ void MainController::previewImgUpdate(const Mat & prevImg) {
 }
 
 void MainController::startBeeping() {
-     if(!m_beepSound)
+    if(!m_beepSound)
         return;
     if (!m_beepingThread.isRunning())
         m_beepingThread = QtConcurrent::run([this]() {
-           for(m_bKeepBeeping = true, QThread::msleep(1000); m_bKeepBeeping; QThread::msleep(1000)) {
-               m_beepSound->play();
-           }
+            for(m_bKeepBeeping = true, QThread::msleep(2000); m_bKeepBeeping; QThread::msleep(1000)) {
+                if(!m_ttsEngine->isSpeaking())
+                    m_beepSound->play();
+            }
         });
 }
 
@@ -508,11 +511,21 @@ void MainController::stopBeeping() {
 }
 
 void MainController::SaveImage(int indx) {
-
+    m_hwhandler->saveImage(indx);
+    if(!m_ttsEngine)
+        return;
+    m_ttsEngine->say(m_translator.GetString("PAGE_SAVED").c_str());
 }
 
 void MainController::ReadImage(int indx) {
-
+    if(!m_hwhandler->recallSavedImage(indx)) {
+        m_beepSound->play();
+        return;
+    }
+    if(!m_ttsEngine)
+        return;
+    m_ttsEngine->say(m_translator.GetString("PAGE_RECALL").c_str());
+    m_hwhandler->readRecallImage();
 }
 
 void MainController::onReadHelp() {
@@ -530,7 +543,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
             break;
         case KP_BUTTON_UP       :
             if((1 << KP_BUTTON_ROUND_L) & m_keypadButtonMask) {
-                 startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
@@ -585,16 +598,16 @@ void MainController::onBtButton(int nButton, bool bDown) {
             nextWord();
             break;
         case KP_BUTTON_HELP     :
-            startLongPressTimer(&MainController::readHelp, 3000);
+            startLongPressTimer(&MainController::readHelp, LONG_PRESS_DELAY);
             break;
         case KP_BUTTON_ROUND_L  :
             if((1 << KP_BUTTON_UP) & m_keypadButtonMask) {
-                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             break;
         case KP_BUTTON_ROUND_R  :
-            startLongPressTimer(&MainController::spellCurrentWord, 3000);
+            startLongPressTimer(&MainController::spellCurrentWord, LONG_PRESS_DELAY);
             break;
          }
     }
@@ -626,17 +639,17 @@ void MainController::onButton(int nButton, bool bDown) {
         switch(nButton) {
         case BUTTON_PAUSE_MASK   :
             if((1 << BUTTON_RATE_UP_MASK) & m_keypadButtonMask) {
-                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
-                startLongPressTimer(&MainController::toggleVoice, 3000);
+                startLongPressTimer(&MainController::toggleVoice, LONG_PRESS_DELAY);
                 break;
             }
-            startLongPressTimer(&MainController::toggleGestures, 3000);
+            startLongPressTimer(&MainController::toggleGestures, LONG_PRESS_DELAY);
             break;
         case BUTTON_BACK_MASK       :
-            startLongPressTimer(&MainController::resetDevice, 3000);
+            startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
             if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
@@ -645,7 +658,7 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             if((1 << BUTTON_PAUSE_MASK) & m_keypadButtonMask) {
-                startLongPressTimer(&MainController::toggleAudioOutput, 3000);
+                startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             break;

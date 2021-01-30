@@ -2,7 +2,6 @@
 
 #include <QtConcurrent>
 #include <QDebug>
-#include <opencv2/opencv.hpp>
 #include "BaseComm.h"
 #include "BTComm.h"
 #include <QAudioDeviceInfo>
@@ -73,7 +72,7 @@ void HWHandler::run()
             emit previewImgUpdate(m_zcam.GetPreviewImg());
             break;
         case ZyrloCamera::eStartOcr:
-            emit imageReceived(m_zcam.GetImageForOcr());
+            emit imageReceived(m_zcam.GetImageForOcr(), true);
             break;
         case ZyrloCamera::eReaderReady:
             emit readerReady();
@@ -166,3 +165,27 @@ void HWHandler::flashLed(int msecs) {
 void HWHandler::setLed(bool bOn) {
      m_zcam.setLed(bOn);
 }
+
+static string GetSavedImgePath(int indx) {
+    char sPath[256];
+    sprintf(sPath, "/home/pi/RawImage_%d.bmp", indx);
+   return sPath;
+}
+
+void HWHandler::saveImage(int indx) {
+     imwrite(GetSavedImgePath(indx), m_zcam.GetFullResRawImg(0));
+}
+
+bool HWHandler::recallSavedImage(int indx) {
+    m_recallImg = imread(GetSavedImgePath(indx), cv::IMREAD_GRAYSCALE);
+    return !m_recallImg.empty();
+}
+
+void HWHandler::readRecallImage() {
+    emit imageReceived(m_recallImg, false);
+}
+
+const cv::Mat & HWHandler::getRecallImg() const {
+    return m_recallImg;
+}
+

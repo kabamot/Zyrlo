@@ -42,6 +42,11 @@ public:
     void setLed(bool bOn);
     bool toggleAudioSink();
     void onToggleVoice();
+    void SaveImage(int indx);
+    void ReadImage(int indx);
+    void onReadHelp();
+    void onSpellCurrentWord();
+
 
 signals:
     void textUpdated(const QString &text);
@@ -76,10 +81,6 @@ private:
     void stopLongPressTimer();
     void setCurrentWordPosition(const TextPosition &textPosition);
     bool isPageValid() const;
-    void SaveImage(int indx);
-    void ReadImage(int indx);
-    void onReadHelp();
-    void onSpellCurrentWord();
     void changeVoiceSpeed(int nStep);
 
 private slots:

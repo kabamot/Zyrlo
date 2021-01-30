@@ -4,10 +4,7 @@
 #include <QFuture>
 #include <atomic>
 #include "zyrlocamera.h"
-
-namespace cv {
-    class Mat;
-}
+#include <opencv2/opencv.hpp>
 
 enum class Button {
     Up,
@@ -34,9 +31,13 @@ public:
     void setLed(bool bOn);
     void onButtonsDown(unsigned char down_val);
     void onButtonsUp(unsigned char up_val);
+    void saveImage(int indx);
+    bool recallSavedImage(int indx);
+    void readRecallImage();
+    const cv::Mat & getRecallImg() const;
 
 signals:
-    void imageReceived(const cv::Mat &image);
+    void imageReceived(const cv::Mat &image, bool bPlayShutterSound);
     void buttonReceived(Button button);
     void previewImgUpdate(const cv::Mat &prevImg);
     void readerReady();
@@ -50,4 +51,5 @@ private:
     QFuture<void>       m_future, m_buttonThread, m_buttonBtThread;
     ZyrloCamera m_zcam;
     int m_nButtonMask = -1;
+    cv::Mat m_recallImg;
 };

@@ -91,6 +91,7 @@ void MainController::start(const QString &filename)
     m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
+    m_wordNavigationWithDelay = false;
     cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
@@ -153,10 +154,9 @@ void MainController::backWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (isPageBoundary) {
-        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
-    } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        sayTranslationTag("TOP_OF_PAGE");
     } else {
+        m_wordNavigationWithDelay = m_state == State::SpeakingPage;
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
 }
@@ -174,7 +174,7 @@ void MainController::nextWord()
             position = paragraph().firstWordPosition();
         } else if (ocr().isIdle()) {
             // Page finished
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             return;
         }
     }
@@ -182,11 +182,8 @@ void MainController::nextWord()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
-    } else {
-        sayText(paragraph().text().mid(position.parPos(), position.length()));
-    }
+    m_wordNavigationWithDelay = m_state == State::SpeakingPage;
+    sayText(paragraph().text().mid(position.parPos(), position.length()));
 }
 
 void MainController::backSentence()
@@ -212,9 +209,9 @@ void MainController::backSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (isPageBoundary) {
-        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
+        sayTranslationTag("TOP_OF_PAGE");
     } else if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking();
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -233,7 +230,7 @@ void MainController::nextSentence()
             position = paragraph().firstSentencePosition();
         } else if (ocr().isIdle()) {
             // Page finished
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             return;
         }
     }
@@ -242,7 +239,7 @@ void MainController::nextSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (m_state == State::SpeakingPage) {
-        startSpeaking(DELAY_ON_NAVIGATION);
+        startSpeaking();
     } else {
         sayText(paragraph().text().mid(position.parPos(), position.length()));
     }
@@ -257,22 +254,30 @@ void MainController::sayText(QString text)
             m_prevState = m_state;
             m_state = State::SpeakingText;
         }
-
-        // Workaround: enu eva prounounces "the" very short, so it can't be played correctly
-        // so we add period if this is the only word
-        if (text.toLower() == "the") {
-            text.append('.');
-        }
-
         m_ttsEngine->say(text);
     } else {
         qDebug() << "TTS engine is not created";
     }
 }
 
+void MainController::sayTranslationTag(const QString &tag)
+{
+    sayText(m_translator.GetString(tag.toStdString()).c_str());
+}
+
 void MainController::spellText(const QString &text)
 {
     sayText(QStringLiteral("\x1b\\tn=spell\\%1").arg(text));
+}
+
+void MainController::speechRateUp()
+{
+    changeVoiceSpeed(20);
+}
+
+void MainController::speechRateDown()
+{
+    changeVoiceSpeed(-20);
 }
 
 OcrHandler &MainController::ocr()
@@ -365,15 +370,14 @@ void MainController::onToggleAudioSink() {
 
 void MainController::readerReady() {
     stopBeeping();
-    if(m_ttsEngine)
-        m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
+    sayTranslationTag("PLACE_DOC");
     m_currentParagraphNum = -1;
     ocr().stopProcess();
 }
 
 void MainController::targetNotFound()
 {
-    sayText(m_translator.GetString("CLEAR_SURF").c_str());
+    sayTranslationTag("CLEAR_SURF");
 }
 
 const OcrHandler &MainController::ocr() const
@@ -405,7 +409,7 @@ void MainController::startSpeaking(int delayMs)
             // Page finished
             qDebug() << "Page finished";
             m_state = State::Stopped;
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             emit finished();
         }
 
@@ -450,12 +454,17 @@ void MainController::onSpeakingFinished()
 
     qDebug() << __func__ << "state" << (int)m_state;
     if (m_state == State::SpeakingPage) {
+        m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
         if (isAdvance) {
-            m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
+            // Continue with the next word
+            m_ttsStartPositionInParagraph += m_currentWordPosition.length();
+            qDebug() << "advancing text to" << m_currentWordPosition.length();
         }
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
-        startSpeaking();
+        startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
     }
+
+    m_wordNavigationWithDelay = false;
 }
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
@@ -529,9 +538,7 @@ void MainController::ReadImage(int indx) {
 }
 
 void MainController::onReadHelp() {
-    if(!m_ttsEngine)
-        return;
-    m_ttsEngine->say(m_help.GetString("BUTTON_HELP").c_str());
+    sayText(m_help.GetString("BUTTON_HELP").c_str());
 }
 
 void MainController::onBtButton(int nButton, bool bDown) {
@@ -688,10 +695,10 @@ void MainController::onButton(int nButton, bool bDown) {
                     backSentence();
                     break;
                 case BUTTON_RATE_UP_MASK     :
-                    changeVoiceSpeed(20);
+                    speechRateUp();
                     break;
                 case BUTTON_RATE_DN_MASK     :
-                    changeVoiceSpeed(-20);
+                    speechRateDown();
                     break;
 
                 }
@@ -728,7 +735,7 @@ void MainController::changeVoiceSpeed(int nStep) {
     int nCurrRate = m_ttsEngine->getSpeechRate();
     qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
     m_ttsEngine->setSpeechRate(nCurrRate + nStep);
-    m_ttsEngine->say(m_translator.GetString((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN").c_str());
+    sayTranslationTag((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN");
 }
 
 void MainController::onResetDevice() {

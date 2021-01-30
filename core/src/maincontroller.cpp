@@ -273,6 +273,16 @@ void MainController::spellText(const QString &text)
     sayText(QStringLiteral("\x1b\\tn=spell\\%1").arg(text));
 }
 
+void MainController::speechRateUp()
+{
+    changeVoiceSpeed(20);
+}
+
+void MainController::speechRateDown()
+{
+    changeVoiceSpeed(-20);
+}
+
 OcrHandler &MainController::ocr()
 {
     return OcrHandler::instance();

@@ -32,6 +32,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->nextSentenceButton, &QPushButton::clicked, &m_controller, &MainController::nextSentence);
     connect(ui->backSentenceButton, &QPushButton::clicked, &m_controller, &MainController::backSentence);
     connect(ui->spellWordButton, &QPushButton::clicked, &m_controller, &MainController::spellCurrentWord);
+    connect(ui->rateUpButton, &QPushButton::clicked, &m_controller, &MainController::speechRateUp);
+    connect(ui->rateDownButton, &QPushButton::clicked, &m_controller, &MainController::speechRateDown);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);

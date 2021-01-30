@@ -64,6 +64,8 @@ public slots:
     void nextSentence();
     void sayText(QString text);
     void spellText(const QString &text);
+    void speechRateUp();
+    void speechRateDown();
 
 private:
     OcrHandler &ocr();

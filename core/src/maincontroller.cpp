@@ -363,8 +363,7 @@ void MainController::onToggleAudioSink() {
 
 void MainController::readerReady() {
     stopBeeping();
-    if(m_ttsEngine)
-        m_ttsEngine->say(m_translator.GetString("PLACE_DOC").c_str());
+    sayText(m_translator.GetString("PLACE_DOC").c_str());
     m_currentParagraphNum = -1;
     ocr().stopProcess();
 }
@@ -516,9 +515,7 @@ void MainController::ReadImage(int indx) {
 }
 
 void MainController::onReadHelp() {
-    if(!m_ttsEngine)
-        return;
-    m_ttsEngine->say(m_help.GetString("BUTTON_HELP").c_str());
+    sayText(m_help.GetString("BUTTON_HELP").c_str());
 }
 
 void MainController::onBtButton(int nButton, bool bDown) {
@@ -715,7 +712,7 @@ void MainController::changeVoiceSpeed(int nStep) {
     int nCurrRate = m_ttsEngine->getSpeechRate();
     qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
     m_ttsEngine->setSpeechRate(nCurrRate + nStep);
-    m_ttsEngine->say(m_translator.GetString((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN").c_str());
+    sayText(m_translator.GetString((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN").c_str());
 }
 
 void MainController::onResetDevice() {

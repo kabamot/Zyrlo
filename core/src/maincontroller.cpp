@@ -256,7 +256,7 @@ void MainController::sayText(QString text)
         }
         m_ttsEngine->say(text);
     } else {
-        qDebug() << "TTS engine is not created";
+        qWarning() << "TTS engine is not created, can't say text:" << text;
     }
 }
 
@@ -469,7 +469,7 @@ void MainController::onSpeakingFinished()
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
-     if(!isPageValid() || m_state == State::SpeakingText || m_currentParagraphNum < 0)
+    if(!isPageValid() || m_state == State::SpeakingText || m_currentParagraphNum < 0)
         return;
 
     TextPosition wordPos{m_ttsStartPositionInParagraph + wordPosition,
@@ -521,9 +521,7 @@ void MainController::stopBeeping() {
 
 void MainController::SaveImage(int indx) {
     m_hwhandler->saveImage(indx);
-    if(!m_ttsEngine)
-        return;
-    m_ttsEngine->say(m_translator.GetString("PAGE_SAVED").c_str());
+    sayTranslationTag("PAGE_SAVED");
 }
 
 void MainController::ReadImage(int indx) {
@@ -531,14 +529,12 @@ void MainController::ReadImage(int indx) {
         m_beepSound->play();
         return;
     }
-    if(!m_ttsEngine)
-        return;
-    m_ttsEngine->say(m_translator.GetString("PAGE_RECALL").c_str());
+    sayTranslationTag("PAGE_RECALL");
     m_hwhandler->readRecallImage();
 }
 
 void MainController::onReadHelp() {
-    sayText(m_help.GetString("BUTTON_HELP").c_str());
+    sayTranslationTag("BUTTON_HELP");
 }
 
 void MainController::onBtButton(int nButton, bool bDown) {

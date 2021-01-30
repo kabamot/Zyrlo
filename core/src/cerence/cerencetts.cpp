@@ -15,8 +15,6 @@
 #include <QThread>
 #include <QtConcurrent>
 
-#include "cerencetts.h"
-
 static const char *INSTALL_PATHS[] = {
     "/opt/zyrlo/ve/languages",
 };
@@ -101,6 +99,8 @@ void CerenceTTS::say(const QString &text, int delayMs)
     m_wordMarks.clear();
     m_audioIO->buffer().clear();
     m_audioIO->reset();
+
+    m_positionMapper.setText(text);
 
     m_ttsFuture = QtConcurrent::run([this, text](){
         auto textBytes = text.toUtf8();
@@ -303,7 +303,8 @@ void CerenceTTS::initAudio()
 
         if (newCurrentWord > m_currentWord) {
             m_currentWord = newCurrentWord;
-            emit wordNotify(m_wordMarks[m_currentWord].cntSrcPos, m_wordMarks[m_currentWord].cntSrcTextLen);
+            emit wordNotify(m_positionMapper.position(m_wordMarks[m_currentWord].cntSrcPos),
+                            m_wordMarks[m_currentWord].cntSrcTextLen);
         }
     });
 

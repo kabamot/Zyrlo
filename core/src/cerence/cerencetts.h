@@ -19,6 +19,8 @@
 #include <ve_platform.h>
 #include <vplatform.h>
 
+#include "positionmapper.h"
+
 class QAudioOutput;
 class QIODevice;
 
@@ -79,5 +81,6 @@ private:
 
     QMutex                  m_wordMarksMutex;
     QTimer                  m_speakingStartTimer;
+    PositionMapper          m_positionMapper;
 };
 

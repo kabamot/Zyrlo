@@ -675,10 +675,10 @@ void MainController::onButton(int nButton, bool bDown) {
                     backSentence();
                     break;
                 case BUTTON_RATE_UP_MASK     :
-                    changeVoiceSpeed(20);
+                    speechRateUp();
                     break;
                 case BUTTON_RATE_DN_MASK     :
-                    changeVoiceSpeed(-20);
+                    speechRateDown();
                     break;
 
                 }

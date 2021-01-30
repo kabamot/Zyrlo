@@ -450,8 +450,10 @@ void MainController::onSpeakingFinished()
 
     qDebug() << __func__ << "state" << (int)m_state;
     if (m_state == State::SpeakingPage) {
+        m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
         if (isAdvance) {
-            m_ttsStartPositionInParagraph = m_currentWordPosition.parPos() + m_currentWordPosition.length();
+            // Continue with the next word
+            m_ttsStartPositionInParagraph += m_currentWordPosition.length();
         }
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking();

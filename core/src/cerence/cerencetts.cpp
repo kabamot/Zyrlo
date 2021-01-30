@@ -7,6 +7,8 @@
 
 #include "cerencetts.h"
 
+#include <algorithm>
+
 #include <QAudioDeviceInfo>
 #include <QAudioOutput>
 #include <QDebug>
@@ -175,8 +177,16 @@ size_t CerenceTTS::markBufferSize()
 
 void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
 {
+    qDebug() << __func__ << sizePcm;
     if (sizePcm > 0) {
-        m_audioIO->buffer().append(m_ttsBuffer.data(), sizePcm);
+        auto totalSize = sizePcm;
+        const auto audioBuffSize = static_cast<size_t>(m_audioOutput->bufferSize());
+        if (sizePcm < audioBuffSize) {
+            // Fill up to the buffer size with 0s, otherwise it will be not played
+            std::fill(m_ttsBuffer.data() + sizePcm, m_ttsBuffer.data() + audioBuffSize, 0);
+            totalSize = audioBuffSize;
+        }
+        m_audioIO->buffer().append(m_ttsBuffer.data(), totalSize);
     }
 
     if (sizeMarks > 0) {

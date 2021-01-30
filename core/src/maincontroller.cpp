@@ -151,7 +151,7 @@ void MainController::backWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (isPageBoundary) {
-        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
+        sayTranslationTag("TOP_OF_PAGE");
     } else if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
@@ -172,7 +172,7 @@ void MainController::nextWord()
             position = paragraph().firstWordPosition();
         } else if (ocr().isIdle()) {
             // Page finished
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             return;
         }
     }
@@ -210,7 +210,7 @@ void MainController::backSentence()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (isPageBoundary) {
-        sayText(m_translator.GetString("TOP_OF_PAGE").c_str());
+        sayTranslationTag("TOP_OF_PAGE");
     } else if (m_state == State::SpeakingPage) {
         startSpeaking(DELAY_ON_NAVIGATION);
     } else {
@@ -231,7 +231,7 @@ void MainController::nextSentence()
             position = paragraph().firstSentencePosition();
         } else if (ocr().isIdle()) {
             // Page finished
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             return;
         }
     }
@@ -259,6 +259,11 @@ void MainController::sayText(QString text)
     } else {
         qDebug() << "TTS engine is not created";
     }
+}
+
+void MainController::sayTranslationTag(const QString &tag)
+{
+    sayText(m_translator.GetString(tag.toStdString()).c_str());
 }
 
 void MainController::spellText(const QString &text)
@@ -366,14 +371,14 @@ void MainController::onToggleAudioSink() {
 
 void MainController::readerReady() {
     stopBeeping();
-    sayText(m_translator.GetString("PLACE_DOC").c_str());
+    sayTranslationTag("PLACE_DOC");
     m_currentParagraphNum = -1;
     ocr().stopProcess();
 }
 
 void MainController::targetNotFound()
 {
-    sayText(m_translator.GetString("CLEAR_SURF").c_str());
+    sayTranslationTag("CLEAR_SURF");
 }
 
 const OcrHandler &MainController::ocr() const
@@ -405,7 +410,7 @@ void MainController::startSpeaking(int delayMs)
             // Page finished
             qDebug() << "Page finished";
             m_state = State::Stopped;
-            sayText(m_translator.GetString("END_OF_TEXT").c_str());
+            sayTranslationTag("END_OF_TEXT");
             emit finished();
         }
 
@@ -717,7 +722,7 @@ void MainController::changeVoiceSpeed(int nStep) {
     int nCurrRate = m_ttsEngine->getSpeechRate();
     qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
     m_ttsEngine->setSpeechRate(nCurrRate + nStep);
-    sayText(m_translator.GetString((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN").c_str());
+    sayTranslationTag((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN");
 }
 
 void MainController::onResetDevice() {

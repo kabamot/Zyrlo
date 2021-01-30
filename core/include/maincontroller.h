@@ -63,6 +63,7 @@ public slots:
     void backSentence();
     void nextSentence();
     void sayText(QString text);
+    void sayTranslationTag(const QString &tag);
     void spellText(const QString &text);
     void speechRateUp();
     void speechRateDown();

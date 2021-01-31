@@ -97,6 +97,13 @@
        </spacer>
       </item>
       <item>
+       <widget class="QPushButton" name="nextVoiceButton">
+        <property name="text">
+         <string>Next voice</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="rateUpButton">
         <property name="text">
          <string>Rate Up</string>

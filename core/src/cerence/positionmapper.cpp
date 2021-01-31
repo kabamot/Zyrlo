@@ -6,6 +6,7 @@
  ****************************************************************************/
 
 #include "positionmapper.h"
+#include "cerencetts_const.h"
 
 #include <algorithm>
 #include <QRegularExpression>
@@ -13,7 +14,7 @@
 
 void PositionMapper::setText(const QString &text)
 {
-    static const QRegularExpression re("\x1b" R"(\\[^\\]+\\)");
+    static const QRegularExpression re(CERENCE_ESC R"(\\[^\\]+\\)");
 
     m_positions.clear();
 

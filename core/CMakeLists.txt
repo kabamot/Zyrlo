@@ -45,6 +45,7 @@ set(SRC_FILES
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h
+    src/cerence/cerencetts_const.h
     src/cerence/positionmapper.cpp
     src/cerence/positionmapper.h
 

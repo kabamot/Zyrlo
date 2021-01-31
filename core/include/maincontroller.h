@@ -84,6 +84,7 @@ private:
     void setCurrentWordPosition(const TextPosition &textPosition);
     bool isPageValid() const;
     void changeVoiceSpeed(int nStep);
+    QString prepareTextToSpeak(QString text);
 
 private slots:
     void onNewTextExtracted();

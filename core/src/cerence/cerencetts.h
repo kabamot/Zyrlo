@@ -19,6 +19,7 @@
 #include <ve_platform.h>
 #include <vplatform.h>
 
+#include "cerencetts_const.h"
 #include "positionmapper.h"
 
 class QAudioOutput;

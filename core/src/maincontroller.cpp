@@ -157,7 +157,7 @@ void MainController::backWord()
         sayTranslationTag("TOP_OF_PAGE");
     } else {
         m_wordNavigationWithDelay = m_state == State::SpeakingPage;
-        sayText(paragraph().text().mid(position.parPos(), position.length()));
+        sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
     }
 }
 
@@ -183,7 +183,7 @@ void MainController::nextWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     m_wordNavigationWithDelay = m_state == State::SpeakingPage;
-    sayText(paragraph().text().mid(position.parPos(), position.length()));
+    sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
 }
 
 void MainController::backSentence()
@@ -213,7 +213,7 @@ void MainController::backSentence()
     } else if (m_state == State::SpeakingPage) {
         startSpeaking();
     } else {
-        sayText(paragraph().text().mid(position.parPos(), position.length()));
+        sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
     }
 }
 
@@ -241,7 +241,7 @@ void MainController::nextSentence()
     if (m_state == State::SpeakingPage) {
         startSpeaking();
     } else {
-        sayText(paragraph().text().mid(position.parPos(), position.length()));
+        sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
     }
 }
 
@@ -267,7 +267,7 @@ void MainController::sayTranslationTag(const QString &tag)
 
 void MainController::spellText(const QString &text)
 {
-    sayText(QStringLiteral("\x1b\\tn=spell\\%1").arg(text));
+    sayText(QStringLiteral(CERENCE_ESC R"(\tn=spell\%1)").arg(text));
 }
 
 void MainController::speechRateUp()
@@ -400,7 +400,7 @@ void MainController::startSpeaking(int delayMs)
         if (!m_currentText.isEmpty()) {
             // Continue speaking if there is more text in the current paragraph
             qDebug() << __func__ << m_currentText;
-            m_ttsEngine->say(m_currentText, delayMs);
+            m_ttsEngine->say(prepareTextToSpeak(m_currentText), delayMs);
         } else if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Advance to the next paragraph if the current one is completed and
             // all text pronounced
@@ -734,6 +734,14 @@ void MainController::changeVoiceSpeed(int nStep) {
     qDebug() << "changeVoiceSpeed" << nCurrRate << Qt::endl;
     m_ttsEngine->setSpeechRate(nCurrRate + nStep);
     sayTranslationTag((nStep > 0) ? "SPEECH_SPEED_UP" : "SPEECH_SPEED_DN");
+}
+
+QString MainController::prepareTextToSpeak(QString text)
+{
+    // Spell 5+ digit numbers by digits
+    static const QRegularExpression re(R"((\d{5,}))");
+    text.replace(re, CERENCE_ESC R"(\tn=spell\\1)" CERENCE_ESC R"(\tn=normal\)");
+    return text;
 }
 
 void MainController::onResetDevice() {

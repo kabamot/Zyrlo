@@ -172,7 +172,7 @@ void MainController::nextWord()
             // Go the the next paragraph
             ++m_currentParagraphNum;
             position = paragraph().firstWordPosition();
-        } else if (ocr().isIdle()) {
+        } else if (ocr().textPage()->isComplete()) {
             // Page finished
             sayTranslationTag("END_OF_TEXT");
             return;
@@ -228,7 +228,7 @@ void MainController::nextSentence()
             // Go the the next paragraph
             ++m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
-        } else if (ocr().isIdle()) {
+        } else if (ocr().textPage()->isComplete()) {
             // Page finished
             sayTranslationTag("END_OF_TEXT");
             return;
@@ -407,7 +407,7 @@ void MainController::startSpeaking(int delayMs)
             ++m_currentParagraphNum;
             m_ttsStartPositionInParagraph = 0;
             continue;
-        } else if (ocr().isIdle()) {
+        } else if (ocr().textPage()->isComplete()) {
             // Page finished
             qDebug() << "Page finished";
             m_state = State::Stopped;

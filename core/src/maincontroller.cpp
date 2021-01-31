@@ -30,6 +30,16 @@ using namespace cv;
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
 
+struct LangVoice {
+    QString lang;
+    QString voice;
+};
+
+const QVector<LangVoice> LANGUAGES = {
+    { "enu", "ava" },
+    { "nor", "henrik" },
+};
+
 MainController::MainController()
 {
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
@@ -44,9 +54,16 @@ MainController::MainController()
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
 
-    m_ttsEngine = new CerenceTTS(this);
-    connect(m_ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
-    connect(m_ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
+    // Create TTS engines
+    for (const auto &language : LANGUAGES) {
+        auto ttsEngine = new CerenceTTS(language.voice, this);
+        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
+        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
+        m_ttsEnginesList.append(ttsEngine);
+    }
+
+    m_ttsEngine = m_ttsEnginesList.front();
+    populateVoices();
 
     m_hwhandler = new HWHandler(this);
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
@@ -81,11 +98,16 @@ MainController::MainController()
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
 
-    m_hwhandler->start();
+//    m_hwhandler->start();
 }
 
 void MainController::start(const QString &filename)
 {
+//    QString text = filename;
+//    text.replace("<>", CERENCE_ESC);
+//    sayText(text);
+//    return;
+
     m_ttsEngine->stop();
 
     m_ttsStartPositionInParagraph = 0;
@@ -278,6 +300,23 @@ void MainController::speechRateUp()
 void MainController::speechRateDown()
 {
     changeVoiceSpeed(-20);
+}
+
+void MainController::nextVoice()
+{
+    if (++m_currentTTSIndex >= m_ttsEnginesList.size())
+        m_currentTTSIndex = 0;
+
+    m_ttsEngine->stop();
+
+//    sayText(m_voices[m_currentVoiceNum]);
+//    QString voice = m_voices[m_currentVoiceNum].split(',').back().trimmed();
+
+    const auto lang = LANGUAGES[m_currentTTSIndex].lang.toStdString();
+    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
+
+    m_translator.SetLanguage(lang);
+    sayTranslationTag("VOICE_SET_TO");
 }
 
 OcrHandler &MainController::ocr()
@@ -742,6 +781,21 @@ QString MainController::prepareTextToSpeak(QString text)
     static const QRegularExpression re(R"((\d{5,}))");
     text.replace(re, CERENCE_ESC R"(\tn=spell\\1)" CERENCE_ESC R"(\tn=normal\)");
     return text;
+}
+
+void MainController::populateVoices()
+{
+    m_voices.clear();
+
+    for (const auto &langCode : m_ttsEngine->availableLanguages()) {
+        const auto voices = m_ttsEngine->availableVoices(langCode);
+        for (const auto &voice : voices) {
+            QString languageAndVoice = QStringLiteral("%1, %2").arg(m_ttsEngine->languageNames()[langCode], voice);
+            m_voices.push_back(languageAndVoice);
+        }
+    }
+
+    qDebug() << __func__ << m_voices;
 }
 
 void MainController::onResetDevice() {

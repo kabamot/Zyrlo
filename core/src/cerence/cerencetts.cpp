@@ -19,8 +19,6 @@ static const char *INSTALL_PATHS[] = {
     "/opt/zyrlo/ve/languages",
 };
 
-static const auto VOICE_NAME = "ava";
-
 static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
                              VE_CALLBACKMSG *pcbMessage)
 {
@@ -67,10 +65,10 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
     return ret; // returning an error will cause the ve to stop processing.
 }
 
-CerenceTTS::CerenceTTS(QObject *parent)
+CerenceTTS::CerenceTTS(const QString &voice, QObject *parent)
     : QObject(parent)
 {
-    initTTS();
+    initTTS(voice);
     initAudio();
 
     qDebug() << __func__;
@@ -201,7 +199,27 @@ void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
     }
 }
 
-void CerenceTTS::initTTS()
+QStringList CerenceTTS::availableLanguages() const
+{
+    return m_languageNames.keys();
+}
+
+QStringList CerenceTTS::availableVoices(const QString &language) const
+{
+    return m_voicesMap.value(language);
+}
+
+const QMap<QString, QString> &CerenceTTS::languageNames() const
+{
+    return m_languageNames;
+}
+
+const QMap<QString, QStringList> &CerenceTTS::voicesMap() const
+{
+    return m_voicesMap;
+}
+
+void CerenceTTS::initTTS(const QString &voice)
 {
     memset(&m_stInstall, 0, sizeof(m_stInstall));
     memset(&m_stResources, 0, sizeof(m_stResources));
@@ -235,17 +253,22 @@ void CerenceTTS::initTTS()
         return;
     }
 
-    // set up params: Specify the voice that we want to use.
-    m_ttsParam[0].eID = VE_PARAM_VOICE;
-    strncpy(m_ttsParam[0].uValue.szStringValue, VOICE_NAME, VE_MAX_STRING_LENGTH);
+    queryLanguagesVoicesInfo();
+
+    VE_PARAM ttsParam[3];
+
+    // First set voice
+    ttsParam[0].eID = VE_PARAM_VOICE;
+    strncpy(ttsParam[0].uValue.szStringValue, voice.toStdString().c_str(), VE_MAX_STRING_LENGTH);
+
     // and use UTF-8 as input text
-    m_ttsParam[1].eID = VE_PARAM_TYPE_OF_CHAR;
-    m_ttsParam[1].uValue.usValue = VE_TYPE_OF_CHAR_UTF8;
+    ttsParam[1].eID = VE_PARAM_TYPE_OF_CHAR;
+    ttsParam[1].uValue.usValue = VE_TYPE_OF_CHAR_UTF8;
 
-    m_ttsParam[2].eID = VE_PARAM_MARKER_MODE;
-    m_ttsParam[2].uValue.usValue = (NUAN_U16) VE_MRK_ON;
+    ttsParam[2].eID = VE_PARAM_MARKER_MODE;
+    ttsParam[2].uValue.usValue = (NUAN_U16) VE_MRK_ON;
 
-    nErrcode = ve_ttsSetParamList(m_hTtsInst, &m_ttsParam[0], 3);
+    nErrcode = ve_ttsSetParamList(m_hTtsInst, &ttsParam[0], 3);
     if (nErrcode != NUAN_OK) {
         qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
         return;
@@ -344,6 +367,65 @@ void CerenceTTS::initAudio()
 
 }
 
+void CerenceTTS::queryLanguagesVoicesInfo()
+{
+    m_voicesMap.clear();
+    m_languageNames.clear();
+
+    NUAN_U16 numLanguages = 0;
+    auto nErrcode = ve_ttsGetLanguageList(m_hSpeech, NULL, &numLanguages);
+    if (nErrcode != NUAN_OK) {
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+        return;
+    }
+
+    QByteArray buffLanguages(sizeof(VE_LANGUAGE) * numLanguages, 0);
+    VE_LANGUAGE *pLangList = reinterpret_cast<VE_LANGUAGE *>(buffLanguages.data());
+
+    nErrcode = ve_ttsGetLanguageList(m_hSpeech, pLangList, &numLanguages);
+    if (nErrcode != NUAN_OK) {
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+        return;
+    }
+
+    for (int i = 0; i < numLanguages; ++i) {
+        qDebug("%d>> %s, %s, %s", i,
+               pLangList[i].szLanguage,
+               pLangList[i].szLanguageTLW,
+               pLangList[i].szVersion);
+
+        const QString langCode = pLangList[i].szLanguageTLW; // ex. ENU, NON, etc
+        const QString language = pLangList[i].szLanguage;    // American English, Norwegian
+
+        NUAN_U16 numVoices = 0;
+        nErrcode = ve_ttsGetVoiceList(m_hSpeech, pLangList[i].szLanguage, NULL, &numVoices);
+        if (nErrcode != NUAN_OK) {
+            qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+            return;
+        }
+
+        QByteArray buffVoices(sizeof(VE_VOICEINFO) * numVoices, 0);
+        VE_VOICEINFO *pVoiceList = reinterpret_cast<VE_VOICEINFO *>(buffVoices.data());
+
+        nErrcode = ve_ttsGetVoiceList(m_hSpeech, pLangList[i].szLanguage, pVoiceList, &numVoices);
+        if (nErrcode != NUAN_OK) {
+            qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+            return;
+        }
+
+        QStringList voices;
+        for (int j = 0; j < numVoices; j++) {
+            qDebug("  %d>> %s, %s, %s\n", j, pVoiceList[j].szVoiceName,
+                   pVoiceList[j].szVoiceAge, pVoiceList[j].szVoiceType);
+
+            voices.append(pVoiceList[j].szVoiceName);
+        }
+
+        m_voicesMap[langCode] = voices;
+        m_languageNames[langCode] = language;
+    }
+}
+
 void CerenceTTS::stopAudio() {
     if(m_audioIO)
         delete m_audioIO;
@@ -374,5 +456,3 @@ int CerenceTTS::getSpeechRate() {
         qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
     return (int) prm.uValue.usValue;
 }
-
-

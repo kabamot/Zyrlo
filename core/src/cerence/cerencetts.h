@@ -14,6 +14,7 @@
 #include <QFuture>
 #include <QVector>
 #include <QTimer>
+#include <QMap>
 
 #include <ve_ttsapi.h>
 #include <ve_platform.h>
@@ -29,7 +30,7 @@ class CerenceTTS : public QObject
 {
     Q_OBJECT
 public:
-    CerenceTTS(QObject *parent);
+    CerenceTTS(const QString &voice, QObject *parent);
     ~CerenceTTS();
 
     void say(const QString &text, int delayMs = 0);
@@ -50,6 +51,11 @@ public:
     void setSpeechRate(int nRate); //Range 50 - 400
     int getSpeechRate();
 
+    QStringList availableLanguages() const;
+    QStringList availableVoices(const QString &language) const;
+    const QMap<QString, QStringList> &voicesMap() const;
+    const QMap<QString, QString> &languageNames() const;
+
 signals:
     void sayStarted();
     void sayFinished();
@@ -57,9 +63,10 @@ signals:
     void wordNotify(int wordPosition, int wordLength);
 
 private:
-    void initTTS();
+    void initTTS(const QString &voice);
     void initAudio();
     void stopAudio();
+    void queryLanguagesVoicesInfo();
 
 private:
     VE_INSTALL              m_stInstall;
@@ -68,7 +75,6 @@ private:
     VE_HINSTANCE            m_hTtsInst;
 
     // array of parameters for the vocalizer
-    VE_PARAM                m_ttsParam[16];
     VE_OUTDEVINFO           m_stOutDevInfo;
 
     QByteArray              m_ttsBuffer {100 * 1024, 0};
@@ -83,5 +89,7 @@ private:
     QMutex                  m_wordMarksMutex;
     QTimer                  m_speakingStartTimer;
     PositionMapper          m_positionMapper;
+    QMap<QString, QString>  m_languageNames;
+    QMap<QString, QStringList>  m_voicesMap;
 };
 

@@ -71,6 +71,7 @@ public slots:
     void spellText(const QString &text);
     void speechRateUp();
     void speechRateDown();
+    void nextVoice();
 
 private:
     OcrHandler &ocr();
@@ -85,6 +86,7 @@ private:
     bool isPageValid() const;
     void changeVoiceSpeed(int nStep);
     QString prepareTextToSpeak(QString text);
+    void populateVoices();
 
 private slots:
     void onNewTextExtracted();
@@ -103,7 +105,10 @@ private slots:
     void onGesture(int nGest);
 
 private:
+    QVector<CerenceTTS *>m_ttsEnginesList;
     CerenceTTS *m_ttsEngine {nullptr};
+    int         m_currentTTSIndex {0};
+    QStringList m_voices;
     HWHandler  *m_hwhandler {nullptr};
     int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};

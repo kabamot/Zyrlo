@@ -35,6 +35,8 @@ public:
     bool recallSavedImage(int indx);
     void readRecallImage();
     const cv::Mat & getRecallImg() const;
+    bool gesturesOn() const;
+    void setGesturesUi(bool bOn);
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);
@@ -45,6 +47,7 @@ signals:
     void onBtButton(int nButton, bool bDown);
     void onButton(int nButton, bool bDown);
     void onBtBattery(int nVal);
+    void onGesture(int nGesture);
 
 private:
     std::atomic_bool    m_stop {false};

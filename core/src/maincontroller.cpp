@@ -28,7 +28,7 @@ using namespace cv;
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
-constexpr int LONG_PRESS_DELAY = 3000;
+constexpr int LONG_PRESS_DELAY = 1500;
 
 MainController::MainController()
 {
@@ -75,6 +75,7 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::onBtButton, this, &MainController::onBtButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onButton, this, &MainController::onButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::onGesture, this, &MainController::onGesture, Qt::QueuedConnection);
 
     m_translator.Init(TRANSLATION_FILE);
     m_help.Init(HELP_FILE);
@@ -370,10 +371,12 @@ void MainController::onToggleAudioSink() {
 
 void MainController::readerReady() {
     stopBeeping();
+    m_state = State::Paused;
+    if (m_ttsEngine->isSpeaking()) {
+        m_ttsEngine->pause();
+    }
     sayTranslationTag("PLACE_DOC");
-    m_currentParagraphNum = -1;
-    ocr().stopProcess();
-}
+ }
 
 void MainController::targetNotFound()
 {
@@ -741,11 +744,21 @@ void MainController::onResetDevice() {
 }
 
 void MainController::onToggleGestures() {
-    if(m_beepSound)
-        m_beepSound->play();
+    bool bOn = !m_hwhandler->gesturesOn();
+    sayTranslationTag(bOn ? "GESTURES_ON" : "GESTURES_OFF");
+    m_hwhandler->setGesturesUi(bOn);
 }
 
 void MainController::onToggleSingleColumn() {
     if(m_beepSound)
         m_beepSound->play();
+}
+
+void MainController::onGesture(int nGest) {
+    switch(nGest) {
+    case 1:
+        backSentence();
+    case 2:
+        pauseResume();
+    }
 }

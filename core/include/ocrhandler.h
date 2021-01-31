@@ -59,7 +59,8 @@ private:
 
 private:
     int m_languageCode {1};
-    int m_processingParagraphNum {0};
+    int m_processingParagraphNum {-1};
+    int m_currentParagraphId {-1};
     TextPage *m_page {nullptr};
     QTimer m_timer;
 };

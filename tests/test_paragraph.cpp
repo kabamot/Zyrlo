@@ -11,8 +11,16 @@
 
 TEST_CASE("Paragraph")
 {
-    Paragraph p0(0, 0, 10);
-    Paragraph p1(1, 10, 15);
+    Paragraph p0(0);
+    p0.addLine("one");
+    p0.addLine("two\nthree");
+    p0.setFirstLineNum(0);
+    p0.setCompleted();
+
+    Paragraph p1(1);
+    p1.addLine("four, five");
+    p1.setFirstLineNum(2);
+
     Paragraph p2;
 
     DOCTEST_SUBCASE("Paragraph id") {
@@ -28,7 +36,7 @@ TEST_CASE("Paragraph")
 
     DOCTEST_SUBCASE("Paragraph fistLineNum") {
         CHECK_EQ(p0.firstLineNum(), 0);
-        CHECK_EQ(p1.firstLineNum(), 10);
+        CHECK_EQ(p1.firstLineNum(), 2);
         CHECK_EQ(p2.firstLineNum(), -1);
     }
 
@@ -38,31 +46,47 @@ TEST_CASE("Paragraph")
     }
 
     DOCTEST_SUBCASE("Paragraph numLines") {
-        CHECK_EQ(p0.numLines(), 10);
-        CHECK_EQ(p1.numLines(), 15);
-        CHECK_EQ(p2.numLines(), -1);
+        CHECK_EQ(p0.numLines(), 2);
+        CHECK_EQ(p1.numLines(), 1);
+        CHECK_EQ(p2.numLines(), 0);
     }
 
     DOCTEST_SUBCASE("Paragraph setFistLineNum") {
-        p2.setNumLines(9);
-        CHECK_EQ(p2.numLines(), 9);
+        p2.setFirstLineNum(9);
+        CHECK_EQ(p2.firstLineNum(), 9);
     }
 
     DOCTEST_SUBCASE("Paragraph addLines with extra spaces") {
-        p0.addLine("  Hello     world.    ");
-        p0.addLine(" One two three  ");
-        CHECK(p0.text() == "Hello world. One two three");
+        p2.addLine("  Hello     world.    ");
+        p2.addLine(" One two three  ");
+        CHECK(p2.text() == "Hello world. One two three");
     }
 
     DOCTEST_SUBCASE("Paragraph addLines without spaces") {
-        p0.addLine("Hello world.");
-        p0.addLine("One two three");
-        CHECK_EQ(p0.text(), "Hello world. One two three");
+        p2.addLine("Hello world.");
+        p2.addLine("One two three");
+        CHECK_EQ(p2.text(), "Hello world. One two three");
     }
 
     DOCTEST_SUBCASE("Paragraph addLines with dash") {
-        p0.addLine("Hel-");
-        p0.addLine(" lo world  ");
-        CHECK_EQ(p0.text(), "Hello world");
+        p2.addLine("Hel-");
+        p2.addLine(" lo world  ");
+        CHECK_EQ(p2.text(), "Hello world");
+    }
+
+    DOCTEST_SUBCASE("isCompleted") {
+        CHECK(p0.isComplete());
+        CHECK_FALSE(p1.isComplete());
+        CHECK_FALSE(p2.isComplete());
+    }
+
+    DOCTEST_SUBCASE("hasText") {
+        CHECK(p0.hasText());
+        CHECK(p1.hasText());
+        CHECK_FALSE(p2.hasText());
+    }
+
+    DOCTEST_SUBCASE("length") {
+        CHECK_EQ(p0.length(), 13);
     }
 }

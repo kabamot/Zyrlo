@@ -18,7 +18,7 @@ class Paragraph
 {
 public:
     Paragraph() = default;
-    explicit Paragraph(int id, int firstLineNum, int numLines);
+    explicit Paragraph(int id);
 
     int id() const;
     void setId(int id);
@@ -32,12 +32,12 @@ public:
     void setFirstLineNum(int firstLine);
 
     int numLines() const;
-    void setNumLines(int numLines);
 
     void addLine(const QString &line);
     QString text() const;
 
     bool isComplete() const;
+    void setCompleted();
     bool hasText() const;
 
     TextPosition prevWordPosition(int pos) const;
@@ -67,9 +67,10 @@ private:
 private:
     int m_id {-1};
     int m_firstLineNum {-1};
-    int m_numLines {-1};
     int m_addedNumLines {0};
     int m_paragraphPosition {-1};
+    bool m_isComplete {false};
+
     QStringList m_lines;
 
     Positions m_words;

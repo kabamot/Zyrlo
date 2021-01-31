@@ -9,10 +9,8 @@
 
 #include <QRegularExpression>
 
-Paragraph::Paragraph(int id, int firstLineNum, int numLines)
+Paragraph::Paragraph(int id)
     : m_id(id)
-    , m_firstLineNum(firstLineNum)
-    , m_numLines(numLines)
 {
 
 }
@@ -54,12 +52,7 @@ void Paragraph::setFirstLineNum(int firstLine)
 
 int Paragraph::numLines() const
 {
-    return m_numLines;
-}
-
-void Paragraph::setNumLines(int numLines)
-{
-    m_numLines = numLines;
+    return m_lines.size();
 }
 
 void Paragraph::addLine(const QString &line)
@@ -74,7 +67,6 @@ void Paragraph::addLine(const QString &line)
     }
 
     m_lines.append(newLine);
-    ++m_addedNumLines;
 
     parseWords();
     parseSenteces();
@@ -87,12 +79,17 @@ QString Paragraph::text() const
 
 bool Paragraph::isComplete() const
 {
-    return m_addedNumLines >= m_numLines;
+    return m_isComplete;
+}
+
+void Paragraph::setCompleted()
+{
+    m_isComplete = true;
 }
 
 bool Paragraph::hasText() const
 {
-    return m_addedNumLines > 0;
+    return !m_lines.isEmpty();
 }
 
 TextPosition Paragraph::prevWordPosition(int pos) const

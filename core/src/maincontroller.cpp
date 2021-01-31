@@ -34,7 +34,6 @@ MainController::MainController()
 {
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
-        emit formattedTextUpdated(ocr().textPage()->formattedText());
     });
 
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);

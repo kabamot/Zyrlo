@@ -78,6 +78,9 @@ bool OcrHandler::stopProcess()
 
     m_timer.stop();
     destroyTextPage();
+    m_processingParagraphNum = -1;
+    m_currentParagraphId = -1;
+
     return true;
 }
 
@@ -104,6 +107,7 @@ const TextPage *OcrHandler::textPage() const
 void OcrHandler::checkProcess()
 {
     if (isIdle()) {
+        m_page->setCompleted();
         m_timer.stop();
         emit finished();
     }
@@ -132,17 +136,8 @@ void OcrHandler::createTextPage()
         destroyTextPage();
     }
 
-    const auto numParagraphs = zyrlo_proc_get_num_paragraphs();
-    m_page = new TextPage(numParagraphs);
-
-    for (int i = 0; i < numParagraphs; ++i) {
-        const auto numLines = zyrlo_proc_get_num_lines(i);
-        if (numLines <= 0)
-            continue;
-        Q_ASSERT(numLines > 0);
-        m_page->setParagraphId(i, i);
-        m_page->setParagraphNumLines(i, numLines);
-    }
+    //const auto numParagraphs = zyrlo_proc_get_num_paragraphs();
+    m_page = new TextPage();
 }
 
 void OcrHandler::destroyTextPage()
@@ -161,9 +156,15 @@ bool OcrHandler::getOcrResults()
     while (resultsCode == 0) {
         resultsCode = zyrlo_proc_get_result(&textLine);
         if (resultsCode == 0) {
-            m_page->addParagraphLine(textLine.nParagraphId, textLine.sText);
+            if (m_currentParagraphId != textLine.nParagraphId) {
+                // New paragraph started
+                ++m_processingParagraphNum;
+                m_currentParagraphId = textLine.nParagraphId;
+                m_page->addParagraph();
+            }
+
+            m_page->addParagraphLine(textLine.sText);
             hasNewResult = true;
-            m_processingParagraphNum = textLine.nParagraphId;
         }
     }
 

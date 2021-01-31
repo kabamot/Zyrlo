@@ -17,23 +17,25 @@
 class TextPage
 {
 public:
-    explicit TextPage(int numOfParagraphs);
+    TextPage() = default;
 
     int numParagraphs() const;
 
     const Paragraph &paragraph(int num) const;
     QString text() const;
     QString getText(int paragraphNum, int position) const;
-    QString formattedText() const;
 
-    void setParagraphId(int paragraphNum, int id);
-    void setParagraphNumLines(int paragraphNum, int numLines);
-    void addParagraphLine(int paragraphNum, const QString &text);
+    void addParagraph();
+    void addParagraphLine(const QString &text);
+
+    bool isComplete() const;
+    void setCompleted();
 
 private:
     bool isNumOk(int num) const;
 
 private:
+    bool m_isComplete {false};
     QVector<Paragraph> m_paragraphs;
 };
 

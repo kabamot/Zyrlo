@@ -50,7 +50,6 @@ public:
 
 signals:
     void textUpdated(const QString &text);
-    void formattedTextUpdated(const QString &text);
     void finished();
     void wordPositionChanged(const TextPosition &position);
     void previewUpdated(const cv::Mat & img);

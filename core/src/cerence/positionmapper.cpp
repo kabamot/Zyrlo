@@ -35,14 +35,11 @@ void PositionMapper::setText(const QString &text)
 
 int PositionMapper::position(int pos) const
 {
-    if (m_positions.empty())
-        return pos;
-
     auto it = std::find_if(std::crbegin(m_positions), std::crend(m_positions),
                            [pos](const auto &a) { return pos >= a.first; });
 
     if (it == std::crend(m_positions))
-        return 0;
+        return pos;
 
     return pos - it->second;
 }

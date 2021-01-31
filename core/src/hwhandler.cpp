@@ -80,6 +80,12 @@ void HWHandler::run()
         case ZyrloCamera::eTargetNotFound:
             emit targetNotFound();
             break;
+        case ZyrloCamera::eGestBackSentence:
+            emit onGesture(1);
+            break;
+        case ZyrloCamera::eGestPauseResume:
+            emit onGesture(2);
+            break;
         }
 
         QThread::msleep(1);
@@ -187,5 +193,13 @@ void HWHandler::readRecallImage() {
 
 const cv::Mat & HWHandler::getRecallImg() const {
     return m_recallImg;
+}
+
+bool HWHandler::gesturesOn() const {
+    return m_zcam.gesturesOn();
+}
+
+void HWHandler::setGesturesUi(bool bOn) {
+    m_zcam.setGesturesUi(bOn);
 }
 

@@ -100,6 +100,7 @@ private slots:
     void onResetDevice();
     void onToggleGestures();
     void onToggleSingleColumn();
+    void onGesture(int nGest);
 
 private:
     CerenceTTS *m_ttsEngine {nullptr};

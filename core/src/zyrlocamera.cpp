@@ -165,11 +165,37 @@ void ZyrloCamera::PrintMessage(const char *format, ...) {
     }
 }
 
-//eCalibration = 0,
-//eLookinForTarget,
-//eReadyOnTarget,
-//eLookingForStableimage,
-//eLookingForGestures
+ZyrloCamera::Zcevent ZyrloCamera::FollowGestures(Point2f motion) {
+    qDebug() << "FollowGestures:" << motion.x << motion.y << Qt::endl;
+    Zcevent ret = eShowPreviewImge;
+    if(m_nWait > 0) --m_nWait;
+    if(motion.x > 2) {
+        ++m_nMotionPX;
+        qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+        m_nMotionNX = 0;
+        if(m_nMotionPX == 3 && m_nWait == 0) {
+            m_nWait = 20;
+             ret = eGestPauseResume;
+        }
+    }
+    else {
+        m_nMotionPX = 0;
+    }
+    if(motion.x < -2) {
+        qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+        m_nMotionPX = 0;
+        ++m_nMotionNX;
+        if(m_nMotionNX == 3 && m_nWait == 0) {
+            qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+            m_nWait = 20;
+            ret = eGestBackSentence;
+        }
+    }
+    else {
+        m_nMotionNX = 0;
+    }
+    return ret;
+}
 
 ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
     if(AcquireImage() == 1) // Full res snapshot
@@ -222,9 +248,8 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
             break;
         }
         if(m_bEnableGestureUI) {
-            Point2f mtn = GetMotion(m_previewImgPyr2);
-            if(mtn.dot(mtn) >= 10.0f)
-                printf("Motion: x = %f\ty = %f\n", mtn.x, mtn.y);
+            Point2f motion = GetMotion(m_previewImgPyr2);
+            zcev = FollowGestures(motion);
         }
         break;
     }
@@ -782,3 +807,13 @@ bool ZyrloCamera::DetectImageChange(const Mat & img) {
     return TRUE;
 }
 
+bool ZyrloCamera::gesturesOn() const {
+    return m_bEnableGestureUI;
+}
+
+void ZyrloCamera::setGesturesUi(bool bOn) {
+    m_nWait = 20;
+    m_nMotionPX = m_nMotionNX = 0;
+    m_md.Clear();
+    m_bEnableGestureUI = bOn;
+}

@@ -19,6 +19,17 @@ typedef unsigned int  UINT;
 #define MOTION_DETECTOR_STEADY_STATE_COUNT_FULLRES		3
 
 class ZyrloCamera {
+public:
+    typedef enum {
+        eShowPreviewImge = 0,
+        eTargetNotFound,
+        eReaderReady,
+        eStartOcr,
+        eGestBackSentence,
+        eGestPauseResume
+    } Zcevent;
+
+private:
         const int m_nFullResImgNum = 1, m_nMinExpValue = 4, m_nMaxExpValue = 1800, m_nAvgTargetBrightness = 150;
         int m_nCurrImgWidth = 0, m_nCurrImgHeight = 0, m_nCurrBytesPerLine = 0;
         int m_fd = -1;
@@ -34,7 +45,7 @@ class ZyrloCamera {
 
         buffer *m_buffers;
         unsigned int m_nBuffers =  0;
-        int m_nGain = 200, m_nExposure = 300;
+        int m_nGain = 200, m_nExposure = 1788;
         int m_nCamBufInd = 0, m_nCnt = 0, m_timeStamp = 0;
         bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true;
 
@@ -45,7 +56,7 @@ class ZyrloCamera {
         COFMotionDetector m_md;
         cv::Mat m_previewImg, m_previewImgPyr1, m_previewImgPyr2, m_ocrImg, m_targetImg, m_targetCorr, m_firstStableImg;
         vector<cv::Mat> m_vFullResRawImgs, m_vFullResImgs, m_vFullResGreyImgs;
-        bool m_bEnableGestureUI = true;
+        bool m_bEnableGestureUI = false;
         float m_fLookForTargetHighThreshold = 0.8f;
         float m_fLookForTargetLowThreshold = 0.7f;
         float m_fImageChangeSensitivity = IMAGE_CHANGE_SENSITIVITY_F;
@@ -55,6 +66,9 @@ class ZyrloCamera {
 
         int m_nNoChange = 0, m_nMotionDetected = 0;
 
+        int m_nWait = 20, m_nMotionPX = 0, m_nMotionNX = 0;
+
+
         typedef enum {
                 eCalibration = 0,
                 eLookinForTarget,
@@ -63,7 +77,7 @@ class ZyrloCamera {
                 eLookingForGestures
         } ZcState;
 
-        ZcState m_eState = eCalibration;
+        ZcState m_eState = eLookinForTarget;//eCalibration;
 
         void init_mmap();
         void uninit_mmap();
@@ -81,15 +95,9 @@ class ZyrloCamera {
         float LookForTarget(const cv::Mat & fastPreviewImgBW, const cv::Mat & targetBitmapBW, int nRadius);
         void adjustWb(cv::Mat & bayer);
         bool DetectImageChange(const cv::Mat & img);
+        Zcevent FollowGestures(cv::Point2f motion);
 
 public:
-        typedef enum {
-            eShowPreviewImge = 0,
-            eTargetNotFound,
-            eReaderReady,
-            eStartOcr
-        } Zcevent;
-
         ZyrloCamera();
         int initCamera();
         virtual ~ZyrloCamera();
@@ -110,6 +118,8 @@ public:
         void flashLed(int msecs);
         void setLed(bool bOn);
         int AcquireFullResImage(int nGain, int nExposure, int indx);
+        bool gesturesOn() const;
+        void setGesturesUi(bool bOn);
 };
 
 #endif /* ZYRLOCAMERA_H_ */

@@ -17,6 +17,8 @@
 constexpr auto DATA_DIR = "/opt/zyrlo/Distrib";
 constexpr int STATUS_MAX_SIZE = 64;
 
+using namespace std;
+
 OcrHandler::OcrHandler()
 {
     const auto retCode = zyrlo_proc_init(DATA_DIR, m_languageCode);
@@ -56,7 +58,7 @@ bool OcrHandler::startProcess(const cv::Mat &image)
         emit finished();
         return false;
     }
-    imwrite("OrcrImg.bmp", image);
+    //imwrite(string(getenv("HOME")) + "/OcrImg.bmp", image);
     const auto retCode = zyrlo_proc_start_with_bayer(image);
     if (retCode == 0) {
         m_timer.start();

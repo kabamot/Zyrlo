@@ -85,16 +85,28 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         m_controller.toggleAudioSink();
         break;
     case Qt::Key_F1:
-        m_controller.ReadImage(1);
+        if(ev->modifiers() & Qt::SHIFT)
+            m_controller.SaveImage(1);
+        else
+            m_controller.ReadImage(1);
         break;
     case Qt::Key_F2:
-        m_controller.ReadImage(2);
+        if(ev->modifiers() & Qt::SHIFT)
+            m_controller.SaveImage(2);
+        else
+            m_controller.ReadImage(2);
         break;
     case Qt::Key_F3:
-        m_controller.ReadImage(3);
+        if(ev->modifiers() & Qt::SHIFT)
+            m_controller.SaveImage(3);
+        else
+            m_controller.ReadImage(3);
         break;
     case Qt::Key_F4:
-        m_controller.ReadImage(4);
+        if(ev->modifiers() & Qt::SHIFT)
+            m_controller.SaveImage(4);
+        else
+            m_controller.ReadImage(4);
         break;
     }
 }

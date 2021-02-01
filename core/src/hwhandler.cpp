@@ -63,7 +63,7 @@ void HWHandler::stop()
 
 void HWHandler::run()
 {
-    m_zcam.initCamera();
+     m_zcam.initCamera();
     while(!m_stop) {
         // Main stuff here
 

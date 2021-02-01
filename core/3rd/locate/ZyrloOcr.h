@@ -5,6 +5,16 @@
 
 #define MAX_LINE_LENGTH 2048
 
+#define ZRL_ENGLISH_US		0x1ULL
+#define ZRL_FRENCH			0x2ULL
+#define ZRL_GERMAN			0x4ULL
+#define ZRL_ITALIAN			0x8ULL
+#define ZRL_SPANISH			0x10ULL
+#define ZRL_PORTUGUESE		0x20ULL
+#define ZRL_DANISH			0x40ULL
+#define ZRL_DUTCH 			0x80ULL
+#define ZRL_NORWEGIAN		0x100ULL
+
 extern "C" {
 
 typedef struct _text_line {

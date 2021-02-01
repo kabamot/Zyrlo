@@ -15,7 +15,7 @@ typedef unsigned char UCHAR;
 typedef unsigned int  UINT;
 
 #define IMAGE_CHANGE_SENSITIVITY_F 						2.0f//0.3f //0.15f
-#define MOTION_DETECTOR_STEADY_STATE_COUNT_PREVIEW		10 //15
+#define MOTION_DETECTOR_STEADY_STATE_COUNT_PREVIEW		20 //15
 #define MOTION_DETECTOR_STEADY_STATE_COUNT_FULLRES		3
 
 class ZyrloCamera {

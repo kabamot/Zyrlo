@@ -18,6 +18,7 @@
 #include <QtConcurrent>
 #include "BTComm.h"
 #include "BaseComm.h"
+#include "ZyrloOcr.h"
 
 
 using namespace cv;
@@ -35,9 +36,22 @@ struct LangVoice {
     QString voice;
 };
 
+struct LangVoiceComb {
+    string m_sDescription;
+    vector<string> m_vlangs;
+    unsigned long long m_uLang_mask;
+    vector<int> m_ttsEngIndxs;
+};
+
+const vector<LangVoiceComb> g_vLangVoiceSettings {
+    {"English", {"enu"}, ZRL_ENGLISH_US, {0}},
+    {"Norsk", {"nor"}, ZRL_NORWEGIAN, {1}},
+    {"Norsk og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
+};
+
 const QVector<LangVoice> LANGUAGES = {
-    { "enu", "ava" },
-    { "nor", "henrik" },
+    { "enu", "ava"},
+    { "nor", "henrik"},
 };
 
 MainController::MainController()
@@ -98,7 +112,7 @@ MainController::MainController()
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
 
-//    m_hwhandler->start();
+    m_hwhandler->start();
 }
 
 void MainController::start(const QString &filename)
@@ -749,7 +763,18 @@ void MainController::onBtBattery(int nVal) {
 }
 
 void MainController::onToggleVoice() {
-
+    int nIndx = (m_nCurrentLangaugeSettingIndx + 1) % g_vLangVoiceSettings.size();
+    if(!ocr().setLanguage(g_vLangVoiceSettings[nIndx].m_uLang_mask)) {
+        ocr().stopProcess();
+        m_beepSound->play();
+        return;
+    }
+    m_nCurrentLangaugeSettingIndx = nIndx;
+    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front());
+    m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
+    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
+    string sMsg = m_translator.GetString("VOICE_SET_TO") + " " + g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_sDescription;
+    sayText(sMsg.c_str());
 }
 
 void MainController::onSpellCurrentWord()

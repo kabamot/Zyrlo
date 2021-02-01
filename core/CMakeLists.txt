@@ -86,6 +86,7 @@ target_link_libraries(${LIB_NAME}
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::Concurrent
         ${OpenCV_LIBS}
+        opencv_world
         wiringPi
         bluetooth
 

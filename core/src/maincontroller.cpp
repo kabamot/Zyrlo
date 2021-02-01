@@ -396,9 +396,9 @@ bool MainController::toggleAudioSink() {
         delete m_beepSound;
         m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
      }
-    if(m_ttsEngine) {
-        m_ttsEngine->resetAudio();
-    }
+     for (auto ttsEngine : m_ttsEnginesList) {
+            ttsEngine->resetAudio();
+     }
     return bret;
 }
 

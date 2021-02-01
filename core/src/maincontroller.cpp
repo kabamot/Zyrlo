@@ -317,8 +317,9 @@ void MainController::nextVoice()
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 
     m_translator.SetLanguage(langVoice.lang.toStdString());
-    QString voiceText = QStringLiteral("%1, %2").arg(m_translator.GetString("VOICE_SET_TO").c_str(),
-                                                     langVoice.voice);
+    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=500\)")
+                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(),
+                                 langVoice.voice, CERENCE_ESC);
     sayText(voiceText);
 }
 

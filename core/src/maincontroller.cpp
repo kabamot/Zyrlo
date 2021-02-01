@@ -98,7 +98,7 @@ MainController::MainController()
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
 
-//    m_hwhandler->start();
+    m_hwhandler->start();
 }
 
 void MainController::start(const QString &filename)

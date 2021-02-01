@@ -313,11 +313,13 @@ void MainController::nextVoice()
 //    sayText(m_voices[m_currentVoiceNum]);
 //    QString voice = m_voices[m_currentVoiceNum].split(',').back().trimmed();
 
-    const auto lang = LANGUAGES[m_currentTTSIndex].lang.toStdString();
+    const auto langVoice = LANGUAGES[m_currentTTSIndex];
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 
-    m_translator.SetLanguage(lang);
-    sayTranslationTag("VOICE_SET_TO");
+    m_translator.SetLanguage(langVoice.lang.toStdString());
+    QString voiceText = QStringLiteral("%1, %2").arg(m_translator.GetString("VOICE_SET_TO").c_str(),
+                                                     langVoice.voice);
+    sayText(voiceText);
 }
 
 OcrHandler &MainController::ocr()
@@ -786,6 +788,9 @@ QString MainController::prepareTextToSpeak(QString text)
 
 void MainController::populateVoices()
 {
+    if (!m_ttsEngine)
+        return;
+
     m_voices.clear();
 
     for (const auto &langCode : m_ttsEngine->availableLanguages()) {

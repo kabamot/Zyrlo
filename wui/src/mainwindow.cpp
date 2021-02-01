@@ -102,7 +102,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
 void MainWindow::start()
 {
     m_prevPosition.clear();
-    m_controller.start(ui->fileNameLineEdit->text());
+    m_controller.startFile(ui->fileNameLineEdit->text());
 }
 
 void MainWindow::updateText(QString text)

@@ -72,15 +72,11 @@ MainController::MainController()
         if(bPlayShutterSound)
             m_ttsEngine->stop();
 
-        m_ttsStartPositionInParagraph = 0;
-        m_currentParagraphNum = 0;
-
         qDebug() << "imageReceived 2\n";
         if(m_shutterSound && bPlayShutterSound)
             m_shutterSound->play();
         startBeeping();
-        ocr().startProcess(image);
-        m_state = State::SpeakingPage;
+        startImage(image);
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
         qDebug() << "received" << (int)button;
@@ -102,20 +98,20 @@ MainController::MainController()
     m_hwhandler->start();
 }
 
-void MainController::start(const QString &filename)
+void MainController::startFile(const QString &filename)
 {
-//    QString text = filename;
-//    text.replace("<>", CERENCE_ESC);
-//    sayText(text);
-//    return;
+    cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
+    startImage(image);
+}
 
+void MainController::startImage(const Mat &image)
+{
     m_ttsEngine->stop();
 
     m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
     m_wordNavigationWithDelay = false;
-    cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
 }
@@ -318,9 +314,9 @@ void MainController::nextVoice()
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 
     m_translator.SetLanguage(langVoice.lang.toStdString());
-    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=500\)")
-                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(),
-                                 langVoice.voice, CERENCE_ESC);
+    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=%4\)")
+                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(), langVoice.voice, CERENCE_ESC)
+                            .arg(m_state == State::SpeakingPage ? 500 : 0);
     sayText(voiceText);
 }
 

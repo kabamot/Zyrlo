@@ -148,6 +148,7 @@ void MainController::pauseResume()
         if (m_ttsEngine->isPaused()) {
             m_ttsEngine->resume();
         } else {
+            m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
             startSpeaking();
         }
         break;

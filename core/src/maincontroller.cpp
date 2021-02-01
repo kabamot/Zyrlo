@@ -37,6 +37,7 @@ struct LangVoice {
 
 const QVector<LangVoice> LANGUAGES = {
     { "enu", "ava" },
+    { "nor", "nora" },
     { "nor", "henrik" },
 };
 

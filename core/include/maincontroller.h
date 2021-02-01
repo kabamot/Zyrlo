@@ -36,7 +36,8 @@ class MainController : public QObject
 public:
     MainController();
 
-    void start(const QString &filename);
+    void startFile(const QString &filename);
+    void startImage(const cv::Mat &image);
     void snapImage();
     void flashLed();
     void setLed(bool bOn);

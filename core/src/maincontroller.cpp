@@ -45,13 +45,14 @@ struct LangVoiceComb {
 
 const vector<LangVoiceComb> g_vLangVoiceSettings {
     {"English", {"enu"}, ZRL_ENGLISH_US, {0}},
-    {"Norsk", {"nor"}, ZRL_NORWEGIAN, {1}},
+    {"Norsk", {"nor"}, ZRL_NORWEGIAN, {2}},
     {"Norsk og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
 };
 
 const QVector<LangVoice> LANGUAGES = {
-    { "enu", "ava"},
-    { "nor", "henrik"},
+    { "enu", "ava" },
+    { "nor", "nora" },
+    { "nor", "henrik" },
 };
 
 MainController::MainController()
@@ -85,15 +86,11 @@ MainController::MainController()
         if(bPlayShutterSound)
             m_ttsEngine->stop();
 
-        m_ttsStartPositionInParagraph = 0;
-        m_currentParagraphNum = 0;
-
         qDebug() << "imageReceived 2\n";
         if(m_shutterSound && bPlayShutterSound)
             m_shutterSound->play();
         startBeeping();
-        ocr().startProcess(image);
-        m_state = State::SpeakingPage;
+        startImage(image);
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
         qDebug() << "received" << (int)button;
@@ -115,20 +112,20 @@ MainController::MainController()
     m_hwhandler->start();
 }
 
-void MainController::start(const QString &filename)
+void MainController::startFile(const QString &filename)
 {
-//    QString text = filename;
-//    text.replace("<>", CERENCE_ESC);
-//    sayText(text);
-//    return;
+    cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
+    startImage(image);
+}
 
+void MainController::startImage(const Mat &image)
+{
     m_ttsEngine->stop();
 
     m_ttsStartPositionInParagraph = 0;
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
     m_wordNavigationWithDelay = false;
-    cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
 }
@@ -161,6 +158,7 @@ void MainController::pauseResume()
         if (m_ttsEngine->isPaused()) {
             m_ttsEngine->resume();
         } else {
+            m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
             startSpeaking();
         }
         break;
@@ -326,11 +324,14 @@ void MainController::nextVoice()
 //    sayText(m_voices[m_currentVoiceNum]);
 //    QString voice = m_voices[m_currentVoiceNum].split(',').back().trimmed();
 
-    const auto lang = LANGUAGES[m_currentTTSIndex].lang.toStdString();
+    const auto langVoice = LANGUAGES[m_currentTTSIndex];
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 
-    m_translator.SetLanguage(lang);
-    sayTranslationTag("VOICE_SET_TO");
+    m_translator.SetLanguage(langVoice.lang.toStdString());
+    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=%4\)")
+                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(), langVoice.voice, CERENCE_ESC)
+                            .arg(m_state == State::SpeakingPage ? 500 : 0);
+    sayText(voiceText);
 }
 
 OcrHandler &MainController::ocr()
@@ -410,9 +411,9 @@ bool MainController::toggleAudioSink() {
         delete m_beepSound;
         m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
      }
-    if(m_ttsEngine) {
-        m_ttsEngine->resetAudio();
-    }
+     for (auto ttsEngine : m_ttsEnginesList) {
+            ttsEngine->resetAudio();
+     }
     return bret;
 }
 
@@ -810,6 +811,9 @@ QString MainController::prepareTextToSpeak(QString text)
 
 void MainController::populateVoices()
 {
+    if (!m_ttsEngine)
+        return;
+
     m_voices.clear();
 
     for (const auto &langCode : m_ttsEngine->availableLanguages()) {

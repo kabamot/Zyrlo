@@ -55,10 +55,12 @@ bool OcrHandler::startProcess(const cv::Mat &image)
 
     if (image.empty()) {
         qWarning() << "Image is empty";
+        m_page->setCompleted();
         emit finished();
         return false;
     }
     //imwrite(string(getenv("HOME")) + "/OcrImg.bmp", image);
+    createTextPage();
     const auto retCode = zyrlo_proc_start_with_bayer(image);
     if (retCode == 0) {
         m_timer.start();
@@ -115,10 +117,6 @@ void OcrHandler::checkProcess()
     }
 
     if (isOcring()) {
-        if (m_page == nullptr) {
-            createTextPage();
-        }
-
         if (getOcrResults()) {
             emit lineAdded();
         }

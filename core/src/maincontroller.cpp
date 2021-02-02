@@ -44,9 +44,9 @@ struct LangVoiceComb {
 };
 
 const vector<LangVoiceComb> g_vLangVoiceSettings {
-    {"English", {"enu"}, ZRL_ENGLISH_US, {0}},
-    {"Norsk", {"nor"}, ZRL_NORWEGIAN, {2}},
-    {"Norsk og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
+    {"Ava", {"enu"}, ZRL_ENGLISH_US, {0}},
+    {"Henrik", {"nor"}, ZRL_NORWEGIAN, {2}},
+    {"og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
 };
 
 const QVector<LangVoice> LANGUAGES = {
@@ -554,11 +554,12 @@ void MainController::startBeeping() {
 void MainController::startLongPressTimer(void (MainController::*action)(void), int nDelay) {
     const int intvl = 100;
     m_nLongPressCount = nDelay / intvl;
+    m_longPressAction = action;
     if (!m_longPressTimerThread.isRunning())
-        m_longPressTimerThread = QtConcurrent::run([this, action]() {
+        m_longPressTimerThread = QtConcurrent::run([this]() {
             for(; m_nLongPressCount >= 0; --m_nLongPressCount, QThread::msleep(intvl)) {
                 if(m_nLongPressCount == 0) {
-                    emit (this->*action)();
+                    emit (this->*m_longPressAction)();
                     m_ignoreRelease = true;
                     break;
                 }
@@ -590,7 +591,7 @@ void MainController::ReadImage(int indx) {
 }
 
 void MainController::onReadHelp() {
-    sayTranslationTag("BUTTON_HELP");
+    sayText(m_help.GetString("BUTTON_HELP").c_str());
 }
 
 void MainController::onBtButton(int nButton, bool bDown) {
@@ -666,11 +667,12 @@ void MainController::onBtButton(int nButton, bool bDown) {
             }
             break;
         case KP_BUTTON_ROUND_R  :
-            startLongPressTimer(&MainController::spellCurrentWord, LONG_PRESS_DELAY);
+            onSpellCurrentWord();
             break;
          }
     }
     else {
+        qDebug() << "m_keypadButtonMask =" << m_keypadButtonMask <<Qt::endl;
         m_keypadButtonMask &= ~(1 << nButton);
         stopLongPressTimer();
         if(m_keypadButtonMask == 0) {
@@ -692,16 +694,24 @@ void MainController::onBtButton(int nButton, bool bDown) {
     }
 }
 
+static int findOneOfTheButtons(int nButtons) {
+    if(nButtons == 0)
+        return 0;
+    int n = 1;
+    for(; (n & nButtons) == 0; n <<= 1);
+    return n;
+}
+
 void MainController::onButton(int nButton, bool bDown) {
     if(bDown) {
-        m_deviceButtonsMask |= (1 << nButton);
-        switch(nButton) {
+        m_deviceButtonsMask |= nButton;
+        switch(findOneOfTheButtons(nButton)) {
         case BUTTON_PAUSE_MASK   :
-            if((1 << BUTTON_RATE_UP_MASK) & m_keypadButtonMask) {
+            if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
-            if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
+            if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
                 startLongPressTimer(&MainController::toggleVoice, LONG_PRESS_DELAY);
                 break;
             }
@@ -711,20 +721,24 @@ void MainController::onButton(int nButton, bool bDown) {
             startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
-            if((1 << BUTTON_RATE_DN_MASK) & m_keypadButtonMask) {
+            if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
                 m_ignoreRelease = true;
                 onToggleSingleColumn();
                 break;
             }
-            if((1 << BUTTON_PAUSE_MASK) & m_keypadButtonMask) {
+            if(BUTTON_PAUSE_MASK & m_deviceButtonsMask) {
                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             break;
         case BUTTON_RATE_DN_MASK     :
-            if((1 << BUTTON_RATE_UP_MASK) & m_keypadButtonMask) {
+            if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 m_ignoreRelease = true;
                 onToggleSingleColumn();
+                break;
+            }
+            if(BUTTON_PAUSE_MASK & m_deviceButtonsMask) {
+                startLongPressTimer(&MainController::toggleVoice, LONG_PRESS_DELAY);
                 break;
             }
             break;
@@ -732,7 +746,8 @@ void MainController::onButton(int nButton, bool bDown) {
          }
     }
     else {
-        m_deviceButtonsMask &= ~(1 << nButton);
+        m_deviceButtonsMask &= ~nButton;
+        qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
         stopLongPressTimer();
         if(m_deviceButtonsMask == 0) {
             if(m_ignoreRelease) {
@@ -764,10 +779,10 @@ void MainController::onBtBattery(int nVal) {
 }
 
 void MainController::onToggleVoice() {
+    m_beepSound->play();
     int nIndx = (m_nCurrentLangaugeSettingIndx + 1) % g_vLangVoiceSettings.size();
     if(!ocr().setLanguage(g_vLangVoiceSettings[nIndx].m_uLang_mask)) {
         ocr().stopProcess();
-        m_beepSound->play();
         return;
     }
     m_nCurrentLangaugeSettingIndx = nIndx;

@@ -125,6 +125,7 @@ private:
     bool m_ignoreRelease = false;
     unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;
     int m_nLongPressCount = -1;
+    void (MainController::*m_longPressAction)(void);
     int m_nCurrentLangaugeSettingIndx = 0;
 };
 

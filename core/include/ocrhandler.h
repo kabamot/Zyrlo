@@ -39,6 +39,8 @@ public:
     bool isOcring() const;
 
     int  processingParagraphNum() const;
+    bool getForceSingleColumn()const;
+    void setForceSingleColumn(bool bForceSingleColumn);
 
     const TextPage *textPage() const;
 

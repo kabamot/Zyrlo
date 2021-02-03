@@ -44,13 +44,14 @@ struct LangVoiceComb {
 };
 
 const vector<LangVoiceComb> g_vLangVoiceSettings {
-    {"Ava", {"enu"}, ZRL_ENGLISH_US, {0}},
+    {"Malcolm", {"enu"}, ZRL_ENGLISH_US, {0}},
+    {"Nora", {"nor"}, ZRL_NORWEGIAN, {1}},
     {"Henrik", {"nor"}, ZRL_NORWEGIAN, {2}},
-    {"og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
+    //{"og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
 };
 
 const QVector<LangVoice> LANGUAGES = {
-    { "enu", "ava" },
+    { "eng", "Malcolm" },
     { "nor", "nora" },
     { "nor", "henrik" },
 };
@@ -486,7 +487,8 @@ void MainController::setCurrentWordPosition(const TextPosition &textPosition)
 
 bool MainController::isPageValid() const
 {
-    return ocr().textPage() != nullptr;
+    auto tp = ocr().textPage();
+    return tp != nullptr && m_currentParagraphNum >= 0 && m_currentParagraphNum <  tp->numParagraphs();
 }
 
 void MainController::onNewTextExtracted()
@@ -561,6 +563,7 @@ void MainController::startLongPressTimer(void (MainController::*action)(void), i
                 if(m_nLongPressCount == 0) {
                     emit (this->*m_longPressAction)();
                     m_ignoreRelease = true;
+                    m_keypadButtonMask = 0;
                     break;
                 }
             }
@@ -591,10 +594,37 @@ void MainController::ReadImage(int indx) {
 }
 
 void MainController::onReadHelp() {
+    m_keypadButtonMask = (1 << KP_BUTTON_HELP);
     sayText(m_help.GetString("BUTTON_HELP").c_str());
 }
 
+static string getHelpTag(int nButton) {
+    switch(nButton) {
+    case KP_BUTTON_CENTER  :
+        return "BUTTON_PAUSE_RESUME";
+     case KP_BUTTON_UP      :
+        return "BUTTON_ARROW_UP";
+    case KP_BUTTON_DOWN    :
+        return "BUTTON_ARROW_DOWN";
+    case KP_BUTTON_LEFT    :
+        return "BUTTON_ARROW_LEFT";
+    case KP_BUTTON_RIGHT   :
+        return "BUTTON_ARROW_RIGHT";
+    case KP_BUTTON_ROUND_L :
+        return "BUTTON_VOICE";
+    case KP_BUTTON_ROUND_R :
+        return "BUTTON_SPELL";
+    case KP_BUTTON_SQUARE_L:
+        return "BUTTON_SAVE";
+    case KP_BUTTON_SQUARE_R:
+        return "BUTTON_RECALL";
+    }
+    return "";
+}
+
 void MainController::onBtButton(int nButton, bool bDown) {
+    if(nButton < 1 || nButton > 10)
+        return;
     if(bDown) {
         m_keypadButtonMask |= (1 << nButton);
         switch(nButton) {
@@ -603,7 +633,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
             break;
         case KP_BUTTON_UP       :
             if((1 << KP_BUTTON_ROUND_L) & m_keypadButtonMask) {
-                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
+                startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
             }
             if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
@@ -669,28 +699,33 @@ void MainController::onBtButton(int nButton, bool bDown) {
         case KP_BUTTON_ROUND_R  :
             onSpellCurrentWord();
             break;
-         }
+        }
     }
     else {
-        qDebug() << "m_keypadButtonMask =" << m_keypadButtonMask <<Qt::endl;
-        m_keypadButtonMask &= ~(1 << nButton);
+        qDebug() << "m_keypadButtonMask =" << m_keypadButtonMask << ((1 << KP_BUTTON_HELP) & m_keypadButtonMask) << Qt::endl;
         stopLongPressTimer();
-        if(m_keypadButtonMask == 0) {
-            if(m_ignoreRelease) {
-                m_ignoreRelease = false;
-            }
-            else {
-                switch(nButton) {
-                case KP_BUTTON_ROUND_L  :
-                    onToggleVoice();
-                    break;
-                case KP_BUTTON_SQUARE_L :
-                    break;
-                case KP_BUTTON_SQUARE_R :
-                    break;
-                }
+        if(nButton == KP_BUTTON_HELP) {
+            m_ttsEngine->stop();
+            m_keypadButtonMask = 0;
+        }
+        if((1 << KP_BUTTON_HELP) & m_keypadButtonMask) {
+            m_keypadButtonMask = (1 << KP_BUTTON_HELP);
+            sayText(m_help.GetString(getHelpTag(nButton)).c_str());
+            return;
+        }
+        if(m_keypadButtonMask != 0) {
+            m_keypadButtonMask = 0;
+            switch(nButton) {
+            case KP_BUTTON_ROUND_L  :
+                onToggleVoice();
+                break;
+            case KP_BUTTON_SQUARE_L :
+                break;
+            case KP_BUTTON_SQUARE_R :
+                break;
             }
         }
+
     }
 }
 
@@ -857,6 +892,9 @@ void MainController::onToggleGestures() {
 void MainController::onToggleSingleColumn() {
     if(m_beepSound)
         m_beepSound->play();
+//    bool bForceSingleColumn = !ocr().getForceSingleColumn();
+//    sayTranslationTag(bForceSingleColumn ? "READ_THRU_COLUMNS" : "READ_NORMAL");
+//    ocr().setForceSingleColumn(bForceSingleColumn);
 }
 
 void MainController::onGesture(int nGest) {

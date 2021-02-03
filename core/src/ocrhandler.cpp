@@ -170,3 +170,14 @@ bool OcrHandler::getOcrResults()
 
     return hasNewResult;
 }
+
+bool OcrHandler::getForceSingleColumn() const {
+    bool bForceSingleColumn;
+    zurlo_proc_get_force_single_column(&bForceSingleColumn);
+    return bForceSingleColumn;
+
+}
+
+void OcrHandler::setForceSingleColumn(bool bForceSingleColumn) {
+    zurlo_proc_set_force_single_column(bForceSingleColumn);
+}

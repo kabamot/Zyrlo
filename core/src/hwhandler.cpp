@@ -30,9 +30,9 @@ HWHandler::~HWHandler()
 
 void HWHandler::start()
 {
-    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-    for (const QAudioDeviceInfo &deviceInfo : deviceInfos)
-        qDebug() << "Device name: " << deviceInfo.deviceName();
+//    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
+//    for (const QAudioDeviceInfo &deviceInfo : deviceInfos)
+//        qDebug() << "Device name: " << deviceInfo.deviceName();
 
     QMediaPlayer player;
     QMediaService *svc = player.service();

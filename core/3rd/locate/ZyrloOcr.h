@@ -97,6 +97,9 @@ char* zyrlo_proc_get_text();
 //		<0 if error
 int zurlo_proc_switch_to_paragraph(int nParagraph);
 
+int zurlo_proc_set_force_single_column(bool bForceSingleColumn);
+int zurlo_proc_get_force_single_column(bool *bForceSingleColumn);
+
 }
 
 #endif //_ZYRLO_OCR_H_

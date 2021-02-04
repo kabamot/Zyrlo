@@ -122,10 +122,10 @@ private:
     bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
     bool m_bKeepBeeping = false;
     QFuture<void> m_beepingThread, m_longPressTimerThread;
-    bool m_ignoreRelease = false;
     unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;
     int m_nLongPressCount = -1;
     void (MainController::*m_longPressAction)(void);
     int m_nCurrentLangaugeSettingIndx = 0;
+    bool m_bForceSingleColumn = false;
 };
 

@@ -127,6 +127,8 @@ void MainController::startImage(const Mat &image)
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
     m_wordNavigationWithDelay = false;
+    ocr().setForceSingleColumn(m_bForceSingleColumn);
+    m_bForceSingleColumn = false;
     ocr().startProcess(image);
     m_state = State::SpeakingPage;
 }
@@ -562,8 +564,7 @@ void MainController::startLongPressTimer(void (MainController::*action)(void), i
             for(; m_nLongPressCount >= 0; --m_nLongPressCount, QThread::msleep(intvl)) {
                 if(m_nLongPressCount == 0) {
                     emit (this->*m_longPressAction)();
-                    m_ignoreRelease = true;
-                    m_keypadButtonMask = 0;
+                    m_keypadButtonMask = m_deviceButtonsMask = 0;
                     break;
                 }
             }
@@ -757,7 +758,7 @@ void MainController::onButton(int nButton, bool bDown) {
             break;
         case BUTTON_RATE_UP_MASK     :
             if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
-                m_ignoreRelease = true;
+                m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
                 break;
             }
@@ -768,7 +769,7 @@ void MainController::onButton(int nButton, bool bDown) {
             break;
         case BUTTON_RATE_DN_MASK     :
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
-                m_ignoreRelease = true;
+                m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
                 break;
             }
@@ -781,29 +782,24 @@ void MainController::onButton(int nButton, bool bDown) {
          }
     }
     else {
-        m_deviceButtonsMask &= ~nButton;
         qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
         stopLongPressTimer();
-        if(m_deviceButtonsMask == 0) {
-            if(m_ignoreRelease) {
-                m_ignoreRelease = false;
-             }
-            else {
-                switch(nButton) {
-                case BUTTON_PAUSE_MASK   :
-                    pauseResume();
-                    break;
-                case BUTTON_BACK_MASK       :
-                    backSentence();
-                    break;
-                case BUTTON_RATE_UP_MASK     :
-                    speechRateUp();
-                    break;
-                case BUTTON_RATE_DN_MASK     :
-                    speechRateDown();
-                    break;
+        if(m_deviceButtonsMask != 0) {
+            m_deviceButtonsMask = 0;
+            switch(nButton) {
+            case BUTTON_PAUSE_MASK   :
+                pauseResume();
+                break;
+            case BUTTON_BACK_MASK       :
+                backSentence();
+                break;
+            case BUTTON_RATE_UP_MASK     :
+                speechRateUp();
+                break;
+            case BUTTON_RATE_DN_MASK     :
+                speechRateDown();
+                break;
 
-                }
             }
         }
     }
@@ -892,9 +888,8 @@ void MainController::onToggleGestures() {
 void MainController::onToggleSingleColumn() {
     if(m_beepSound)
         m_beepSound->play();
-//    bool bForceSingleColumn = !ocr().getForceSingleColumn();
-//    sayTranslationTag(bForceSingleColumn ? "READ_THRU_COLUMNS" : "READ_NORMAL");
-//    ocr().setForceSingleColumn(bForceSingleColumn);
+    m_bForceSingleColumn = !m_bForceSingleColumn;
+    sayTranslationTag(m_bForceSingleColumn ? "READ_THRU_COLUMNS" : "READ_NORMAL");
 }
 
 void MainController::onGesture(int nGest) {

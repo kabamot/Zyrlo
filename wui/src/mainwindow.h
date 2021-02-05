@@ -49,5 +49,5 @@ private:
     QTextCharFormat m_prevFormat;
     cv::Mat m_prevImg;
     QLabel *m_pLabelPreview;
-    bool m_bSavePreviewImage = false;
+    bool m_bSavePreviewImage = false, m_bPreviewOn = false;
 };

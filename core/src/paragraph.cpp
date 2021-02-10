@@ -147,7 +147,7 @@ TextPosition Paragraph::lastSentencePosition() const
 
 void Paragraph::parseWords()
 {
-    const static QRegularExpression re(R"([\w\d]+)");
+    const static QRegularExpression re(R"([\w\d']+)");
     m_words = parseToPositions(text(), re);
 }
 

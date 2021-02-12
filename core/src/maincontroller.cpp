@@ -131,6 +131,7 @@ void MainController::startImage(const Mat &image)
     m_currentParagraphNum = 0;
     m_currentWordPosition.clear();
     m_wordNavigationWithDelay = false;
+    m_isContinueAfterSpeakingFinished = true;
     ocr().setForceSingleColumn(m_bForceSingleColumn);
     m_bForceSingleColumn = false;
     ocr().startProcess(image);
@@ -162,6 +163,7 @@ void MainController::pauseResume()
 
     case State::Paused:
         m_state = State::SpeakingPage;
+        m_isContinueAfterSpeakingFinished = true;
         if (m_ttsEngine->isPaused()) {
             m_ttsEngine->resume();
         } else {
@@ -242,7 +244,8 @@ void MainController::backSentence()
             // Go to the beginning of the page
             isPageBoundary = true;
             m_currentParagraphNum = 0;
-            position = paragraph().firstSentencePosition();
+            position = paragraph().firstWordPosition();
+            m_state = State::Paused;
         }
     }
 
@@ -251,10 +254,12 @@ void MainController::backSentence()
 
     if (isPageBoundary) {
         sayTranslationTag("TOP_OF_PAGE");
-    } else if (m_state == State::SpeakingPage) {
+    } else if (m_state == State::SpeakingPage && m_isContinueAfterSpeakingFinished) {
         startSpeaking();
     } else {
-        sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
+        m_isContinueAfterSpeakingFinished = false;
+        m_state = State::SpeakingPage;
+        m_ttsEngine->say(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
     }
 }
 
@@ -263,7 +268,7 @@ void MainController::nextSentence()
     if (!isPageValid())
         return;
 
-    auto position = paragraph().nextSentencePosition(m_currentWordPosition.parPos());
+    auto position = paragraph().nextSentencePosition(std::max(0, m_currentWordPosition.parPos() - 1));
     if (!position.isValid()) {
         if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
             // Go the the next paragraph
@@ -279,10 +284,12 @@ void MainController::nextSentence()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage) {
+    if (m_state == State::SpeakingPage && m_isContinueAfterSpeakingFinished) {
         startSpeaking();
     } else {
-        sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
+        m_isContinueAfterSpeakingFinished = false;
+        m_state = State::SpeakingPage;
+        m_ttsEngine->say(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
     }
 }
 
@@ -517,23 +524,31 @@ void MainController::onNewTextExtracted()
 
 void MainController::onSpeakingFinished()
 {
-    bool isAdvance = true;
-    if (m_state == State::SpeakingText) {
+    const bool isSpeakingTextState = m_state == State::SpeakingText;
+    if (isSpeakingTextState) {
         qDebug() << __func__ << "changing state to" << (int)m_prevState;
         m_state = m_prevState;
-        isAdvance = false;
     }
 
     qDebug() << __func__ << "state" << (int)m_state;
-    if (m_state == State::SpeakingPage) {
+    if (m_state == State::SpeakingPage && m_isContinueAfterSpeakingFinished) {
         m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
-        if (isAdvance) {
+        if (!isSpeakingTextState) {
             // Continue with the next word
             m_ttsStartPositionInParagraph += m_currentWordPosition.length();
             qDebug() << "advancing text to" << m_currentWordPosition.length();
         }
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
+    }
+
+    if (!isSpeakingTextState && !m_isContinueAfterSpeakingFinished) {
+        // The normal mode (not service text speak) with stop after sentence is finished,
+        // so set continue mode back to true
+        m_state = State::Paused;
+        m_currentWordPosition = TextPosition(m_currentWordPosition.parPos() + m_currentWordPosition.length(),
+                                             m_currentWordPosition.length(),
+                                             paragraph().paragraphPosition());
     }
 
     m_wordNavigationWithDelay = false;

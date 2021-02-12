@@ -121,6 +121,7 @@ private:
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr}, *m_armOpenSound{nullptr}, *m_armClosedSound{nullptr};
     Translator m_translator, m_help;
     bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
+    bool        m_isContinueAfterSpeakingFinished {true};
     bool m_bKeepBeeping = false;
     QFuture<void> m_beepingThread, m_longPressTimerThread;
     unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;

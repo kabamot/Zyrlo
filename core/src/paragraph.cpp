@@ -150,7 +150,7 @@ void Paragraph::parseWords()
 
 void Paragraph::parseSenteces()
 {
-    const static QRegularExpression re(R"([^\.!?]{3,})");
+    const static QRegularExpression re(R"([^\.!?]{3,}[\.!?])");
     m_sentences = parseToPositions(text(), re);
 }
 

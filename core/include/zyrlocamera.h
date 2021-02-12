@@ -21,6 +21,7 @@ typedef unsigned int  UINT;
 class ZyrloCamera {
 public:
     typedef enum {
+        eCameraArmClosed = -1,
         eShowPreviewImge = 0,
         eTargetNotFound,
         eReaderReady,
@@ -67,6 +68,7 @@ private:
         int m_nNoChange = 0, m_nMotionDetected = 0;
 
         int m_nWait = 20, m_nMotionPX = 0, m_nMotionNX = 0;
+        bool m_bArmOpen = false;
 
 
         typedef enum {
@@ -120,6 +122,7 @@ public:
         int AcquireFullResImage(int nGain, int nExposure, int indx);
         bool gesturesOn() const;
         void setGesturesUi(bool bOn);
+        void setArmPosition(bool bOpen);
 };
 
 #endif /* ZYRLOCAMERA_H_ */

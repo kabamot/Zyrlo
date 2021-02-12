@@ -198,6 +198,8 @@ ZyrloCamera::Zcevent ZyrloCamera::FollowGestures(Point2f motion) {
 }
 
 ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
+    if(!m_bArmOpen)
+        return eCameraArmClosed;
     if(AcquireImage() == 1) // Full res snapshot
         return eStartOcr;
     Zcevent zcev = eShowPreviewImge;
@@ -816,4 +818,12 @@ void ZyrloCamera::setGesturesUi(bool bOn) {
     m_nMotionPX = m_nMotionNX = 0;
     m_md.Clear();
     m_bEnableGestureUI = bOn;
+}
+
+void ZyrloCamera::setArmPosition(bool bOpen) {
+    m_bArmOpen = bOpen;
+//    if(bOpen)
+//        SwitchMode(true);
+//    else
+//        stop_capturing();
 }

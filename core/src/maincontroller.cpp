@@ -25,6 +25,8 @@ using namespace cv;
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
+#define ARMOPEN_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-09.wav"
+#define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-10.wav"
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 
@@ -109,6 +111,8 @@ MainController::MainController()
     m_help.Init(HELP_FILE);
     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
+    m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
+    m_armClosedSound = new QSound(ARMCLOSED_SOUND_FILE, this);
 
     m_hwhandler->start();
 }
@@ -409,14 +413,22 @@ bool MainController::toggleAudioSink() {
     if(m_shutterSound) {
         delete m_shutterSound;
         m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
-     }
+    }
     if(m_beepSound) {
         delete m_beepSound;
         m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
-     }
-     for (auto ttsEngine : m_ttsEnginesList) {
-            ttsEngine->resetAudio();
-     }
+    }
+    if(m_armOpenSound) {
+        delete m_armOpenSound;
+        m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
+    }
+    if(m_armClosedSound) {
+        delete m_armClosedSound;
+        m_armClosedSound = new QSound(ARMOPEN_SOUND_FILE, this);
+    }
+    for (auto ttsEngine : m_ttsEnginesList) {
+        ttsEngine->resetAudio();
+    }
     return bret;
 }
 
@@ -740,6 +752,12 @@ static int findOneOfTheButtons(int nButtons) {
 
 void MainController::onButton(int nButton, bool bDown) {
     if(bDown) {
+        if(SWITCH_FOLDED_MASK & nButton) {
+            if(m_armOpenSound)
+                m_armOpenSound->play();
+            m_hwhandler->setCameraArmPosition(true);
+            setLed(true);
+        }
         m_deviceButtonsMask |= nButton;
         switch(findOneOfTheButtons(nButton)) {
         case BUTTON_PAUSE_MASK   :
@@ -778,12 +796,17 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             break;
-
          }
     }
     else {
         qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
         stopLongPressTimer();
+        if(SWITCH_FOLDED_MASK & nButton) {
+            m_hwhandler->setCameraArmPosition(false);
+            setLed(false);
+            if(m_armClosedSound)
+                m_armClosedSound->play();
+        }
         if(m_deviceButtonsMask != 0) {
             m_deviceButtonsMask = 0;
             switch(nButton) {
@@ -900,3 +923,15 @@ void MainController::onGesture(int nGest) {
         pauseResume();
     }
 }
+
+MainController::~MainController() {
+    if(m_shutterSound)
+        delete m_shutterSound;
+    if(m_beepSound)
+        delete m_beepSound;
+    if(m_armOpenSound)
+        delete m_armOpenSound;
+    if(m_armClosedSound)
+        delete m_armClosedSound;
+}
+

@@ -65,9 +65,10 @@ void HWHandler::run()
 {
      m_zcam.initCamera();
     while(!m_stop) {
-        // Main stuff here
-
         switch(m_zcam.AcquireFrameStep()) {
+        case ZyrloCamera::eCameraArmClosed:
+            QThread::msleep(100);
+            break;
         case ZyrloCamera::eShowPreviewImge:
             emit previewImgUpdate(m_zcam.GetPreviewImg());
             break;
@@ -109,7 +110,7 @@ void HWHandler::buttonBtThreadRun() {
     for(;!m_stop; QThread::msleep(100)) {
         btc.btConnect(m_stop);
         bool bCont = true;
-        for(; !m_stop && bCont; QThread::msleep(100)) {
+        for(; !m_stop && bCont; QThread::msleep(20)) {
             switch(btc.receiveLoopStep(nVal)) {
             case 0:
                 break;
@@ -141,10 +142,6 @@ void HWHandler::buttonThreadRun() {
     for(; !m_stop; QThread::msleep(50)) {
         if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
             qDebug() << "BaseComm error\n";
-            continue;
-        }
-        if(m_nButtonMask < 0) {
-            m_nButtonMask = reply;
             continue;
         }
         xor_val = m_nButtonMask ^ reply;
@@ -202,4 +199,9 @@ bool HWHandler::gesturesOn() const {
 void HWHandler::setGesturesUi(bool bOn) {
     m_zcam.setGesturesUi(bOn);
 }
+
+void HWHandler::setCameraArmPosition(bool bOpen) {
+    m_zcam.setArmPosition(bOpen);
+}
+
 

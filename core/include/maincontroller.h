@@ -35,6 +35,7 @@ class MainController : public QObject
 
 public:
     MainController();
+    ~MainController();
 
     void startFile(const QString &filename);
     void startImage(const cv::Mat &image);
@@ -117,7 +118,7 @@ private:
     TextPosition m_currentWordPosition;
     State       m_prevState {State::Stopped};
     State       m_state {State::Stopped};
-    QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr};
+    QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr}, *m_armOpenSound{nullptr}, *m_armClosedSound{nullptr};
     Translator m_translator, m_help;
     bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
     bool m_bKeepBeeping = false;

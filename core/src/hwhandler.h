@@ -37,6 +37,7 @@ public:
     const cv::Mat & getRecallImg() const;
     bool gesturesOn() const;
     void setGesturesUi(bool bOn);
+    void setCameraArmPosition(bool bOpen);
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);
@@ -53,6 +54,6 @@ private:
     std::atomic_bool    m_stop {false};
     QFuture<void>       m_future, m_buttonThread, m_buttonBtThread;
     ZyrloCamera m_zcam;
-    int m_nButtonMask = -1;
+    int m_nButtonMask = 0x40;
     cv::Mat m_recallImg;
 };

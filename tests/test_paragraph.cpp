@@ -12,13 +12,13 @@
 TEST_CASE("Paragraph")
 {
     Paragraph p0(0);
-    p0.addLine("one");
-    p0.addLine("two\nthree");
+    p0.addLine("one", "eng");
+    p0.addLine("two\nthree", "eng");
     p0.setFirstLineNum(0);
     p0.setCompleted();
 
     Paragraph p1(1);
-    p1.addLine("four, five");
+    p1.addLine("four, five",  "eng");
     p1.setFirstLineNum(2);
 
     Paragraph p2;
@@ -57,20 +57,20 @@ TEST_CASE("Paragraph")
     }
 
     DOCTEST_SUBCASE("Paragraph addLines with extra spaces") {
-        p2.addLine("  Hello     world.    ");
-        p2.addLine(" One two three  ");
+        p2.addLine("  Hello     world.    ", "eng");
+        p2.addLine(" One two three  ", "eng");
         CHECK(p2.text() == "Hello world. One two three");
     }
 
     DOCTEST_SUBCASE("Paragraph addLines without spaces") {
-        p2.addLine("Hello world.");
-        p2.addLine("One two three");
+        p2.addLine("Hello world.", "eng");
+        p2.addLine("One two three", "eng");
         CHECK_EQ(p2.text(), "Hello world. One two three");
     }
 
     DOCTEST_SUBCASE("Paragraph addLines with dash") {
-        p2.addLine("Hel-");
-        p2.addLine(" lo world  ");
+        p2.addLine("Hel-",  "eng");
+        p2.addLine(" lo world  ",  "eng");
         CHECK_EQ(p2.text(), "Hello world");
     }
 

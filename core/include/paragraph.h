@@ -11,11 +11,13 @@
 #include <QStringList>
 
 #include "textposition.h"
+#include <map>
 
 using Positions = QVector<TextPosition>; // Represents starting position of words/sentences in the paragraph
 
 class Paragraph
 {
+
 public:
     Paragraph() = default;
     explicit Paragraph(int id);
@@ -33,8 +35,9 @@ public:
 
     int numLines() const;
 
-    void addLine(const QString &line);
+    void addLine(const QString &line, const QString &lang);
     QString text() const;
+    std::pair<QString, int> lang(int position) const;
 
     bool isComplete() const;
     void setCompleted();
@@ -72,6 +75,7 @@ private:
     bool m_isComplete {false};
 
     QStringList m_lines;
+    std::map<int, QString> m_langTagPos;
 
     Positions m_words;
     Positions m_sentences;

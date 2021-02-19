@@ -9,6 +9,8 @@
 
 #include <QRegularExpression>
 
+using namespace std;
+
 Paragraph::Paragraph(int id)
     : m_id(id)
 {
@@ -55,8 +57,10 @@ int Paragraph::numLines() const
     return m_lines.size();
 }
 
-void Paragraph::addLine(const QString &line)
+void Paragraph::addLine(const QString &line, const QString &lang)
 {
+    if(m_langTagPos.empty() || lang.compare(prev(m_langTagPos.end())->second) != 0)
+        m_langTagPos[length()] = lang;
     auto newLine = line.simplified();
     if (newLine.back() == '-') {
         // Remove last dash '-' as it will be connected to the next line
@@ -67,7 +71,6 @@ void Paragraph::addLine(const QString &line)
     }
 
     m_lines.append(newLine);
-
     parseWords();
     parseSenteces();
 }
@@ -232,3 +235,12 @@ int Paragraph::indexByTextPosition(const Positions &positions, int currentPositi
 
     return --currentIndex;
 }
+
+pair <QString, int> Paragraph::lang(int position) const
+{
+    auto i = m_langTagPos.lower_bound(position);
+    auto j = next(i);
+    int  nextPos = (j == m_langTagPos.end()) ? -1 : j->first;
+    return pair <QString, int>(i->second, nextPos);
+}
+

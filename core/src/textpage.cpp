@@ -10,6 +10,8 @@
 #include <QRegularExpression>
 #include <QDebug>
 
+using namespace std;
+
 int TextPage::numParagraphs() const
 {
     return m_paragraphs.size();
@@ -36,20 +38,23 @@ QString TextPage::text() const
     return allText;
 }
 
-QString TextPage::getText(int paragraphNum, int position) const
+pair<QString, QString> TextPage::getText(int paragraphNum, int position) const
 {
     if (paragraphNum >= m_paragraphs.size())
-        return QString();
-
+        return pair<QString, QString>(QString(), QString());
+    pair <QString, int> lng = m_paragraphs[paragraphNum].lang(position);
+    lng.second -= position;
     auto paragraphText = m_paragraphs[paragraphNum].text().mid(position);
-    if (!m_paragraphs[paragraphNum].isComplete()) {
+    if (!m_paragraphs[paragraphNum].isComplete() || lng.second >= 0) {
         static const QRegularExpression sentenceRe(R"([\.!?])");
-        const auto sentenceBoundaryPos = paragraphText.lastIndexOf(sentenceRe);
+        auto sentenceBoundaryPos = paragraphText.lastIndexOf(sentenceRe);
+        if(lng.second >= 0 && sentenceBoundaryPos > lng.second)
+            sentenceBoundaryPos = lng.second;
         if (sentenceBoundaryPos >= 0) {
             paragraphText.chop(paragraphText.size() - sentenceBoundaryPos - 1);
         }
     }
-    return paragraphText;
+    return pair<QString, QString>(lng.first, paragraphText);
 }
 
 void TextPage::addParagraph()
@@ -63,7 +68,7 @@ void TextPage::addParagraph()
     }
 }
 
-void TextPage::addParagraphLine(const QString &text)
+void TextPage::addParagraphLine(const QString &text, const QString &lang)
 {
     if (m_paragraphs.empty()) {
         qWarning() << __func__ << __LINE__ << "Adding line to non-existent paragraph!";
@@ -86,7 +91,7 @@ void TextPage::addParagraphLine(const QString &text)
     }
 
     // Then add the line
-    m_paragraphs[paragraphNum].addLine(text);
+     m_paragraphs[paragraphNum].addLine(text, lang);
 }
 
 bool TextPage::isComplete() const

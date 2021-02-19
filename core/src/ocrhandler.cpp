@@ -163,7 +163,7 @@ bool OcrHandler::getOcrResults()
                 m_page->addParagraph();
             }
 
-            m_page->addParagraphLine(textLine.sText);
+            m_page->addParagraphLine(textLine.sText, textLine.sLang);
             hasNewResult = true;
         }
     }

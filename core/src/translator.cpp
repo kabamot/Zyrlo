@@ -38,7 +38,7 @@ string Translator::GetString(const string & sTag) const {
         return sTag;
     map<string, string>::const_iterator j = i->second.find(m_sCurrLang);
     if(j == i->second.end()) {
-        j = i->second.find("enu");
+        j = i->second.find("eng");
         if(j == i->second.end())
             return sTag;
     }

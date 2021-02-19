@@ -46,10 +46,10 @@ struct LangVoiceComb {
 };
 
 const vector<LangVoiceComb> g_vLangVoiceSettings {
-    {"Malcolm", {"enu"}, ZRL_ENGLISH_US, {0}},
-    {"Nora", {"nor"}, ZRL_NORWEGIAN, {1}},
+    {"Malcolm", {"eng"}, ZRL_ENGLISH_US, {0}},
+    //{"Nora", {"nor"}, ZRL_NORWEGIAN, {1}},
     {"Henrik", {"nor"}, ZRL_NORWEGIAN, {2}},
-    //{"og Engelsk", {"nor", "enu"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {1, 0}}
+    {"og Engelsk", {"nor", "eng"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {2, 0}}
 };
 
 const QVector<LangVoice> LANGUAGES = {
@@ -295,6 +295,7 @@ void MainController::nextSentence()
 
 void MainController::sayText(QString text)
 {
+    SetDefaultTts();
     if (m_ttsEngine) {
         if (m_state != State::SpeakingText) {
             qDebug() << __func__ << "saving current state" << (int)m_state
@@ -471,9 +472,11 @@ void MainController::startSpeaking(int delayMs)
     while (true) {
         qDebug() << __func__ << "current paragraph" << m_currentParagraphNum
                  << "position in paragraph" << m_ttsStartPositionInParagraph;
-        m_currentText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
+        auto currText = ocr().textPage()->getText(m_currentParagraphNum, m_ttsStartPositionInParagraph);
 
-        if (!m_currentText.isEmpty()) {
+        if (!currText.second.isEmpty()) {
+            m_currentText = currText.second;
+            SetCurrentTts(currText.first);
             // Continue speaking if there is more text in the current paragraph
             qDebug() << __func__ << m_currentText;
             m_ttsEngine->say(prepareTextToSpeak(m_currentText), delayMs);
@@ -552,7 +555,7 @@ void MainController::onSpeakingFinished()
     }
 
     m_wordNavigationWithDelay = false;
-}
+ }
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
@@ -860,6 +863,28 @@ void MainController::onToggleVoice() {
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
     string sMsg = m_translator.GetString("VOICE_SET_TO") + " " + g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_sDescription;
     sayText(sMsg.c_str());
+}
+
+void MainController::SetCurrentTts(const QString & lang) {
+    qDebug() << "SetCurrentTts" << lang << Qt::endl;
+    const vector<string> & vlangs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs;
+    const vector<int> & vindxs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs;
+    for(size_t i = 0; i != vlangs.size(); ++i)
+        if(lang.compare(vlangs[i].c_str()) == 0) {
+            if(m_currentTTSIndex == vindxs[i])
+                return;
+             m_currentTTSIndex = vindxs[i];
+            m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
+        }
+}
+
+void MainController::SetDefaultTts() {
+    qDebug() << "SetDefaultTts\n";
+    if(m_currentTTSIndex == g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0])
+        return;
+    m_ttsEngine->stop();
+    m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
+    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 }
 
 void MainController::onSpellCurrentWord()

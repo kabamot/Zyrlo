@@ -4,7 +4,7 @@
 #include <map>
 class Translator : public std::map<std::string, std::map<std::string, std::string> >
 {
-    std::string m_sCurrLang = "enu";
+    std::string m_sCurrLang = "eng";
 public:
     Translator();
     bool Init(std::string sFileName);

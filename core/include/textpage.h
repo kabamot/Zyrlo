@@ -23,10 +23,10 @@ public:
 
     const Paragraph &paragraph(int num) const;
     QString text() const;
-    QString getText(int paragraphNum, int position) const;
+    std::pair<QString, QString> getText(int paragraphNum, int position) const;
 
     void addParagraph();
-    void addParagraphLine(const QString &text);
+    void addParagraphLine(const QString &text, const QString &lang);
 
     bool isComplete() const;
     void setCompleted();

@@ -89,6 +89,8 @@ private:
     void changeVoiceSpeed(int nStep);
     QString prepareTextToSpeak(QString text);
     void populateVoices();
+    void SetCurrentTts(const QString & lang);
+    void SetDefaultTts();
 
 private slots:
     void onNewTextExtracted();

@@ -20,7 +20,7 @@ extern "C" {
 typedef struct _text_line {
     int nLineId;    // Line ID is unique for the page
     int nParagraphId;
-    char sText[MAX_LINE_LENGTH];
+    char sLang[16], sText[MAX_LINE_LENGTH];
     bool isHeader;
     bool isNewLine;
 } text_line;

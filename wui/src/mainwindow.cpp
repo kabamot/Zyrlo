@@ -18,9 +18,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    m_pLabelPreview = new QLabel();
-    ui->gridLayout->addWidget(m_pLabelPreview, 1, 0, Qt::AlignCenter);
-    m_pLabelPreview->setVisible(false);
+    ui->previewLabel->setVisible(false);
+
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
     connect(&m_controller, &MainController::textUpdated, this, &MainWindow::updateText);
     connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
@@ -43,7 +42,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete m_pLabelPreview;
     m_controller.setLed(false);
 }
 
@@ -52,7 +50,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
             m_bPreviewOn = true;
-            m_pLabelPreview->setVisible(true);
+            ui->previewLabel->setVisible(true);
             qDebug() << "Preview ON\n";
         }
         else {
@@ -62,7 +60,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         break;
     case Qt::Key_H:
         m_bPreviewOn = false;
-        m_pLabelPreview->setVisible(false);
+        ui->previewLabel->setVisible(false);
         qDebug() << "Preview OFF\n";
         break;
     case Qt::Key_F:
@@ -174,7 +172,7 @@ void MainWindow::updatePreview(const Mat &img) {
     if(m_bPreviewOn) {
         cvtColor(img, m_prevImg, CV_GRAY2RGB);
         rotate(m_prevImg, m_prevImg, ROTATE_180);
-        m_pLabelPreview->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
+        ui->previewLabel->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
     }
     if(m_bSavePreviewImage) {
         m_bSavePreviewImage = false;

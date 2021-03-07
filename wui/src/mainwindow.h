@@ -19,7 +19,6 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class QTextCursor;
-class QLabel;
 class QGridLayout;
 
 class MainWindow : public QMainWindow
@@ -48,6 +47,5 @@ private:
     TextPosition m_prevPosition;
     QTextCharFormat m_prevFormat;
     cv::Mat m_prevImg;
-    QLabel *m_pLabelPreview;
     bool m_bSavePreviewImage = false, m_bPreviewOn = false;
 };

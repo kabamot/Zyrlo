@@ -140,17 +140,27 @@ void MainController::startImage(const Mat &image)
 
 void MainController::pauseResume()
 {
+    if (m_state == State::SpeakingPage) {
+        pause();
+    } else {
+        resume();
+    }
+}
+
+void MainController::pause()
+{
+    m_state = State::Paused;
+    if (m_ttsEngine->isSpeaking()) {
+        m_ttsEngine->pause();
+    }
+}
+
+void MainController::resume()
+{
     switch (m_state) {
     case State::Stopped:
         m_state = State::SpeakingPage;
         startSpeaking();
-        break;
-
-    case State::SpeakingPage:
-        m_state = State::Paused;
-        if (m_ttsEngine->isSpeaking()) {
-            m_ttsEngine->pause();
-        }
         break;
 
     case State::SpeakingText:
@@ -170,6 +180,9 @@ void MainController::pauseResume()
             m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
             startSpeaking();
         }
+        break;
+
+    default:
         break;
     }
 }

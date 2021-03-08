@@ -64,6 +64,8 @@ signals:
 
 public slots:
     void pauseResume();
+    void pause();
+    void resume();
     void backWord();
     void nextWord();
     void backSentence();

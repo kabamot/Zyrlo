@@ -10,15 +10,17 @@
 #include <QListView>
 #include <QStringListModel>
 #include <QLayout>
+#include <QLabel>
 #include <QDebug>
 
 #include "maincontroller.h"
 
-MenuWidget::MenuWidget(MainController *controller, QWidget *parent)
+MenuWidget::MenuWidget(const QString &name, MainController *controller, QWidget *parent)
     : QWidget(parent)
     , m_controller(controller)
     , m_listView(new QListView(this))
     , m_menuModel(new QStringListModel(this))
+    , m_name(name)
 {
     setAttribute(Qt::WA_DeleteOnClose);
 
@@ -26,7 +28,10 @@ MenuWidget::MenuWidget(MainController *controller, QWidget *parent)
     m_listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_listView->setSelectionMode(QAbstractItemView::SingleSelection);
 
+    auto *nameLabel = new QLabel(name, this);
+
     auto *layout = new QVBoxLayout();
+    layout->addWidget(nameLabel);
     layout->addWidget(m_listView);
 
     setLayout(layout);
@@ -46,4 +51,10 @@ MenuWidget::MenuWidget(MainController *controller, QWidget *parent)
 void MenuWidget::setItems(const QStringList &items)
 {
     m_menuModel->setStringList(items);
+}
+
+void MenuWidget::enteredToMenu()
+{
+    const auto menuItem = m_controller->translateTag(m_menuModel->data(m_listView->currentIndex()).toString());
+    m_controller->sayText(QStringLiteral("%1. %2").arg(m_name, menuItem));
 }

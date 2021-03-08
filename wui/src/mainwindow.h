@@ -41,6 +41,8 @@ private slots:
 
     void mainMenu();
     void bluetoothMenu();
+    void bluetoothScanMenu();
+    void bluetoothPairedMenu();
 
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);

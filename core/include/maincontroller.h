@@ -50,6 +50,7 @@ public:
     void ReadImage(int indx);
     void onReadHelp();
     void onSpellCurrentWord();
+    QString translateTag(const QString &tag);
 
 
 signals:

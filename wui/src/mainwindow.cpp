@@ -39,6 +39,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     connect(ui->menuButton, &QPushButton::clicked, this, &MainWindow::mainMenu);
 
+    connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, [this](int index){
+        auto *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->widget(index));
+        if (menuWidget) {
+            menuWidget->enteredToMenu();
+        }
+    });
+
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);
 }
@@ -188,10 +195,7 @@ void MainWindow::mainMenu()
 {
     m_controller.pause();
 
-    m_controller.sayText("Main Menu");
-    m_controller.waitForSayTextFinished();
-
-    auto *menuWidget = new MenuWidget(&m_controller, ui->stackedWidget);
+    auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
     QStringList items{"Bluetooth", "Language", "Power Options", "Exit"};
     menuWidget->setItems(items);
 
@@ -201,16 +205,46 @@ void MainWindow::mainMenu()
     connect(menuWidget, &MenuWidget::activated, this, [=](int index){
         const auto item = items.at(index);
 
-        if (items.at(index) == "Exit") {
+        if (item == "Exit") {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
-        } else if (items.at(index) == "Bluetooth") {
+        } else if (item == "Bluetooth") {
             bluetoothMenu();
         }
     });
 }
 
 void MainWindow::bluetoothMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Bluetooth menu", &m_controller, ui->stackedWidget);
+    QStringList items{"Scan for devices", "Paired devices", "Exit"};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [=](int index){
+        const auto item = items.at(index);
+
+        if (item == "Exit") {
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else if (item == "Scan for devices") {
+            bluetoothScanMenu();
+        } else if (item == "Paired devices") {
+            bluetoothPairedMenu();
+        }
+    });
+}
+
+void MainWindow::bluetoothScanMenu()
+{
+
+}
+
+void MainWindow::bluetoothPairedMenu()
 {
 
 }

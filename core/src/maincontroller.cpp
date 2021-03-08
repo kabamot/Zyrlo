@@ -324,7 +324,7 @@ void MainController::sayText(QString text)
 
 void MainController::sayTranslationTag(const QString &tag)
 {
-    sayText(m_translator.GetString(tag.toStdString()).c_str());
+    sayText(translateTag(tag));
 }
 
 void MainController::spellText(const QString &text)
@@ -912,6 +912,11 @@ void MainController::onSpellCurrentWord()
     }
 }
 
+QString MainController::translateTag(const QString &tag)
+{
+    return m_translator.GetString(tag.toStdString()).c_str();
+}
+
 void MainController::changeVoiceSpeed(int nStep) {
     if(!m_ttsEngine)
         return;
@@ -992,6 +997,7 @@ void MainController::waitForSayTextFinished()
 {
     while (m_state == State::SpeakingText) {
         qApp->processEvents();
+        qApp->sendPostedEvents();
         QThread::msleep(1);
     }
 }

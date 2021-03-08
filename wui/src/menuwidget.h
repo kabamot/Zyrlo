@@ -20,8 +20,9 @@ class MenuWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit MenuWidget(MainController *controller, QWidget *parent = nullptr);
+    explicit MenuWidget(const QString &name, MainController *controller, QWidget *parent = nullptr);
     void setItems(const QStringList &items);
+    void enteredToMenu();
 
 signals:
     void activated(int index);
@@ -30,5 +31,6 @@ private:
     MainController   *m_controller;
     QListView        *m_listView;
     QStringListModel *m_menuModel;
+    QString           m_name;
 };
 

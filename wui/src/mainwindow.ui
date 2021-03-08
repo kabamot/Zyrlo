@@ -14,112 +14,142 @@
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QPushButton" name="startButton">
-        <property name="text">
-         <string>Start</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Image path:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="fileNameLineEdit"/>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pauseButton">
-        <property name="text">
-         <string>Pause/Resume</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="backWordButton">
-        <property name="text">
-         <string>Prev word</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="nextWordButton">
-        <property name="text">
-         <string>Next word</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="backSentenceButton">
-        <property name="text">
-         <string>Prev sentence</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="nextSentenceButton">
-        <property name="text">
-         <string>Next sentence</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="spellWordButton">
-        <property name="text">
-         <string>Spell word</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
+    <item>
+     <widget class="QStackedWidget" name="stackedWidget">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="QWidget" name="readerPage">
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="0" column="0">
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="startButton">
+            <property name="text">
+             <string>Start</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Image path:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="fileNameLineEdit"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="pauseButton">
+            <property name="text">
+             <string>Pause/Resume</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="backWordButton">
+            <property name="text">
+             <string>Prev word</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="nextWordButton">
+            <property name="text">
+             <string>Next word</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="backSentenceButton">
+            <property name="text">
+             <string>Prev sentence</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="nextSentenceButton">
+            <property name="text">
+             <string>Next sentence</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="spellWordButton">
+            <property name="text">
+             <string>Spell word</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="1" column="0">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QPushButton" name="menuButton">
+            <property name="text">
+             <string>Menu</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="nextVoiceButton">
+            <property name="text">
+             <string>Next voice</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="rateUpButton">
+            <property name="text">
+             <string>Rate Up</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="rateDownButton">
+            <property name="text">
+             <string>Rate Down</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item row="2" column="0">
+         <widget class="QTextBrowser" name="textBrowser"/>
+        </item>
+       </layout>
+      </widget>
+     </widget>
     </item>
-    <item row="5" column="0">
-     <widget class="QTextBrowser" name="textBrowser"/>
-    </item>
-    <item row="3" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="nextVoiceButton">
-        <property name="text">
-         <string>Next voice</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="rateUpButton">
-        <property name="text">
-         <string>Rate Up</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="rateDownButton">
-        <property name="text">
-         <string>Rate Down</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item row="4" column="0">
+    <item>
      <widget class="QLabel" name="previewLabel">
       <property name="text">
        <string>TextLabel</string>

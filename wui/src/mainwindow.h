@@ -9,6 +9,7 @@
 
 #include <QMainWindow>
 #include <QTextCharFormat>
+#include <QAction>
 
 #include "maincontroller.h"
 #include "textposition.h"
@@ -38,6 +39,9 @@ private slots:
     void highlighWord(const TextPosition &position);
     void updatePreview(const cv::Mat &img);
 
+    void mainMenu();
+    void bluetoothMenu();
+
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);
 
@@ -48,4 +52,6 @@ private:
     QTextCharFormat m_prevFormat;
     cv::Mat m_prevImg;
     bool m_bSavePreviewImage = false, m_bPreviewOn = false;
+
+    QAction m_actionExit;
 };

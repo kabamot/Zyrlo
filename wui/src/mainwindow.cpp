@@ -11,6 +11,8 @@
 #include <QtGui>
 #include <QTextBlock>
 
+#include "menuwidget.h"
+
 using namespace cv;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -34,6 +36,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->rateUpButton, &QPushButton::clicked, &m_controller, &MainController::speechRateUp);
     connect(ui->rateDownButton, &QPushButton::clicked, &m_controller, &MainController::speechRateDown);
     connect(ui->nextVoiceButton, &QPushButton::clicked, &m_controller, &MainController::nextVoice);
+
+    connect(ui->menuButton, &QPushButton::clicked, this, &MainWindow::mainMenu);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);
@@ -178,4 +182,27 @@ void MainWindow::updatePreview(const Mat &img) {
         m_bSavePreviewImage = false;
         imwrite("PreviewImage.bmp", img);
     }
+}
+
+void MainWindow::mainMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget(ui->stackedWidget);
+    QStringList items{tr("Bluetooth"), tr("Language"), tr("Power Options"), tr("Exit")};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [=](int index){
+        if (items.at(index) == tr("Bluetooth")) {
+            bluetoothMenu();
+        }
+    });
+}
+
+void MainWindow::bluetoothMenu()
+{
+
 }

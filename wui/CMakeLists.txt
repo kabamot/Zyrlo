@@ -16,6 +16,8 @@ set(SRC_FILES
     src/main.cpp
     src/mainwindow.cpp
     src/mainwindow.h
+    src/menuwidget.h
+    src/menuwidget.cpp
  )
 
 set(UI_FILES

@@ -188,15 +188,23 @@ void MainWindow::mainMenu()
 {
     m_controller.pause();
 
-    auto *menuWidget = new MenuWidget(ui->stackedWidget);
-    QStringList items{tr("Bluetooth"), tr("Language"), tr("Power Options"), tr("Exit")};
+    m_controller.sayText("Main Menu");
+    m_controller.waitForSayTextFinished();
+
+    auto *menuWidget = new MenuWidget(&m_controller, ui->stackedWidget);
+    QStringList items{"Bluetooth", "Language", "Power Options", "Exit"};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [=](int index){
-        if (items.at(index) == tr("Bluetooth")) {
+        const auto item = items.at(index);
+
+        if (items.at(index) == "Exit") {
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else if (items.at(index) == "Bluetooth") {
             bluetoothMenu();
         }
     });

@@ -37,6 +37,8 @@ public:
     MainController();
     ~MainController();
 
+    void waitForSayTextFinished();
+
     void startFile(const QString &filename);
     void startImage(const cv::Mat &image);
     void snapImage();

@@ -14,22 +14,21 @@
 class QListView;
 class QStringListModel;
 class QAction;
+class MainController;
 
 class MenuWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit MenuWidget(QWidget *parent = nullptr);
+    explicit MenuWidget(MainController *controller, QWidget *parent = nullptr);
     void setItems(const QStringList &items);
 
 signals:
     void activated(int index);
 
-private slots:
-    void onActivated(const QModelIndex &index);
-
 private:
-    QListView *m_listView;
+    MainController   *m_controller;
+    QListView        *m_listView;
     QStringListModel *m_menuModel;
 };
 

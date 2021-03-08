@@ -10,9 +10,13 @@
 #include <QListView>
 #include <QStringListModel>
 #include <QLayout>
+#include <QDebug>
 
-MenuWidget::MenuWidget(QWidget *parent)
+#include "maincontroller.h"
+
+MenuWidget::MenuWidget(MainController *controller, QWidget *parent)
     : QWidget(parent)
+    , m_controller(controller)
     , m_listView(new QListView(this))
     , m_menuModel(new QStringListModel(this))
 {
@@ -20,25 +24,26 @@ MenuWidget::MenuWidget(QWidget *parent)
 
     m_listView->setModel(m_menuModel);
     m_listView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_listView->setSelectionMode(QAbstractItemView::SingleSelection);
 
     auto *layout = new QVBoxLayout();
     layout->addWidget(m_listView);
 
     setLayout(layout);
 
-    connect(m_listView, &QListView::activated, this, &MenuWidget::onActivated);
+    connect(m_listView, &QListView::activated, this, [this](const QModelIndex &index){
+        emit activated(index.row());
+    });
+
+    connect(m_listView->selectionModel(), &QItemSelectionModel::currentChanged,
+            this, [this](const QModelIndex &current, const QModelIndex &previous)
+    {
+        Q_UNUSED(previous);
+        m_controller->sayTranslationTag(m_menuModel->data(current).toString());
+    });
 }
 
 void MenuWidget::setItems(const QStringList &items)
 {
     m_menuModel->setStringList(items);
-}
-
-void MenuWidget::onActivated(const QModelIndex &index)
-{
-    if (index.data().toString().simplified() == tr("Exit")) {
-        close();
-    } else {
-        emit activated(index.row());
-    }
 }

@@ -988,3 +988,11 @@ MainController::~MainController() {
         delete m_armClosedSound;
 }
 
+void MainController::waitForSayTextFinished()
+{
+    while (m_state == State::SpeakingText) {
+        qApp->processEvents();
+        QThread::msleep(1);
+    }
+}
+

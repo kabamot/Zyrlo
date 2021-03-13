@@ -17,6 +17,7 @@
 using namespace cv;
 
 constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
+constexpr int BLUETOOTH_SCANNING_TIMEOUT = 7000; // ms
 constexpr int BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME = 4000; // ms
 
 MainWindow::MainWindow(QWidget *parent)
@@ -55,6 +56,12 @@ MainWindow::MainWindow(QWidget *parent)
             this, &MainWindow::onDeviceScanningFinished);
     connect(&m_bluetoothHandler, &BluetoothHandler::deviceDiscoveryError, this,
             &MainWindow::onDeviceScanningError);
+    connect(&m_bluetoothHandler, &BluetoothHandler::connected, this,
+            &MainWindow::onBluetoothConnected);
+    connect(&m_bluetoothHandler, &BluetoothHandler::connectionError, this,
+            &MainWindow::onBluetoothConnectionError);
+
+    connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
     connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
@@ -268,21 +275,25 @@ void MainWindow::bluetoothScanMenu()
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
-    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
         if (item == "Exit") {
             m_scanningTimer.stop();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
+        } else {
+            m_bluetoothHandler.startPairing(index);
         }
     });
 
     m_controller.sayTranslationTag("Bluetooth scanning started");
-    m_bluetoothHandler.startDeviceDiscovery();
+    m_bluetoothHandler.startDeviceDiscovery(BLUETOOTH_SCANNING_TIMEOUT);
     m_scanningTimer.start(BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME);
 }
 
 void MainWindow::bluetoothPairedMenu()
 {
+    m_bluetoothHandler.prepareConnectedDevices();
+//    qDebug() << m_bluetoothHandler.deviceNames();
 }
 
 void MainWindow::onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr)
@@ -313,4 +324,18 @@ void MainWindow::onScanningTimer()
     m_controller.sayText(message);
 
     addDiscoveredDevicesToMenu();
+}
+
+void MainWindow::onBluetoothConnected(const QString &name)
+{
+    QString message = m_controller.translateTag(QStringLiteral("Successfully connected to %1").arg(name));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+}
+
+void MainWindow::onBluetoothConnectionError(const QString &name)
+{
+    QString message = m_controller.translateTag(QStringLiteral("Error, can't connect to %1").arg(name));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
 }

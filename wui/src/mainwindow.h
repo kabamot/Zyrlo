@@ -49,6 +49,8 @@ private slots:
     void onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr);
     void onDeviceScanningFinished();
     void onScanningTimer();
+    void onBluetoothConnected(const QString &name);
+    void onBluetoothConnectionError(const QString &name);
 
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);

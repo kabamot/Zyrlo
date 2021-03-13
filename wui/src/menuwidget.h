@@ -25,7 +25,7 @@ public:
     void enteredToMenu();
 
 signals:
-    void activated(int index);
+    void activated(int index, const QString &entryName);
 
 private:
     MainController   *m_controller;

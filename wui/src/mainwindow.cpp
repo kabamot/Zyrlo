@@ -12,8 +12,12 @@
 #include <QTextBlock>
 
 #include "menuwidget.h"
+#include "bluetoothhandler.h"
 
 using namespace cv;
+
+constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
+constexpr int BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME = 4000; // ms
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -45,6 +49,13 @@ MainWindow::MainWindow(QWidget *parent)
             menuWidget->enteredToMenu();
         }
     });
+
+    // Bluetooth handler
+    connect(&m_bluetoothHandler, &BluetoothHandler::deviceDiscoveryFinished,
+            this, &MainWindow::onDeviceScanningFinished);
+    connect(&m_bluetoothHandler, &BluetoothHandler::deviceDiscoveryError, this,
+            &MainWindow::onDeviceScanningError);
+    connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);
@@ -179,6 +190,17 @@ void MainWindow::setCursorAtPosition(const TextPosition &position, QTextCursor &
     cursor.setPosition(position.absPos() + position.length(), QTextCursor::KeepAnchor);
 }
 
+void MainWindow::addDiscoveredDevicesToMenu()
+{
+    // Add scanned items to the list
+    auto menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
+    if (menuWidget) {
+        QStringList items = m_bluetoothHandler.deviceNames();
+        items.append("Exit");
+        menuWidget->setItems(items);
+    }
+}
+
 void MainWindow::updatePreview(const Mat &img) {
     if(m_bPreviewOn) {
         cvtColor(img, m_prevImg, CV_GRAY2RGB);
@@ -202,9 +224,7 @@ void MainWindow::mainMenu()
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
-    connect(menuWidget, &MenuWidget::activated, this, [=](int index){
-        const auto item = items.at(index);
-
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
         if (item == "Exit") {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -225,9 +245,7 @@ void MainWindow::bluetoothMenu()
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
-    connect(menuWidget, &MenuWidget::activated, this, [=](int index){
-        const auto item = items.at(index);
-
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
         if (item == "Exit") {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -241,10 +259,58 @@ void MainWindow::bluetoothMenu()
 
 void MainWindow::bluetoothScanMenu()
 {
+    m_controller.pause();
 
+    auto *menuWidget = new MenuWidget("Bluetooth scan", &m_controller, ui->stackedWidget);
+    QStringList items{"Exit"};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
+        if (item == "Exit") {
+            m_scanningTimer.stop();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        }
+    });
+
+    m_controller.sayTranslationTag("Bluetooth scanning started");
+    m_bluetoothHandler.startDeviceDiscovery();
+    m_scanningTimer.start(BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME);
 }
 
 void MainWindow::bluetoothPairedMenu()
 {
+}
 
+void MainWindow::onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr)
+{
+    qDebug() << "Bluetooth scanning error:" << error << errorStr;
+    m_scanningTimer.stop();
+    QString message = m_controller.translateTag(QStringLiteral("Bluetooth error: %1").arg(errorStr));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+}
+
+void MainWindow::onDeviceScanningFinished()
+{
+    qDebug() << "Bluetooth scanning finished";
+    m_scanningTimer.stop();
+
+    QString message = m_controller.translateTag("Bluetooth scanning finished");
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+
+    addDiscoveredDevicesToMenu();
+}
+
+void MainWindow::onScanningTimer()
+{
+    QString message = m_controller.translateTag("Scanning for devices. Please wait...");
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+
+    addDiscoveredDevicesToMenu();
 }

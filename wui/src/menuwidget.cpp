@@ -37,7 +37,7 @@ MenuWidget::MenuWidget(const QString &name, MainController *controller, QWidget 
     setLayout(layout);
 
     connect(m_listView, &QListView::activated, this, [this](const QModelIndex &index){
-        emit activated(index.row());
+        emit activated(index.row(), index.data().toString());
     });
 
     connect(m_listView->selectionModel(), &QItemSelectionModel::currentChanged,

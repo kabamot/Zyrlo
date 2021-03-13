@@ -10,9 +10,11 @@
 #include <QMainWindow>
 #include <QTextCharFormat>
 #include <QAction>
+#include <QTimer>
 
 #include "maincontroller.h"
 #include "textposition.h"
+#include "bluetoothhandler.h"
 #include <opencv2/opencv.hpp>
 
 QT_BEGIN_NAMESPACE
@@ -44,8 +46,13 @@ private slots:
     void bluetoothScanMenu();
     void bluetoothPairedMenu();
 
+    void onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr);
+    void onDeviceScanningFinished();
+    void onScanningTimer();
+
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);
+    void addDiscoveredDevicesToMenu();
 
 private:
     Ui::MainWindow *ui;
@@ -56,4 +63,6 @@ private:
     bool m_bSavePreviewImage = false, m_bPreviewOn = false;
 
     QAction m_actionExit;
+    BluetoothHandler m_bluetoothHandler;
+    QTimer m_scanningTimer;
 };

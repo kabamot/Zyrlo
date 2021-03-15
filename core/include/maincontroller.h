@@ -48,7 +48,8 @@ public:
     void ReadImage(int indx);
     void onReadHelp();
     void onSpellCurrentWord();
-
+    bool write_keypad_config(const std::string & text);
+    void SaySN();
 
 signals:
     void textUpdated(const QString &text);
@@ -91,6 +92,7 @@ private:
     void populateVoices();
     void SetCurrentTts(const QString & lang);
     void SetDefaultTts();
+    bool read_keypad_config();
 
 private slots:
     void onNewTextExtracted();
@@ -131,5 +133,6 @@ private:
     void (MainController::*m_longPressAction)(void);
     int m_nCurrentLangaugeSettingIndx = 0;
     bool m_bForceSingleColumn = false;
+    char m_btKbdMac[64] = {0};
 };
 

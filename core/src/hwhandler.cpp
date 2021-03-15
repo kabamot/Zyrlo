@@ -13,7 +13,9 @@
 Q_DECLARE_METATYPE(cv::Mat);
 Q_DECLARE_METATYPE(Button);
 
-HWHandler::HWHandler(QObject *parent) : QObject(parent)
+HWHandler::HWHandler(QObject *parent, bool btKeyboardFound)
+    : QObject(parent)
+    , m_btKeyboardFound(btKeyboardFound)
 {
     // This is important to receive cv::Mat from another thread
     qRegisterMetaType<cv::Mat>();
@@ -52,7 +54,7 @@ void HWHandler::start()
         m_future = QtConcurrent::run([this](){ run(); });
     if (!m_buttonThread.isRunning())
         m_buttonThread = QtConcurrent::run([this](){ buttonThreadRun(); });
-    if (!m_buttonBtThread.isRunning())
+    if (m_btKeyboardFound && !m_buttonBtThread.isRunning())
         m_buttonBtThread = QtConcurrent::run([this](){ buttonBtThreadRun(); });
  }
 
@@ -63,7 +65,7 @@ void HWHandler::stop()
 
 void HWHandler::run()
 {
-     m_zcam.initCamera();
+    m_zcam.initCamera();
     while(!m_stop) {
         switch(m_zcam.AcquireFrameStep()) {
         case ZyrloCamera::eCameraArmClosed:
@@ -88,7 +90,6 @@ void HWHandler::run()
             emit onGesture(2);
             break;
         }
-
         QThread::msleep(1);
     }
 }
@@ -104,14 +105,14 @@ void HWHandler::onButtonsUp(byte up_val) {
 }
 
 void HWHandler::buttonBtThreadRun() {
-    BTComm btc;
-    int nVal;
-    btc.init();
+     int nVal;
+    m_btc.init();
     for(;!m_stop; QThread::msleep(100)) {
-        btc.btConnect(m_stop);
+        m_btc.btConnect(m_stop);
         bool bCont = true;
         for(; !m_stop && bCont; QThread::msleep(20)) {
-            switch(btc.receiveLoopStep(nVal)) {
+
+            switch(m_btc.receiveLoopStep(nVal)) {
             case 0:
                 break;
             case 1:
@@ -139,6 +140,16 @@ void HWHandler::buttonThreadRun() {
     BaseComm bc;
     bc.init();
     bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, &reply);
+    for(; !m_stop; QThread::msleep(50)) {
+        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
+            qDebug() << "BaseComm error\n";
+            continue;
+        }
+        m_nButtonMask = reply;
+        if((SWITCH_FOLDED_MASK | m_nButtonMask) != 0)
+            onButtonsUp(SWITCH_FOLDED_MASK_UP);
+        break;
+    }
     for(; !m_stop; QThread::msleep(50)) {
         if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
             qDebug() << "BaseComm error\n";
@@ -204,4 +215,12 @@ void HWHandler::setCameraArmPosition(bool bOpen) {
     m_zcam.setArmPosition(bOpen);
 }
 
+void HWHandler::onSpeakingStarted() {
+    qDebug() << "HWHandler::onSpeakingStarted\n";
+    m_btc.ConnectLock();
+}
 
+void HWHandler::UnlockBtConnect() {
+    qDebug() << "HWHandler::onSpeakingFinished\n";
+    m_btc.ConnectUlnock();
+}

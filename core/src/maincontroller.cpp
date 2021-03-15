@@ -19,9 +19,10 @@
 #include "BTComm.h"
 #include "BaseComm.h"
 #include "ZyrloOcr.h"
-
+#include <regex>
 
 using namespace cv;
+using namespace std;
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
@@ -72,18 +73,7 @@ MainController::MainController()
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
 
-    // Create TTS engines
-    for (const auto &language : LANGUAGES) {
-        auto ttsEngine = new CerenceTTS(language.voice, this);
-        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
-        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
-        m_ttsEnginesList.append(ttsEngine);
-    }
-
-    m_ttsEngine = m_ttsEnginesList.front();
-    populateVoices();
-
-    m_hwhandler = new HWHandler(this);
+    m_hwhandler = new HWHandler(this, read_keypad_config());
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
         qDebug() << "imageReceived 0\n";
         if(bPlayShutterSound)
@@ -99,6 +89,18 @@ MainController::MainController()
         qDebug() << "received" << (int)button;
     }, Qt::QueuedConnection);
 
+    // Create TTS engines
+    for (const auto &language : LANGUAGES) {
+        auto ttsEngine = new CerenceTTS(language.voice, this);
+        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
+        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
+        connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
+        m_ttsEnginesList.append(ttsEngine);
+    }
+
+    m_ttsEngine = m_ttsEnginesList.front();
+    populateVoices();
+
     connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
@@ -113,7 +115,6 @@ MainController::MainController()
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
     m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
     m_armClosedSound = new QSound(ARMCLOSED_SOUND_FILE, this);
-
     m_hwhandler->start();
 }
 
@@ -150,6 +151,7 @@ void MainController::pauseResume()
         m_state = State::Paused;
         if (m_ttsEngine->isSpeaking()) {
             m_ttsEngine->pause();
+            m_hwhandler->UnlockBtConnect();
         }
         break;
 
@@ -544,7 +546,8 @@ void MainController::onSpeakingFinished()
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
     }
-
+    else
+        m_hwhandler->UnlockBtConnect();
     if (!isSpeakingTextState && !m_isContinueAfterSpeakingFinished) {
         // The normal mode (not service text speak) with stop after sentence is finished,
         // so set continue mode back to true
@@ -819,6 +822,11 @@ void MainController::onButton(int nButton, bool bDown) {
     else {
         qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
         stopLongPressTimer();
+        if(nButton == SWITCH_FOLDED_MASK_UP) {
+            m_hwhandler->setCameraArmPosition(true);
+            setLed(true);
+           return;
+        }
         if(SWITCH_FOLDED_MASK & nButton) {
             m_hwhandler->setCameraArmPosition(false);
             setLed(false);
@@ -840,7 +848,6 @@ void MainController::onButton(int nButton, bool bDown) {
             case BUTTON_RATE_DN_MASK     :
                 speechRateDown();
                 break;
-
             }
         }
     }
@@ -975,3 +982,37 @@ MainController::~MainController() {
         delete m_armClosedSound;
 }
 
+
+bool MainController::read_keypad_config() {
+    FILE *fp = fopen("/home/pi/keypad_config.txt", "r");
+    if(!fp)
+        return false;
+    fscanf(fp, "%s", m_btKbdMac);
+    fclose(fp);
+    return true;
+}
+
+bool MainController::write_keypad_config(const string & text) {
+    if(text.length() != 4) {
+        sayText("Invalid serial number");
+        return false;
+    }
+    string sMac = string("40:F5:20:47:") + text.substr(0, 2) + ':' + text.substr(2);
+    if(regex_match(sMac, regex("^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$"))) {
+        strcpy(m_btKbdMac, sMac.c_str());
+        system((string("echo ") + sMac + " > /home/pi/keypad_config.txt").c_str());
+        sayText("Serial number saved");
+        return true;
+    }
+    sayText("Invalid serial number");
+    return false;
+}
+
+void MainController::SaySN() {
+    if(!m_btKbdMac[0]) {
+        sayText("No keypad");
+        return;
+    }
+    string sn = regex_replace( m_btKbdMac, regex(":"), " " );
+    sayText(sn.substr(12).c_str());
+}

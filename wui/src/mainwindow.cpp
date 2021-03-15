@@ -10,8 +10,11 @@
 #include <QDebug>
 #include <QtGui>
 #include <QTextBlock>
+#include <QInputDialog>
+#include <regex>
 
 using namespace cv;
+using namespace std;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -109,6 +112,18 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
             m_controller.SaveImage(4);
         else
             m_controller.ReadImage(4);
+        break;
+    case Qt::Key_F5:
+    {
+        m_controller.sayText("Type the serial number");
+        bool ok;
+        QString text = QInputDialog::getText(this, tr("Keypad MAC"), tr(""), QLineEdit::Normal, "", &ok);
+        if (ok && !text.isEmpty())
+            m_controller.write_keypad_config(text.toStdString());
+    }
+        break;
+    case Qt::Key_F6:
+        m_controller.SaySN();
         break;
     }
 }

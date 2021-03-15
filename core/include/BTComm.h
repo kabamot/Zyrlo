@@ -6,6 +6,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
 #include <atomic>
+#include <QFuture>
 
 // Packet format
 // <HEADER><DATA1>
@@ -28,8 +29,6 @@
 #define KP_BUTTON_SQUARE_L    0x09
 #define KP_BUTTON_SQUARE_R    0x0a
 
-void *BtCommThread(void *p);
-
 typedef enum {
 	eStatusIdle,
 	eStatusConnected,
@@ -42,6 +41,7 @@ class BTComm
     struct sockaddr_rc m_addr = { 0 };
     unsigned char m_readBuffer[10];
     int m_s = -1;
+    volatile bool m_bConnectLock = false;
 
 public:
 
@@ -53,14 +53,11 @@ public:
 
 
 	int init();
-	int receiveLoop();
 	void btStop() { m_exitRequest = 1; };
     int receiveLoopStep(int & nVal);
     int btConnect(const std::atomic_bool &isStop);
-
-
-
-
+    void ConnectLock() {m_bConnectLock = true;}
+    void ConnectUlnock() {m_bConnectLock = false;}
 };
 
 #endif // __BT_COMM_H__

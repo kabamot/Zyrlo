@@ -9,9 +9,12 @@
 
 #include <QMainWindow>
 #include <QTextCharFormat>
+#include <QAction>
+#include <QTimer>
 
 #include "maincontroller.h"
 #include "textposition.h"
+#include "bluetoothhandler.h"
 #include <opencv2/opencv.hpp>
 
 QT_BEGIN_NAMESPACE
@@ -19,7 +22,6 @@ namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
 class QTextCursor;
-class QLabel;
 class QGridLayout;
 
 class MainWindow : public QMainWindow
@@ -39,8 +41,20 @@ private slots:
     void highlighWord(const TextPosition &position);
     void updatePreview(const cv::Mat &img);
 
+    void mainMenu();
+    void bluetoothMenu();
+    void bluetoothScanMenu();
+    void bluetoothPairedMenu();
+
+    void onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr);
+    void onDeviceScanningFinished();
+    void onScanningTimer();
+    void onBluetoothConnected(const QString &name);
+    void onBluetoothConnectionError(const QString &name);
+
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);
+    void addDiscoveredDevicesToMenu();
 
 private:
     Ui::MainWindow *ui;
@@ -48,6 +62,9 @@ private:
     TextPosition m_prevPosition;
     QTextCharFormat m_prevFormat;
     cv::Mat m_prevImg;
-    QLabel *m_pLabelPreview;
     bool m_bSavePreviewImage = false, m_bPreviewOn = false;
+
+    QAction m_actionExit;
+    BluetoothHandler m_bluetoothHandler;
+    QTimer m_scanningTimer;
 };

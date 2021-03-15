@@ -13,17 +13,23 @@
 #include <QInputDialog>
 #include <regex>
 
+#include "menuwidget.h"
+#include "bluetoothhandler.h"
+
 using namespace cv;
 using namespace std;
+
+constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
+constexpr int BLUETOOTH_SCANNING_TIMEOUT = 7000; // ms
+constexpr int BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME = 4000; // ms
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    m_pLabelPreview = new QLabel();
-    ui->gridLayout->addWidget(m_pLabelPreview, 1, 0, Qt::AlignCenter);
-    m_pLabelPreview->setVisible(false);
+    ui->previewLabel->setVisible(false);
+
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
     connect(&m_controller, &MainController::textUpdated, this, &MainWindow::updateText);
     connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
@@ -39,6 +45,28 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->rateDownButton, &QPushButton::clicked, &m_controller, &MainController::speechRateDown);
     connect(ui->nextVoiceButton, &QPushButton::clicked, &m_controller, &MainController::nextVoice);
 
+    connect(ui->menuButton, &QPushButton::clicked, this, &MainWindow::mainMenu);
+
+    connect(ui->stackedWidget, &QStackedWidget::currentChanged, this, [this](int index){
+        auto *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->widget(index));
+        if (menuWidget) {
+            menuWidget->enteredToMenu();
+        }
+    });
+
+    // Bluetooth handler
+    connect(&m_bluetoothHandler, &BluetoothHandler::deviceDiscoveryFinished,
+            this, &MainWindow::onDeviceScanningFinished);
+    connect(&m_bluetoothHandler, &BluetoothHandler::deviceDiscoveryError, this,
+            &MainWindow::onDeviceScanningError);
+    connect(&m_bluetoothHandler, &BluetoothHandler::connected, this,
+            &MainWindow::onBluetoothConnected);
+    connect(&m_bluetoothHandler, &BluetoothHandler::connectionError, this,
+            &MainWindow::onBluetoothConnectionError);
+
+    connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
+    connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
+
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
     m_controller.setLed(true);
 }
@@ -46,7 +74,6 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete m_pLabelPreview;
     m_controller.setLed(false);
 }
 
@@ -55,7 +82,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
             m_bPreviewOn = true;
-            m_pLabelPreview->setVisible(true);
+            ui->previewLabel->setVisible(true);
             qDebug() << "Preview ON\n";
         }
         else {
@@ -65,7 +92,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         break;
     case Qt::Key_H:
         m_bPreviewOn = false;
-        m_pLabelPreview->setVisible(false);
+        ui->previewLabel->setVisible(false);
         qDebug() << "Preview OFF\n";
         break;
     case Qt::Key_F:
@@ -185,14 +212,145 @@ void MainWindow::setCursorAtPosition(const TextPosition &position, QTextCursor &
     cursor.setPosition(position.absPos() + position.length(), QTextCursor::KeepAnchor);
 }
 
+void MainWindow::addDiscoveredDevicesToMenu()
+{
+    // Add scanned items to the list
+    auto menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
+    if (menuWidget) {
+        QStringList items = m_bluetoothHandler.deviceNames();
+        items.append("Exit");
+        menuWidget->setItems(items);
+    }
+}
+
 void MainWindow::updatePreview(const Mat &img) {
     if(m_bPreviewOn) {
         cvtColor(img, m_prevImg, CV_GRAY2RGB);
         rotate(m_prevImg, m_prevImg, ROTATE_180);
-        m_pLabelPreview->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
+        ui->previewLabel->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
     }
     if(m_bSavePreviewImage) {
         m_bSavePreviewImage = false;
         imwrite("PreviewImage.bmp", img);
     }
+}
+
+void MainWindow::mainMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
+    QStringList items{"Bluetooth", "Language", "Power Options", "Exit"};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
+        if (item == "Exit") {
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else if (item == "Bluetooth") {
+            bluetoothMenu();
+        }
+    });
+}
+
+void MainWindow::bluetoothMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Bluetooth menu", &m_controller, ui->stackedWidget);
+    QStringList items{"Scan for devices", "Paired devices", "Exit"};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
+        if (item == "Exit") {
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else if (item == "Scan for devices") {
+            bluetoothScanMenu();
+        } else if (item == "Paired devices") {
+            bluetoothPairedMenu();
+        }
+    });
+}
+
+void MainWindow::bluetoothScanMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Bluetooth scan", &m_controller, ui->stackedWidget);
+    QStringList items{"Exit"};
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
+        if (item == "Exit") {
+            m_scanningTimer.stop();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else {
+            m_bluetoothHandler.startPairing(index);
+        }
+    });
+
+    m_controller.sayTranslationTag("Bluetooth scanning started");
+    m_bluetoothHandler.startDeviceDiscovery(BLUETOOTH_SCANNING_TIMEOUT);
+    m_scanningTimer.start(BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME);
+}
+
+void MainWindow::bluetoothPairedMenu()
+{
+    m_bluetoothHandler.prepareConnectedDevices();
+//    qDebug() << m_bluetoothHandler.deviceNames();
+}
+
+void MainWindow::onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr)
+{
+    qDebug() << "Bluetooth scanning error:" << error << errorStr;
+    m_scanningTimer.stop();
+    QString message = m_controller.translateTag(QStringLiteral("Bluetooth error: %1").arg(errorStr));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+}
+
+void MainWindow::onDeviceScanningFinished()
+{
+    qDebug() << "Bluetooth scanning finished";
+    m_scanningTimer.stop();
+
+    QString message = m_controller.translateTag("Bluetooth scanning finished");
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+
+    addDiscoveredDevicesToMenu();
+}
+
+void MainWindow::onScanningTimer()
+{
+    QString message = m_controller.translateTag("Scanning for devices. Please wait...");
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+
+    addDiscoveredDevicesToMenu();
+}
+
+void MainWindow::onBluetoothConnected(const QString &name)
+{
+    QString message = m_controller.translateTag(QStringLiteral("Successfully connected to %1").arg(name));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
+}
+
+void MainWindow::onBluetoothConnectionError(const QString &name)
+{
+    QString message = m_controller.translateTag(QStringLiteral("Error, can't connect to %1").arg(name));
+    ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
+    m_controller.sayText(message);
 }

@@ -62,7 +62,7 @@ void Paragraph::addLine(const QString &line, const QString &lang)
     if(m_langTagPos.empty() || lang.compare(prev(m_langTagPos.end())->second) != 0)
         m_langTagPos[length()] = lang;
     auto newLine = line.simplified();
-    if (newLine.back() == '-') {
+    if (!newLine.isEmpty() && newLine.back() == '-') {
         // Remove last dash '-' as it will be connected to the next line
         newLine.chop(1);
     } else {

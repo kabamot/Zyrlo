@@ -37,6 +37,8 @@ public:
     MainController();
     ~MainController();
 
+    void waitForSayTextFinished();
+
     void startFile(const QString &filename);
     void startImage(const cv::Mat &image);
     void snapImage();
@@ -50,6 +52,7 @@ public:
     void onSpellCurrentWord();
     bool write_keypad_config(const std::string & text);
     void SaySN();
+    QString translateTag(const QString &tag);
 
 signals:
     void textUpdated(const QString &text);
@@ -65,6 +68,8 @@ signals:
 
 public slots:
     void pauseResume();
+    void pause();
+    void resume();
     void backWord();
     void nextWord();
     void backSentence();

@@ -20,6 +20,7 @@
 #include "BaseComm.h"
 #include "ZyrloOcr.h"
 #include <regex>
+#include "tinyxml.h"
 
 using namespace cv;
 using namespace std;
@@ -30,6 +31,7 @@ using namespace std;
 #define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-10.wav"
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
+#define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
@@ -42,7 +44,7 @@ struct LangVoice {
 struct LangVoiceComb {
     string m_sDescription;
     vector<string> m_vlangs;
-    unsigned long long m_uLang_mask;
+    unsigned long long m_uLang_mask = 0;
     vector<int> m_ttsEngIndxs;
 };
 
@@ -53,6 +55,29 @@ const vector<LangVoiceComb> g_vLangVoiceSettings {
     {"og Engelsk", {"nor", "eng"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {2, 0}}
 };
 
+bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
+    vLangVoiceSettings.clear();
+    TiXmlDocument doc(LANG_VOICE_SETTINGS_FILE);
+
+    if(!doc.LoadFile())
+        return false;
+    TiXmlNode *spRoot;
+    for(spRoot = doc.FirstChild(); spRoot && !strstr(spRoot->Value(), "Voices"); spRoot = spRoot->NextSibling());
+    if (!spRoot)
+        return false;
+    for(TiXmlElement *pVoice = spRoot->FirstChildElement("voice"); pVoice; pVoice = pVoice->NextSiblingElement("voice")) {
+        LangVoiceComb lvc;
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUU " << pVoice->Attribute("description");
+        for(TiXmlElement *pEl = pVoice->FirstChildElement("name"); pEl; pEl = pEl->NextSiblingElement("name")) {
+
+            qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUU " << pEl->Attribute("language") << pEl->Value() << pEl->GetText() << Qt::endl;
+            //i->second.insert(pair<string, string>(pEl->Value(), pEl->GetText()));
+            //qDebug() << pEl->Value() << pTag->Value() << pEl->GetText() << Qt::endl;
+        }
+    }
+    return true;
+}
+
 const QVector<LangVoice> LANGUAGES = {
     { "eng", "Malcolm" },
     { "nor", "nora" },
@@ -61,6 +86,8 @@ const QVector<LangVoice> LANGUAGES = {
 
 MainController::MainController()
 {
+    vector<LangVoiceComb> vLangVoiceSettings;
+    ReadLangVoiceSettings(vLangVoiceSettings);
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -141,6 +168,23 @@ void MainController::startImage(const Mat &image)
 
 void MainController::pauseResume()
 {
+    if (m_state == State::SpeakingPage) {
+        pause();
+    } else {
+        resume();
+    }
+}
+
+void MainController::pause()
+{
+    m_state = State::Paused;
+    if (m_ttsEngine->isSpeaking()) {
+        m_ttsEngine->pause();
+    }
+}
+
+void MainController::resume()
+{
     switch (m_state) {
     case State::Stopped:
         m_state = State::SpeakingPage;
@@ -172,6 +216,9 @@ void MainController::pauseResume()
             m_ttsStartPositionInParagraph = m_currentWordPosition.parPos();
             startSpeaking();
         }
+        break;
+
+    default:
         break;
     }
 }
@@ -313,7 +360,7 @@ void MainController::sayText(QString text)
 
 void MainController::sayTranslationTag(const QString &tag)
 {
-    sayText(m_translator.GetString(tag.toStdString()).c_str());
+    sayText(translateTag(tag));
 }
 
 void MainController::spellText(const QString &text)
@@ -906,6 +953,11 @@ void MainController::onSpellCurrentWord()
     }
 }
 
+QString MainController::translateTag(const QString &tag)
+{
+    return m_translator.GetString(tag.toStdString()).c_str();
+}
+
 void MainController::changeVoiceSpeed(int nStep) {
     if(!m_ttsEngine)
         return;
@@ -982,7 +1034,6 @@ MainController::~MainController() {
         delete m_armClosedSound;
 }
 
-
 bool MainController::read_keypad_config() {
     FILE *fp = fopen("/home/pi/keypad_config.txt", "r");
     if(!fp)
@@ -1015,4 +1066,13 @@ void MainController::SaySN() {
     }
     string sn = regex_replace( m_btKbdMac, regex(":"), " " );
     sayText(sn.substr(12).c_str());
+}
+
+void MainController::waitForSayTextFinished()
+{
+    while (m_state == State::SpeakingText) {
+        qApp->processEvents();
+        qApp->sendPostedEvents();
+        QThread::msleep(1);
+    }
 }

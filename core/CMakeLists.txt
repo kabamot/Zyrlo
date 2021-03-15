@@ -13,8 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_definitions(-DQT_STATICPLUGIN)
 
-find_package(QT NAMES Qt6 Qt5 COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent REQUIRED)
+find_package(QT NAMES Qt6 Qt5 COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent Bluetooth REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Core LinguistTools TextToSpeech Multimedia Concurrent Bluetooth REQUIRED)
 
 set(INC_FILES
     include/maincontroller.h
@@ -26,6 +26,7 @@ set(INC_FILES
     include/OFMotionDetector.h
     include/BaseComm.h
     include/BTComm.h
+    include/bluetoothhandler.h
     3rd/tinyxml/tinystr.h
     3rd/tinyxml/tinyxml.h
     include/translator.h
@@ -42,6 +43,7 @@ set(SRC_FILES
     src/OFMotionDetector.cpp
     src/BaseComm.cpp
     src/BTComm.cpp
+    src/bluetoothhandler.cpp
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h
@@ -85,6 +87,7 @@ target_link_libraries(${LIB_NAME}
         Qt${QT_VERSION_MAJOR}::TextToSpeech
         Qt${QT_VERSION_MAJOR}::Multimedia
         Qt${QT_VERSION_MAJOR}::Concurrent
+        Qt${QT_VERSION_MAJOR}::Bluetooth
         ${OpenCV_LIBS}
         opencv_world
         wiringPi

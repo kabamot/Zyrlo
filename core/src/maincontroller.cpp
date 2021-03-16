@@ -39,21 +39,16 @@ constexpr int LONG_PRESS_DELAY = 1500;
 struct LangVoice {
     QString lang;
     QString voice;
+    LangVoice(QString _lang, QString _voice) : lang(_lang), voice(_voice) {}
 };
 
 struct LangVoiceComb {
-    string m_sDescription;
-    vector<string> m_vlangs;
+    vector<LangVoice> m_vlangs;
     unsigned long long m_uLang_mask = 0;
     vector<int> m_ttsEngIndxs;
 };
 
-const vector<LangVoiceComb> g_vLangVoiceSettings {
-    {"Malcolm", {"eng"}, ZRL_ENGLISH_US, {0}},
-    //{"Nora", {"nor"}, ZRL_NORWEGIAN, {1}},
-    {"Henrik", {"nor"}, ZRL_NORWEGIAN, {2}},
-    {"og Engelsk", {"nor", "eng"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {2, 0}}
-};
+vector<LangVoiceComb> g_vLangVoiceSettings;
 
 bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
     vLangVoiceSettings.clear();
@@ -67,27 +62,39 @@ bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
         return false;
     for(TiXmlElement *pVoice = spRoot->FirstChildElement("voice"); pVoice; pVoice = pVoice->NextSiblingElement("voice")) {
         LangVoiceComb lvc;
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUU " << pVoice->Attribute("description");
         for(TiXmlElement *pEl = pVoice->FirstChildElement("name"); pEl; pEl = pEl->NextSiblingElement("name")) {
-
-            qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUU " << pEl->Attribute("language") << pEl->Value() << pEl->GetText() << Qt::endl;
-            //i->second.insert(pair<string, string>(pEl->Value(), pEl->GetText()));
-            //qDebug() << pEl->Value() << pTag->Value() << pEl->GetText() << Qt::endl;
+            lvc.m_vlangs.push_back(LangVoice(pEl->Attribute("language"), pEl->GetText()));
         }
+        vLangVoiceSettings.push_back(lvc);
     }
     return true;
 }
 
-const QVector<LangVoice> LANGUAGES = {
-    { "eng", "Malcolm" },
-    { "nor", "nora" },
-    { "nor", "henrik" },
-};
+void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice> & vVoices) {
+    vVoices.clear();
+    map<QString, int> setVoices;
+    for(auto i = vLangVoiceSettings.begin(); i != vLangVoiceSettings.end(); ++i) {
+        i->m_ttsEngIndxs.clear();
+        i->m_uLang_mask = 0;
+        for(auto j = i->m_vlangs.begin(); j != i->m_vlangs.end(); ++j) {
+            auto ins = setVoices.emplace(j->voice, vVoices.size());
+            i->m_ttsEngIndxs.push_back(ins.first->second);
+            i->m_uLang_mask |= langToMask(j->lang.toStdString().c_str());
+            if(ins.second)
+                vVoices.push_back(*j);
+        }
+    }
+}
+
+QVector<LangVoice> LANGUAGES;
 
 MainController::MainController()
 {
-    vector<LangVoiceComb> vLangVoiceSettings;
-    ReadLangVoiceSettings(vLangVoiceSettings);
+    if(ReadLangVoiceSettings(g_vLangVoiceSettings))
+        FillLanguages(g_vLangVoiceSettings, LANGUAGES);
+    else
+        qDebug() << "Cant find voces.xml\n";
+
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -125,7 +132,8 @@ MainController::MainController()
         m_ttsEnginesList.append(ttsEngine);
     }
 
-    m_ttsEngine = m_ttsEnginesList.front();
+    m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
+    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
     populateVoices();
 
     connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
@@ -138,7 +146,9 @@ MainController::MainController()
 
     m_translator.Init(TRANSLATION_FILE);
     m_help.Init(HELP_FILE);
-    m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
+    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
+    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
+     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
     m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
     m_armClosedSound = new QSound(ARMCLOSED_SOUND_FILE, this);
@@ -392,6 +402,7 @@ void MainController::nextVoice()
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 
     m_translator.SetLanguage(langVoice.lang.toStdString());
+    m_help.SetLanguage(langVoice.lang.toStdString());
     QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=%4\)")
                             .arg(m_translator.GetString("VOICE_SET_TO").c_str(), langVoice.voice, CERENCE_ESC)
                             .arg(m_state == State::SpeakingPage ? 500 : 0);
@@ -912,19 +923,20 @@ void MainController::onToggleVoice() {
         return;
     }
     m_nCurrentLangaugeSettingIndx = nIndx;
-    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front());
+    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
+    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-    string sMsg = m_translator.GetString("VOICE_SET_TO") + " " + g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_sDescription;
+    string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString("VOICE_SET_AUTO") : m_translator.GetString("VOICE_SET_TO");
     sayText(sMsg.c_str());
 }
 
 void MainController::SetCurrentTts(const QString & lang) {
     qDebug() << "SetCurrentTts" << lang << Qt::endl;
-    const vector<string> & vlangs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs;
+    const auto & vlangs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs;
     const vector<int> & vindxs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs;
     for(size_t i = 0; i != vlangs.size(); ++i)
-        if(lang.compare(vlangs[i].c_str()) == 0) {
+        if(lang.compare(vlangs[i].lang) == 0) {
             if(m_currentTTSIndex == vindxs[i])
                 return;
              m_currentTTSIndex = vindxs[i];

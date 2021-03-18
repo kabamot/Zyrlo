@@ -252,6 +252,8 @@ void MainWindow::mainMenu()
             delete menuWidget;
         } else if (item == "Bluetooth") {
             bluetoothMenu();
+        } else if (item == "Language") {
+            langugesMenu();
         }
     });
 }
@@ -275,6 +277,34 @@ void MainWindow::bluetoothMenu()
             bluetoothScanMenu();
         } else if (item == "Paired devices") {
             bluetoothPairedMenu();
+        }
+    });
+}
+
+void MainWindow::langugesMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Languages menu", &m_controller, ui->stackedWidget);
+    QStringList items;
+    m_controller.getListOfLanguges(items);
+    items.push_back("Exit");
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
+        if (item == "Exit") {
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else {
+            m_controller.toggleVoiceEnabled(i);
+            QStringList items  = {"HRUUUUUUUUUUUUU","llll", "Exit"};
+            //menuWidget->setCurrSelection()
+            menuWidget->setItems(items);
+            //ui->stackedWidget->actions().setDisabled(true);
+            //menuWidget->actions.at(0)->setEnabled(false);
         }
     });
 }

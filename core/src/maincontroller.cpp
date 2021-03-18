@@ -43,9 +43,11 @@ struct LangVoice {
 };
 
 struct LangVoiceComb {
+    bool m_bEnabled;
     vector<LangVoice> m_vlangs;
     unsigned long long m_uLang_mask = 0;
     vector<int> m_ttsEngIndxs;
+    LangVoiceComb(bool bEnabled) : m_bEnabled(bEnabled) {}
 };
 
 vector<LangVoiceComb> g_vLangVoiceSettings;
@@ -61,7 +63,7 @@ bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
     if (!spRoot)
         return false;
     for(TiXmlElement *pVoice = spRoot->FirstChildElement("voice"); pVoice; pVoice = pVoice->NextSiblingElement("voice")) {
-        LangVoiceComb lvc;
+        LangVoiceComb lvc(pVoice->Attribute("enabled") && strcmp(pVoice->Attribute("enabled"), "true") == 0);
         for(TiXmlElement *pEl = pVoice->FirstChildElement("name"); pEl; pEl = pEl->NextSiblingElement("name")) {
             lvc.m_vlangs.push_back(LangVoice(pEl->Attribute("language"), pEl->GetText()));
         }
@@ -70,10 +72,36 @@ bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
     return true;
 }
 
+bool WriteLangVoiceSettings(const vector<LangVoiceComb> & vLangVoiceSettings, const char *fileName) {
+    TiXmlDocument doc;
+    TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "utf-8", "");
+    doc.LinkEndChild( decl );
+
+    TiXmlElement *spRoot = new TiXmlElement( "Voices" );
+    doc.LinkEndChild( spRoot );
+
+    for(auto & lvc : vLangVoiceSettings) {
+        TiXmlElement *pVoice = new TiXmlElement("voice");
+        pVoice->SetAttribute("enabled", lvc.m_bEnabled ? "true" : "false");
+        spRoot->LinkEndChild(pVoice);
+        for(auto & i : lvc.m_vlangs) {
+            TiXmlElement *pEl = new TiXmlElement("name");
+            pEl->SetAttribute("language", i.lang.toStdString().c_str());
+            TiXmlText* pText = new TiXmlText(i.voice.toStdString().c_str());
+            pEl->LinkEndChild(pText);
+            pVoice->LinkEndChild(pEl);
+        }
+    }
+    doc.SaveFile(fileName);
+    return true;
+}
+
 void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice> & vVoices) {
     vVoices.clear();
     map<QString, int> setVoices;
     for(auto i = vLangVoiceSettings.begin(); i != vLangVoiceSettings.end(); ++i) {
+        if(!i->m_bEnabled)
+            continue;
         i->m_ttsEngIndxs.clear();
         i->m_uLang_mask = 0;
         for(auto j = i->m_vlangs.begin(); j != i->m_vlangs.end(); ++j) {
@@ -88,6 +116,15 @@ void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice
 
 QVector<LangVoice> LANGUAGES;
 
+int NextEnabledVoiceIndex(int nCurrIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
+    for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
+        nCurrIndx = (nCurrIndx + 1) % g_vLangVoiceSettings.size();
+        if(g_vLangVoiceSettings[nCurrIndx].m_bEnabled)
+            return nCurrIndx;
+    }
+    return -1;
+}
+
 MainController::MainController()
 {
     if(ReadLangVoiceSettings(g_vLangVoiceSettings))
@@ -95,6 +132,8 @@ MainController::MainController()
     else
         qDebug() << "Cant find voces.xml\n";
 
+    m_nCurrentLangaugeSettingIndx = NextEnabledVoiceIndex(-1, g_vLangVoiceSettings);
+    //WriteLangVoiceSettings(g_vLangVoiceSettings, "/home/pi/hru.xml");
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -917,7 +956,9 @@ void MainController::onBtBattery(int nVal) {
 
 void MainController::onToggleVoice() {
     m_beepSound->play();
-    int nIndx = (m_nCurrentLangaugeSettingIndx + 1) % g_vLangVoiceSettings.size();
+
+    int nIndx = NextEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
+
     if(!ocr().setLanguage(g_vLangVoiceSettings[nIndx].m_uLang_mask)) {
         ocr().stopProcess();
         return;
@@ -1087,4 +1128,22 @@ void MainController::waitForSayTextFinished()
         qApp->sendPostedEvents();
         QThread::msleep(1);
     }
+}
+
+void MainController::getListOfLanguges(QStringList & list) const {
+    list.clear();
+    for(auto & vlc : g_vLangVoiceSettings) {
+        QString lngs;
+        for(auto & i : vlc.m_vlangs) {
+           if(!lngs.isEmpty())
+               lngs += ", ";
+            lngs += i.voice + " (" + i.lang + ")";
+        }
+        lngs += vlc.m_bEnabled ? " - Enabled" : " - Disabled";
+        list.push_back(lngs);
+    }
+}
+
+void MainController::toggleVoiceEnabled(int nIndx) {
+
 }

@@ -53,6 +53,8 @@ public:
     bool write_keypad_config(const std::string & text);
     void SaySN();
     QString translateTag(const QString &tag);
+    void getListOfLanguges(QStringList & list) const;
+    void toggleVoiceEnabled(int nIndx);
 
 signals:
     void textUpdated(const QString &text);

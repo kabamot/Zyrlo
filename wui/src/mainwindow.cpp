@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_controller, &MainController::textUpdated, this, &MainWindow::updateText);
     connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
     connect(&m_controller, &MainController::previewUpdated, this, &MainWindow::updatePreview);
+    connect(&m_controller, &MainController::openMainMenu, this, &MainWindow::mainMenu);
 
     connect(ui->pauseButton, &QPushButton::clicked, &m_controller, &MainController::pauseResume);
     connect(ui->nextWordButton, &QPushButton::clicked, &m_controller, &MainController::nextWord);
@@ -296,15 +297,14 @@ void MainWindow::langugesMenu()
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
         if (item == "Exit") {
+            m_controller.saveVoiceSettings();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
             m_controller.toggleVoiceEnabled(i);
-            QStringList items  = {"HRUUUUUUUUUUUUU","llll", "Exit"};
-            //menuWidget->setCurrSelection()
-            menuWidget->setItems(items);
-            //ui->stackedWidget->actions().setDisabled(true);
-            //menuWidget->actions.at(0)->setEnabled(false);
+            QStringList items;
+            m_controller.getListOfLanguges(items);
+            menuWidget->setItem(i, items[i]);
         }
     });
 }

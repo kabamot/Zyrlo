@@ -55,6 +55,7 @@ public:
     QString translateTag(const QString &tag);
     void getListOfLanguges(QStringList & list) const;
     void toggleVoiceEnabled(int nIndx);
+    void saveVoiceSettings();
 
 signals:
     void textUpdated(const QString &text);
@@ -67,6 +68,7 @@ signals:
     void toggleGestures();
     void toggleVoice();
     void readHelp();
+    void openMainMenu();
 
 public slots:
     void pauseResume();
@@ -100,6 +102,8 @@ private:
     void SetCurrentTts(const QString & lang);
     void SetDefaultTts();
     bool read_keypad_config();
+    void InitTtsEngines();
+    void ReleaseTtsEngines();
 
 private slots:
     void onNewTextExtracted();
@@ -141,5 +145,6 @@ private:
     int m_nCurrentLangaugeSettingIndx = 0;
     bool m_bForceSingleColumn = false;
     char m_btKbdMac[64] = {0};
+    bool m_bVoiceSettingsChanged = false;
 };
 

@@ -100,8 +100,8 @@ void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice
     vVoices.clear();
     map<QString, int> setVoices;
     for(auto i = vLangVoiceSettings.begin(); i != vLangVoiceSettings.end(); ++i) {
-        if(!i->m_bEnabled)
-            continue;
+//        if(!i->m_bEnabled)
+//            continue;
         i->m_ttsEngIndxs.clear();
         i->m_uLang_mask = 0;
         for(auto j = i->m_vlangs.begin(); j != i->m_vlangs.end(); ++j) {
@@ -125,6 +125,23 @@ int NextEnabledVoiceIndex(int nCurrIndx, const vector<LangVoiceComb> & vLangVoic
     return -1;
 }
 
+void MainController::InitTtsEngines() {
+    // Create TTS engines
+    for (const auto &language : LANGUAGES) {
+        auto ttsEngine = new CerenceTTS(language.voice, this);
+        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
+        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
+        connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
+        m_ttsEnginesList.append(ttsEngine);
+    }
+}
+
+void MainController::ReleaseTtsEngines() {
+    for(auto ttsEngine : m_ttsEnginesList)
+        delete ttsEngine;
+    m_ttsEnginesList.clear();
+}
+
 MainController::MainController()
 {
     if(ReadLangVoiceSettings(g_vLangVoiceSettings))
@@ -133,7 +150,6 @@ MainController::MainController()
         qDebug() << "Cant find voces.xml\n";
 
     m_nCurrentLangaugeSettingIndx = NextEnabledVoiceIndex(-1, g_vLangVoiceSettings);
-    //WriteLangVoiceSettings(g_vLangVoiceSettings, "/home/pi/hru.xml");
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -162,14 +178,7 @@ MainController::MainController()
         qDebug() << "received" << (int)button;
     }, Qt::QueuedConnection);
 
-    // Create TTS engines
-    for (const auto &language : LANGUAGES) {
-        auto ttsEngine = new CerenceTTS(language.voice, this);
-        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
-        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
-        connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
-        m_ttsEnginesList.append(ttsEngine);
-    }
+    InitTtsEngines();
 
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
@@ -890,12 +899,22 @@ void MainController::onButton(int nButton, bool bDown) {
             startLongPressTimer(&MainController::toggleGestures, LONG_PRESS_DELAY);
             break;
         case BUTTON_BACK_MASK       :
-            startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
+            if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
+                m_deviceButtonsMask = 0;
+                emit openMainMenu();
+                break;
+            }
+            //startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
             if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
+                break;
+            }
+            if(BUTTON_BACK_MASK & m_deviceButtonsMask) {
+                m_deviceButtonsMask = 0;
+                emit openMainMenu();
                 break;
             }
             if(BUTTON_PAUSE_MASK & m_deviceButtonsMask) {
@@ -914,7 +933,7 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             break;
-         }
+        }
     }
     else {
         qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
@@ -1145,5 +1164,14 @@ void MainController::getListOfLanguges(QStringList & list) const {
 }
 
 void MainController::toggleVoiceEnabled(int nIndx) {
-
+    m_bVoiceSettingsChanged = true;
+    g_vLangVoiceSettings[nIndx].m_bEnabled = !g_vLangVoiceSettings[nIndx].m_bEnabled;
 }
+
+void MainController::saveVoiceSettings() {
+    if(!m_bVoiceSettingsChanged)
+        return;
+    WriteLangVoiceSettings(g_vLangVoiceSettings, LANG_VOICE_SETTINGS_FILE);
+}
+
+

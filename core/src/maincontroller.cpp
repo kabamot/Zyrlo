@@ -888,6 +888,11 @@ void MainController::onButton(int nButton, bool bDown) {
         m_deviceButtonsMask |= nButton;
         switch(findOneOfTheButtons(nButton)) {
         case BUTTON_PAUSE_MASK   :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_ENTER);
+                break;
+            }
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
@@ -907,6 +912,11 @@ void MainController::onButton(int nButton, bool bDown) {
             //startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_UP);
+                break;
+            }
             if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
@@ -923,6 +933,11 @@ void MainController::onButton(int nButton, bool bDown) {
             }
             break;
         case BUTTON_RATE_DN_MASK     :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_DOWN);
+                break;
+            }
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
@@ -1163,7 +1178,21 @@ void MainController::getListOfLanguges(QStringList & list) const {
     }
 }
 
+bool isLastEnabledVoice(int nIndx) {
+    if(!g_vLangVoiceSettings[nIndx].m_bEnabled)
+        return false;
+    int nCount = 0;
+    for(auto & i : g_vLangVoiceSettings)
+        if(i.m_bEnabled)
+            ++nCount;
+    return nCount == 1;
+}
+
 void MainController::toggleVoiceEnabled(int nIndx) {
+    if(isLastEnabledVoice(nIndx)) {
+        m_beepSound->play();
+        return;
+    }
     m_bVoiceSettingsChanged = true;
     g_vLangVoiceSettings[nIndx].m_bEnabled = !g_vLangVoiceSettings[nIndx].m_bEnabled;
 }
@@ -1174,4 +1203,6 @@ void MainController::saveVoiceSettings() {
     WriteLangVoiceSettings(g_vLangVoiceSettings, LANG_VOICE_SETTINGS_FILE);
 }
 
-
+void MainController::setMenuOpen(bool bMenuOpen) {
+    m_bMenuOpen = bMenuOpen;
+}

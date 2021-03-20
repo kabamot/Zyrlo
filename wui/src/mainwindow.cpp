@@ -238,6 +238,7 @@ void MainWindow::updatePreview(const Mat &img) {
 
 void MainWindow::mainMenu()
 {
+    m_controller.setMenuOpen(true);
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
@@ -251,6 +252,8 @@ void MainWindow::mainMenu()
         if (item == "Exit") {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
+            m_controller.sayTranslationTag("EXITED_MENU");
+            m_controller.setMenuOpen(false);
         } else if (item == "Bluetooth") {
             bluetoothMenu();
         } else if (item == "Language") {

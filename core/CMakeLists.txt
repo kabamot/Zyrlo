@@ -30,6 +30,8 @@ set(INC_FILES
     3rd/tinyxml/tinystr.h
     3rd/tinyxml/tinyxml.h
     include/translator.h
+    include/uinput.h
+    include/kbdinputinjector.h
 )
 
 set(SRC_FILES
@@ -44,6 +46,7 @@ set(SRC_FILES
     src/BaseComm.cpp
     src/BTComm.cpp
     src/bluetoothhandler.cpp
+    src/kbdinputinjector.cpp
 
     src/cerence/cerencetts.cpp
     src/cerence/cerencetts.h

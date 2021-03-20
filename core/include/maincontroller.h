@@ -12,6 +12,7 @@
 #include <QFuture>
 #include "translator.h"
 #include "textposition.h"
+#include "kbdinputinjector.h"
 
 class OcrHandler;
 class Paragraph;
@@ -56,6 +57,7 @@ public:
     void getListOfLanguges(QStringList & list) const;
     void toggleVoiceEnabled(int nIndx);
     void saveVoiceSettings();
+    void setMenuOpen(bool bMenuOpen);
 
 signals:
     void textUpdated(const QString &text);
@@ -146,5 +148,7 @@ private:
     bool m_bForceSingleColumn = false;
     char m_btKbdMac[64] = {0};
     bool m_bVoiceSettingsChanged = false;
+    KbdInputInjector m_kbdInjctr;
+    bool m_bMenuOpen = false;
 };
 

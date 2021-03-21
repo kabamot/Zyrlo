@@ -438,23 +438,7 @@ void MainController::speechRateDown()
 
 void MainController::nextVoice()
 {
-    if (++m_currentTTSIndex >= m_ttsEnginesList.size())
-        m_currentTTSIndex = 0;
-
-    m_ttsEngine->stop();
-
-//    sayText(m_voices[m_currentVoiceNum]);
-//    QString voice = m_voices[m_currentVoiceNum].split(',').back().trimmed();
-
-    const auto langVoice = LANGUAGES[m_currentTTSIndex];
-    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-
-    m_translator.SetLanguage(langVoice.lang.toStdString());
-    m_help.SetLanguage(langVoice.lang.toStdString());
-    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=%4\)")
-                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(), langVoice.voice, CERENCE_ESC)
-                            .arg(m_state == State::SpeakingPage ? 500 : 0);
-    sayText(voiceText);
+    onToggleVoice();
 }
 
 OcrHandler &MainController::ocr()
@@ -715,7 +699,6 @@ void MainController::stopLongPressTimer() {
 }
 
 void MainController::stopBeeping() {
-//    qDebug() << __func__ << "beep\n";
     m_bKeepBeeping = false;
 }
 

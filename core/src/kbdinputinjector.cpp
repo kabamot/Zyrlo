@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <linux/input.h>
 
 void kbd_emit(int fd, int type, int code, int val)
@@ -106,6 +107,7 @@ void KbdInputInjector::SendKey(int key, bool bDown) {
     }
 
 KbdInputInjector::KbdInputInjector() {
+    system("sudo chmod 666 /dev/uinput");
     m_fd_kb = create_virtual_device("/dev/uinput", true, false);
 }
 

@@ -12,6 +12,7 @@
 #include <QFuture>
 #include "translator.h"
 #include "textposition.h"
+#include "kbdinputinjector.h"
 
 class OcrHandler;
 class Paragraph;
@@ -50,8 +51,13 @@ public:
     void ReadImage(int indx);
     void onReadHelp();
     void onSpellCurrentWord();
+    bool write_keypad_config(const std::string & text);
+    void SaySN();
     QString translateTag(const QString &tag);
-
+    void getListOfLanguges(QStringList & list) const;
+    void toggleVoiceEnabled(int nIndx);
+    void saveVoiceSettings();
+    void setMenuOpen(bool bMenuOpen);
 
 signals:
     void textUpdated(const QString &text);
@@ -64,6 +70,7 @@ signals:
     void toggleGestures();
     void toggleVoice();
     void readHelp();
+    void openMainMenu();
 
 public slots:
     void pauseResume();
@@ -96,6 +103,9 @@ private:
     void populateVoices();
     void SetCurrentTts(const QString & lang);
     void SetDefaultTts();
+    bool read_keypad_config();
+    void InitTtsEngines();
+    void ReleaseTtsEngines();
 
 private slots:
     void onNewTextExtracted();
@@ -136,5 +146,9 @@ private:
     void (MainController::*m_longPressAction)(void);
     int m_nCurrentLangaugeSettingIndx = 0;
     bool m_bForceSingleColumn = false;
+    char m_btKbdMac[64] = {0};
+    bool m_bVoiceSettingsChanged = false;
+    KbdInputInjector m_kbdInjctr;
+    bool m_bMenuOpen = false;
 };
 

@@ -4,6 +4,7 @@
 #include <QFuture>
 #include <atomic>
 #include "zyrlocamera.h"
+#include "BTComm.h"
 #include <opencv2/opencv.hpp>
 
 enum class Button {
@@ -17,7 +18,7 @@ class HWHandler : public QObject
 {
     Q_OBJECT
 public:
-    explicit HWHandler(QObject *parent = nullptr);
+    explicit HWHandler(QObject *parent, bool btKeyboardFound);
     ~HWHandler() override;
 
     void start();
@@ -38,6 +39,10 @@ public:
     bool gesturesOn() const;
     void setGesturesUi(bool bOn);
     void setCameraArmPosition(bool bOpen);
+    void UnlockBtConnect();
+
+public slots:
+    void onSpeakingStarted();
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);
@@ -54,6 +59,8 @@ private:
     std::atomic_bool    m_stop {false};
     QFuture<void>       m_future, m_buttonThread, m_buttonBtThread;
     ZyrloCamera m_zcam;
-    int m_nButtonMask = 0x40;
+    int m_nButtonMask = -1; //0x40;
     cv::Mat m_recallImg;
+    BTComm m_btc;
+    bool m_btKeyboardFound = false;
 };

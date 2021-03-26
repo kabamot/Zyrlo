@@ -15,6 +15,28 @@
 #define ZRL_DUTCH 			0x80ULL
 #define ZRL_NORWEGIAN		0x100ULL
 
+inline unsigned long long langToMask(const char * lang) {
+    if(strcmp(lang, "eng") == 0)
+        return ZRL_ENGLISH_US;
+    if(strcmp(lang, "fre") == 0)
+        return ZRL_FRENCH;
+    if(strcmp(lang, "ger") == 0)
+        return ZRL_GERMAN;
+    if(strcmp(lang, "ita") == 0)
+        return ZRL_ITALIAN;
+    if(strcmp(lang, "spa") == 0)
+        return ZRL_SPANISH;
+    if(strcmp(lang, "por") == 0)
+        return ZRL_PORTUGUESE;
+    if(strcmp(lang, "dan") == 0)
+        return ZRL_DANISH;
+    if(strcmp(lang, "dut") == 0)
+        return ZRL_DUTCH;
+    if(strcmp(lang, "nor") == 0)
+        return ZRL_NORWEGIAN;
+    return 0;
+ }
+
 extern "C" {
 
 typedef struct _text_line {

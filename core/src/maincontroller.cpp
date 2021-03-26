@@ -19,9 +19,11 @@
 #include "BTComm.h"
 #include "BaseComm.h"
 #include "ZyrloOcr.h"
-
+#include <regex>
+#include "tinyxml.h"
 
 using namespace cv;
+using namespace std;
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
@@ -29,6 +31,7 @@ using namespace cv;
 #define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-10.wav"
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
+#define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
@@ -36,30 +39,117 @@ constexpr int LONG_PRESS_DELAY = 1500;
 struct LangVoice {
     QString lang;
     QString voice;
+    LangVoice(QString _lang, QString _voice) : lang(_lang), voice(_voice) {}
 };
 
 struct LangVoiceComb {
-    string m_sDescription;
-    vector<string> m_vlangs;
-    unsigned long long m_uLang_mask;
+    bool m_bEnabled;
+    vector<LangVoice> m_vlangs;
+    unsigned long long m_uLang_mask = 0;
     vector<int> m_ttsEngIndxs;
+    LangVoiceComb(bool bEnabled) : m_bEnabled(bEnabled) {}
 };
 
-const vector<LangVoiceComb> g_vLangVoiceSettings {
-    {"Malcolm", {"eng"}, ZRL_ENGLISH_US, {0}},
-    //{"Nora", {"nor"}, ZRL_NORWEGIAN, {1}},
-    {"Henrik", {"nor"}, ZRL_NORWEGIAN, {2}},
-    {"og Engelsk", {"nor", "eng"}, ZRL_NORWEGIAN|ZRL_ENGLISH_US, {2, 0}}
-};
+vector<LangVoiceComb> g_vLangVoiceSettings;
 
-const QVector<LangVoice> LANGUAGES = {
-    { "eng", "Malcolm" },
-    { "nor", "nora" },
-    { "nor", "henrik" },
-};
+bool ReadLangVoiceSettings(vector<LangVoiceComb> & vLangVoiceSettings) {
+    vLangVoiceSettings.clear();
+    TiXmlDocument doc(LANG_VOICE_SETTINGS_FILE);
+
+    if(!doc.LoadFile())
+        return false;
+    TiXmlNode *spRoot;
+    for(spRoot = doc.FirstChild(); spRoot && !strstr(spRoot->Value(), "Voices"); spRoot = spRoot->NextSibling());
+    if (!spRoot)
+        return false;
+    for(TiXmlElement *pVoice = spRoot->FirstChildElement("voice"); pVoice; pVoice = pVoice->NextSiblingElement("voice")) {
+        LangVoiceComb lvc(pVoice->Attribute("enabled") && strcmp(pVoice->Attribute("enabled"), "true") == 0);
+        for(TiXmlElement *pEl = pVoice->FirstChildElement("name"); pEl; pEl = pEl->NextSiblingElement("name")) {
+            lvc.m_vlangs.push_back(LangVoice(pEl->Attribute("language"), pEl->GetText()));
+        }
+        vLangVoiceSettings.push_back(lvc);
+    }
+    return true;
+}
+
+bool WriteLangVoiceSettings(const vector<LangVoiceComb> & vLangVoiceSettings, const char *fileName) {
+    TiXmlDocument doc;
+    TiXmlDeclaration * decl = new TiXmlDeclaration( "1.0", "utf-8", "");
+    doc.LinkEndChild( decl );
+
+    TiXmlElement *spRoot = new TiXmlElement( "Voices" );
+    doc.LinkEndChild( spRoot );
+
+    for(auto & lvc : vLangVoiceSettings) {
+        TiXmlElement *pVoice = new TiXmlElement("voice");
+        pVoice->SetAttribute("enabled", lvc.m_bEnabled ? "true" : "false");
+        spRoot->LinkEndChild(pVoice);
+        for(auto & i : lvc.m_vlangs) {
+            TiXmlElement *pEl = new TiXmlElement("name");
+            pEl->SetAttribute("language", i.lang.toStdString().c_str());
+            TiXmlText* pText = new TiXmlText(i.voice.toStdString().c_str());
+            pEl->LinkEndChild(pText);
+            pVoice->LinkEndChild(pEl);
+        }
+    }
+    doc.SaveFile(fileName);
+    return true;
+}
+
+void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice> & vVoices) {
+    vVoices.clear();
+    map<QString, int> setVoices;
+    for(auto i = vLangVoiceSettings.begin(); i != vLangVoiceSettings.end(); ++i) {
+//        if(!i->m_bEnabled)
+//            continue;
+        i->m_ttsEngIndxs.clear();
+        i->m_uLang_mask = 0;
+        for(auto j = i->m_vlangs.begin(); j != i->m_vlangs.end(); ++j) {
+            auto ins = setVoices.emplace(j->voice, vVoices.size());
+            i->m_ttsEngIndxs.push_back(ins.first->second);
+            i->m_uLang_mask |= langToMask(j->lang.toStdString().c_str());
+            if(ins.second)
+                vVoices.push_back(*j);
+        }
+    }
+}
+
+QVector<LangVoice> LANGUAGES;
+
+int NextEnabledVoiceIndex(int nCurrIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
+    for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
+        nCurrIndx = (nCurrIndx + 1) % g_vLangVoiceSettings.size();
+        if(g_vLangVoiceSettings[nCurrIndx].m_bEnabled)
+            return nCurrIndx;
+    }
+    return -1;
+}
+
+void MainController::InitTtsEngines() {
+    // Create TTS engines
+    for (const auto &language : LANGUAGES) {
+        auto ttsEngine = new CerenceTTS(language.voice, this);
+        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
+        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
+        connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
+        m_ttsEnginesList.append(ttsEngine);
+    }
+}
+
+void MainController::ReleaseTtsEngines() {
+    for(auto ttsEngine : m_ttsEnginesList)
+        delete ttsEngine;
+    m_ttsEnginesList.clear();
+}
 
 MainController::MainController()
 {
+    if(ReadLangVoiceSettings(g_vLangVoiceSettings))
+        FillLanguages(g_vLangVoiceSettings, LANGUAGES);
+    else
+        qDebug() << "Cant find voces.xml\n";
+
+    m_nCurrentLangaugeSettingIndx = NextEnabledVoiceIndex(-1, g_vLangVoiceSettings);
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -72,18 +162,7 @@ MainController::MainController()
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
 
-    // Create TTS engines
-    for (const auto &language : LANGUAGES) {
-        auto ttsEngine = new CerenceTTS(language.voice, this);
-        connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
-        connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
-        m_ttsEnginesList.append(ttsEngine);
-    }
-
-    m_ttsEngine = m_ttsEnginesList.front();
-    populateVoices();
-
-    m_hwhandler = new HWHandler(this);
+    m_hwhandler = new HWHandler(this, read_keypad_config());
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
         qDebug() << "imageReceived 0\n";
         if(bPlayShutterSound)
@@ -99,6 +178,12 @@ MainController::MainController()
         qDebug() << "received" << (int)button;
     }, Qt::QueuedConnection);
 
+    InitTtsEngines();
+
+    m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
+    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
+    populateVoices();
+
     connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
@@ -109,11 +194,12 @@ MainController::MainController()
 
     m_translator.Init(TRANSLATION_FILE);
     m_help.Init(HELP_FILE);
-    m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
+    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
+    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
+     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
     m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
     m_armClosedSound = new QSound(ARMCLOSED_SOUND_FILE, this);
-
     m_hwhandler->start();
 }
 
@@ -161,6 +247,14 @@ void MainController::resume()
     case State::Stopped:
         m_state = State::SpeakingPage;
         startSpeaking();
+        break;
+
+    case State::SpeakingPage:
+        m_state = State::Paused;
+        if (m_ttsEngine->isSpeaking()) {
+            m_ttsEngine->pause();
+            m_hwhandler->UnlockBtConnect();
+        }
         break;
 
     case State::SpeakingText:
@@ -344,22 +438,7 @@ void MainController::speechRateDown()
 
 void MainController::nextVoice()
 {
-    if (++m_currentTTSIndex >= m_ttsEnginesList.size())
-        m_currentTTSIndex = 0;
-
-    m_ttsEngine->stop();
-
-//    sayText(m_voices[m_currentVoiceNum]);
-//    QString voice = m_voices[m_currentVoiceNum].split(',').back().trimmed();
-
-    const auto langVoice = LANGUAGES[m_currentTTSIndex];
-    m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-
-    m_translator.SetLanguage(langVoice.lang.toStdString());
-    QString voiceText = QStringLiteral(R"(%1, %2 %3\pause=%4\)")
-                            .arg(m_translator.GetString("VOICE_SET_TO").c_str(), langVoice.voice, CERENCE_ESC)
-                            .arg(m_state == State::SpeakingPage ? 500 : 0);
-    sayText(voiceText);
+    onToggleVoice();
 }
 
 OcrHandler &MainController::ocr()
@@ -557,7 +636,8 @@ void MainController::onSpeakingFinished()
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
     }
-
+    else
+        m_hwhandler->UnlockBtConnect();
     if (!isSpeakingTextState && !m_isContinueAfterSpeakingFinished) {
         // The normal mode (not service text speak) with stop after sentence is finished,
         // so set continue mode back to true
@@ -619,7 +699,6 @@ void MainController::stopLongPressTimer() {
 }
 
 void MainController::stopBeeping() {
-//    qDebug() << __func__ << "beep\n";
     m_bKeepBeeping = false;
 }
 
@@ -792,6 +871,11 @@ void MainController::onButton(int nButton, bool bDown) {
         m_deviceButtonsMask |= nButton;
         switch(findOneOfTheButtons(nButton)) {
         case BUTTON_PAUSE_MASK   :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_ENTER);
+                break;
+            }
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
@@ -803,12 +887,27 @@ void MainController::onButton(int nButton, bool bDown) {
             startLongPressTimer(&MainController::toggleGestures, LONG_PRESS_DELAY);
             break;
         case BUTTON_BACK_MASK       :
-            startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
+            if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
+                m_deviceButtonsMask = 0;
+                emit openMainMenu();
+                break;
+            }
+            //startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_UP);
+                break;
+            }
             if(BUTTON_RATE_DN_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
+                break;
+            }
+            if(BUTTON_BACK_MASK & m_deviceButtonsMask) {
+                m_deviceButtonsMask = 0;
+                emit openMainMenu();
                 break;
             }
             if(BUTTON_PAUSE_MASK & m_deviceButtonsMask) {
@@ -817,6 +916,11 @@ void MainController::onButton(int nButton, bool bDown) {
             }
             break;
         case BUTTON_RATE_DN_MASK     :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_DOWN);
+                break;
+            }
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 onToggleSingleColumn();
@@ -827,11 +931,16 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             break;
-         }
+        }
     }
     else {
         qDebug() << "m_deviceButtonsMask =" << m_deviceButtonsMask <<Qt::endl;
         stopLongPressTimer();
+        if(nButton == SWITCH_FOLDED_MASK_UP) {
+            m_hwhandler->setCameraArmPosition(true);
+            setLed(true);
+           return;
+        }
         if(SWITCH_FOLDED_MASK & nButton) {
             m_hwhandler->setCameraArmPosition(false);
             setLed(false);
@@ -853,7 +962,6 @@ void MainController::onButton(int nButton, bool bDown) {
             case BUTTON_RATE_DN_MASK     :
                 speechRateDown();
                 break;
-
             }
         }
     }
@@ -865,25 +973,28 @@ void MainController::onBtBattery(int nVal) {
 
 void MainController::onToggleVoice() {
     m_beepSound->play();
-    int nIndx = (m_nCurrentLangaugeSettingIndx + 1) % g_vLangVoiceSettings.size();
+
+    int nIndx = NextEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
+
     if(!ocr().setLanguage(g_vLangVoiceSettings[nIndx].m_uLang_mask)) {
         ocr().stopProcess();
         return;
     }
     m_nCurrentLangaugeSettingIndx = nIndx;
-    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front());
+    m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
+    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-    string sMsg = m_translator.GetString("VOICE_SET_TO") + " " + g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_sDescription;
+    string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString("VOICE_SET_AUTO") : m_translator.GetString("VOICE_SET_TO");
     sayText(sMsg.c_str());
 }
 
 void MainController::SetCurrentTts(const QString & lang) {
     qDebug() << "SetCurrentTts" << lang << Qt::endl;
-    const vector<string> & vlangs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs;
+    const auto & vlangs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs;
     const vector<int> & vindxs = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs;
     for(size_t i = 0; i != vlangs.size(); ++i)
-        if(lang.compare(vlangs[i].c_str()) == 0) {
+        if(lang.compare(vlangs[i].lang) == 0) {
             if(m_currentTTSIndex == vindxs[i])
                 return;
              m_currentTTSIndex = vindxs[i];
@@ -993,6 +1104,40 @@ MainController::~MainController() {
         delete m_armClosedSound;
 }
 
+bool MainController::read_keypad_config() {
+    FILE *fp = fopen("/home/pi/keypad_config.txt", "r");
+    if(!fp)
+        return false;
+    fscanf(fp, "%s", m_btKbdMac);
+    fclose(fp);
+    return true;
+}
+
+bool MainController::write_keypad_config(const string & text) {
+    if(text.length() != 4) {
+        sayText("Invalid serial number");
+        return false;
+    }
+    string sMac = string("40:F5:20:47:") + text.substr(0, 2) + ':' + text.substr(2);
+    if(regex_match(sMac, regex("^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$"))) {
+        strcpy(m_btKbdMac, sMac.c_str());
+        system((string("echo ") + sMac + " > /home/pi/keypad_config.txt").c_str());
+        sayText("Serial number saved");
+        return true;
+    }
+    sayText("Invalid serial number");
+    return false;
+}
+
+void MainController::SaySN() {
+    if(!m_btKbdMac[0]) {
+        sayText("No keypad");
+        return;
+    }
+    string sn = regex_replace( m_btKbdMac, regex(":"), " " );
+    sayText(sn.substr(12).c_str());
+}
+
 void MainController::waitForSayTextFinished()
 {
     while (m_state == State::SpeakingText) {
@@ -1002,3 +1147,45 @@ void MainController::waitForSayTextFinished()
     }
 }
 
+void MainController::getListOfLanguges(QStringList & list) const {
+    list.clear();
+    for(auto & vlc : g_vLangVoiceSettings) {
+        QString lngs;
+        for(auto & i : vlc.m_vlangs) {
+           if(!lngs.isEmpty())
+               lngs += ", ";
+            lngs += i.voice + " (" + i.lang + ")";
+        }
+        lngs += vlc.m_bEnabled ? " - Enabled" : " - Disabled";
+        list.push_back(lngs);
+    }
+}
+
+bool isLastEnabledVoice(int nIndx) {
+    if(!g_vLangVoiceSettings[nIndx].m_bEnabled)
+        return false;
+    int nCount = 0;
+    for(auto & i : g_vLangVoiceSettings)
+        if(i.m_bEnabled)
+            ++nCount;
+    return nCount == 1;
+}
+
+void MainController::toggleVoiceEnabled(int nIndx) {
+    if(isLastEnabledVoice(nIndx)) {
+        m_beepSound->play();
+        return;
+    }
+    m_bVoiceSettingsChanged = true;
+    g_vLangVoiceSettings[nIndx].m_bEnabled = !g_vLangVoiceSettings[nIndx].m_bEnabled;
+}
+
+void MainController::saveVoiceSettings() {
+    if(!m_bVoiceSettingsChanged)
+        return;
+    WriteLangVoiceSettings(g_vLangVoiceSettings, LANG_VOICE_SETTINGS_FILE);
+}
+
+void MainController::setMenuOpen(bool bMenuOpen) {
+    m_bMenuOpen = bMenuOpen;
+}

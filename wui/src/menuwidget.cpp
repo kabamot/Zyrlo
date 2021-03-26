@@ -58,3 +58,10 @@ void MenuWidget::enteredToMenu()
     const auto menuItem = m_controller->translateTag(m_menuModel->data(m_listView->currentIndex()).toString());
     m_controller->sayText(QStringLiteral("%1. %2").arg(m_name, menuItem));
 }
+
+void MenuWidget::setItem(int nRow, const QString &item) {
+    QMap<int, QVariant> mp;
+    mp[0] = item;
+    m_menuModel->setItemData(m_menuModel->index(nRow), mp);
+    m_controller->sayText(item);
+}

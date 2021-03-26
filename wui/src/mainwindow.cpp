@@ -10,11 +10,14 @@
 #include <QDebug>
 #include <QtGui>
 #include <QTextBlock>
+#include <QInputDialog>
+#include <regex>
 
 #include "menuwidget.h"
 #include "bluetoothhandler.h"
 
 using namespace cv;
+using namespace std;
 
 constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
 constexpr int BLUETOOTH_SCANNING_TIMEOUT = 7000; // ms
@@ -31,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_controller, &MainController::textUpdated, this, &MainWindow::updateText);
     connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
     connect(&m_controller, &MainController::previewUpdated, this, &MainWindow::updatePreview);
+    connect(&m_controller, &MainController::openMainMenu, this, &MainWindow::mainMenu);
 
     connect(ui->pauseButton, &QPushButton::clicked, &m_controller, &MainController::pauseResume);
     connect(ui->nextWordButton, &QPushButton::clicked, &m_controller, &MainController::nextWord);
@@ -137,6 +141,18 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         else
             m_controller.ReadImage(4);
         break;
+    case Qt::Key_F5:
+    {
+        m_controller.sayText("Type the serial number");
+        bool ok;
+        QString text = QInputDialog::getText(this, tr("Keypad MAC"), tr(""), QLineEdit::Normal, "", &ok);
+        if (ok && !text.isEmpty())
+            m_controller.write_keypad_config(text.toStdString());
+    }
+        break;
+    case Qt::Key_F6:
+        m_controller.SaySN();
+        break;
     }
 }
 
@@ -222,6 +238,7 @@ void MainWindow::updatePreview(const Mat &img) {
 
 void MainWindow::mainMenu()
 {
+    m_controller.setMenuOpen(true);
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
@@ -235,8 +252,12 @@ void MainWindow::mainMenu()
         if (item == "Exit") {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
+            m_controller.sayTranslationTag("EXITED_MENU");
+            m_controller.setMenuOpen(false);
         } else if (item == "Bluetooth") {
             bluetoothMenu();
+        } else if (item == "Language") {
+            langugesMenu();
         }
     });
 }
@@ -260,6 +281,33 @@ void MainWindow::bluetoothMenu()
             bluetoothScanMenu();
         } else if (item == "Paired devices") {
             bluetoothPairedMenu();
+        }
+    });
+}
+
+void MainWindow::langugesMenu()
+{
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("Languages menu", &m_controller, ui->stackedWidget);
+    QStringList items;
+    m_controller.getListOfLanguges(items);
+    items.push_back("Exit");
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
+        if (item == "Exit") {
+            m_controller.saveVoiceSettings();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else {
+            m_controller.toggleVoiceEnabled(i);
+            QStringList items;
+            m_controller.getListOfLanguges(items);
+            menuWidget->setItem(i, items[i]);
         }
     });
 }

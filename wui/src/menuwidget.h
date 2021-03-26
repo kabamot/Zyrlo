@@ -23,6 +23,7 @@ public:
     explicit MenuWidget(const QString &name, MainController *controller, QWidget *parent = nullptr);
     void setItems(const QStringList &items);
     void enteredToMenu();
+    void setItem(int nRow, const QString &item);
 
 signals:
     void activated(int index, const QString &entryName);

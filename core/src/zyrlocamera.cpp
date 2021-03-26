@@ -166,12 +166,12 @@ void ZyrloCamera::PrintMessage(const char *format, ...) {
 }
 
 ZyrloCamera::Zcevent ZyrloCamera::FollowGestures(Point2f motion) {
-    qDebug() << "FollowGestures:" << motion.x << motion.y << Qt::endl;
+    //qDebug() << "FollowGestures:" << motion.x << motion.y << Qt::endl;
     Zcevent ret = eShowPreviewImge;
     if(m_nWait > 0) --m_nWait;
     if(motion.x > 2) {
         ++m_nMotionPX;
-        qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+        //qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
         m_nMotionNX = 0;
         if(m_nMotionPX == 3 && m_nWait == 0) {
             m_nWait = 20;
@@ -182,11 +182,11 @@ ZyrloCamera::Zcevent ZyrloCamera::FollowGestures(Point2f motion) {
         m_nMotionPX = 0;
     }
     if(motion.x < -2) {
-        qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+        //qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
         m_nMotionPX = 0;
         ++m_nMotionNX;
         if(m_nMotionNX == 3 && m_nWait == 0) {
-            qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
+            //qDebug() << "eGestBackSentence:" << motion.x << motion.y << Qt::endl;
             m_nWait = 20;
             ret = eGestBackSentence;
         }

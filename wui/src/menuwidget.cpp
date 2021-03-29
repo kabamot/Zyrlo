@@ -53,6 +53,11 @@ void MenuWidget::setItems(const QStringList &items)
     m_menuModel->setStringList(items);
 }
 
+void MenuWidget::removeItem(int index)
+{
+    m_menuModel->removeRow(index);
+}
+
 void MenuWidget::enteredToMenu()
 {
     const auto menuItem = m_controller->translateTag(m_menuModel->data(m_listView->currentIndex()).toString());

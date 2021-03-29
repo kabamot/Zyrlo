@@ -120,6 +120,13 @@
            </spacer>
           </item>
           <item>
+           <widget class="QPushButton" name="toggleSinkButton">
+            <property name="text">
+             <string>Toggle sink</string>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QPushButton" name="nextVoiceButton">
             <property name="text">
              <string>Next voice</string>

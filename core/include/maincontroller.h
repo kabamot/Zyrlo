@@ -54,6 +54,7 @@ public:
     bool write_keypad_config(const std::string & text);
     void SaySN();
     QString translateTag(const QString &tag);
+    void resetAudio();
     void getListOfLanguges(QStringList & list) const;
     void toggleVoiceEnabled(int nIndx);
     void saveVoiceSettings();
@@ -86,6 +87,7 @@ public slots:
     void speechRateUp();
     void speechRateDown();
     void nextVoice();
+    void onToggleAudioSink();
 
 private:
     OcrHandler &ocr();
@@ -117,7 +119,6 @@ private slots:
     void onBtButton(int nButton, bool bDown);
     void onButton(int nButton, bool bDown);
     void onBtBattery(int nVal);
-    void onToggleAudioSink();
     void onResetDevice();
     void onToggleGestures();
     void onToggleSingleColumn();

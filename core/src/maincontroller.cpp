@@ -526,9 +526,8 @@ bool MainController::toggleAudioSink() {
         delete m_armClosedSound;
         m_armClosedSound = new QSound(ARMOPEN_SOUND_FILE, this);
     }
-    for (auto ttsEngine : m_ttsEnginesList) {
-        ttsEngine->resetAudio();
-    }
+
+    resetAudio();
     return bret;
 }
 
@@ -1026,6 +1025,13 @@ void MainController::onSpellCurrentWord()
 QString MainController::translateTag(const QString &tag)
 {
     return m_translator.GetString(tag.toStdString()).c_str();
+}
+
+void MainController::resetAudio()
+{
+    for (auto ttsEngine : m_ttsEnginesList) {
+        ttsEngine->resetAudio();
+    }
 }
 
 void MainController::changeVoiceSpeed(int nStep) {

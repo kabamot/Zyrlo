@@ -11,6 +11,7 @@
 #include <QBluetoothLocalDevice>
 #include <QBluetoothDeviceDiscoveryAgent>
 #include <QLowEnergyController>
+#include <QElapsedTimer>
 
 class BluetoothHandler : public QObject
 {
@@ -20,14 +21,16 @@ public:
     BluetoothHandler(QObject *parent = nullptr);
 
     bool isValid() const;
-    void startDeviceDiscovery(int timeout);
+    void startDeviceDiscovery();
     void stopDeviceDiscovery();
 
     void startPairing(int index);
     void prepareConnectedDevices();
+    void unpair(int index);
 
     const QVector<QBluetoothDeviceInfo> &devices() const;
     QStringList deviceNames() const;
+    QStringList pairedDeviceNames() const;
 
 signals:
     void deviceDiscoveryFinished();
@@ -35,6 +38,7 @@ signals:
                               const QString &errorStr);
     void connected(const QString &name);
     void connectionError(const QString &name);
+    void unpaired(int index, const QString &name);
 
 private slots:
     void deviceDiscovered(const QBluetoothDeviceInfo &device);
@@ -42,13 +46,21 @@ private slots:
 
 private:
     void init();
+    QStringList getDeviceNames(const QVector<QBluetoothDeviceInfo> &remotes) const;
+    bool contains(const QBluetoothDeviceInfo &remoteDevice,
+                  const QVector<QBluetoothDeviceInfo> &remotes) const;
+    void loadSettings();
+    void saveSettings();
 
 private:
     QBluetoothLocalDevice           m_localDevice;
     QBluetoothDeviceInfo            m_remoteDeviceInfo;
     QVector<QBluetoothDeviceInfo>   m_remotes;
+    QVector<QBluetoothDeviceInfo>   m_pairedRemotes;
     QString                         m_localDeviceName;
     QBluetoothDeviceDiscoveryAgent *m_discoveryAgent;
     QLowEnergyController           *m_controller {nullptr};
+    QElapsedTimer                   m_connectionTimer;
+    int                             m_index;
 };
 

@@ -22,6 +22,7 @@ class MenuWidget : public QWidget
 public:
     explicit MenuWidget(const QString &name, MainController *controller, QWidget *parent = nullptr);
     void setItems(const QStringList &items);
+    void removeItem(int index);
     void enteredToMenu();
     void setItem(int nRow, const QString &item);
 

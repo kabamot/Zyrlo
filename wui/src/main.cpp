@@ -8,6 +8,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <vector>
 #include <dirent.h>
 #include <unistd.h>
@@ -82,6 +83,10 @@ int main(int argc, char *argv[])
     KillProgramsByName(GetProgName(argv[0]));
     // This is required for tesseract
     qputenv("LC_ALL", "C");
+
+    QCoreApplication::setOrganizationName("Zyrlo");
+    QCoreApplication::setOrganizationDomain("zyrlo.com");
+    QCoreApplication::setApplicationName("Zyrlo");
 
     QApplication a(argc, argv);
     MainWindow w;

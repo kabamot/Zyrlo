@@ -20,7 +20,6 @@ using namespace cv;
 using namespace std;
 
 constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
-constexpr int BLUETOOTH_SCANNING_TIMEOUT = 7000; // ms
 constexpr int BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME = 4000; // ms
 
 MainWindow::MainWindow(QWidget *parent)
@@ -45,6 +44,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->rateUpButton, &QPushButton::clicked, &m_controller, &MainController::speechRateUp);
     connect(ui->rateDownButton, &QPushButton::clicked, &m_controller, &MainController::speechRateDown);
     connect(ui->nextVoiceButton, &QPushButton::clicked, &m_controller, &MainController::nextVoice);
+    connect(ui->toggleSinkButton, &QPushButton::clicked, &m_controller, &MainController::onToggleAudioSink);
 
     connect(ui->menuButton, &QPushButton::clicked, this, &MainWindow::mainMenu);
 
@@ -64,6 +64,8 @@ MainWindow::MainWindow(QWidget *parent)
             &MainWindow::onBluetoothConnected);
     connect(&m_bluetoothHandler, &BluetoothHandler::connectionError, this,
             &MainWindow::onBluetoothConnectionError);
+    connect(&m_bluetoothHandler, &BluetoothHandler::unpaired, this,
+            &MainWindow::onBluetoothUnpaired);
 
     connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
     connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
@@ -334,14 +336,31 @@ void MainWindow::bluetoothScanMenu()
     });
 
     m_controller.sayTranslationTag("Bluetooth scanning started");
-    m_bluetoothHandler.startDeviceDiscovery(BLUETOOTH_SCANNING_TIMEOUT);
+    m_bluetoothHandler.startDeviceDiscovery();
     m_scanningTimer.start(BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME);
 }
 
 void MainWindow::bluetoothPairedMenu()
 {
     m_bluetoothHandler.prepareConnectedDevices();
-//    qDebug() << m_bluetoothHandler.deviceNames();
+
+    auto *menuWidget = new MenuWidget("Paired devices", &m_controller, ui->stackedWidget);
+    QStringList items = m_bluetoothHandler.pairedDeviceNames();
+    items.append("Exit");
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
+        if (item == "Exit") {
+            m_scanningTimer.stop();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else {
+            m_bluetoothHandler.unpair(index);
+        }
+    });
 }
 
 void MainWindow::onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr)
@@ -386,4 +405,13 @@ void MainWindow::onBluetoothConnectionError(const QString &name)
     QString message = m_controller.translateTag(QStringLiteral("Error, can't connect to %1").arg(name));
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
+}
+
+void MainWindow::onBluetoothUnpaired(int index, const QString &name)
+{
+    QString message = m_controller.translateTag(QStringLiteral("Removed %1").arg(name));
+    MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
+    if (menuWidget) {
+        menuWidget->removeItem(index);
+    }
 }

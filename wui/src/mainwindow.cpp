@@ -331,6 +331,7 @@ void MainWindow::bluetoothScanMenu()
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
+            m_controller.sayTranslationTag("Pairing with device");
             m_bluetoothHandler.startPairing(index);
         }
     });
@@ -355,6 +356,7 @@ void MainWindow::bluetoothPairedMenu()
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
         if (item == "Exit") {
             m_scanningTimer.stop();
+            m_controller.sayTranslationTag("Removing device");
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {

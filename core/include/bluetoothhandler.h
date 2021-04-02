@@ -11,7 +11,7 @@
 #include <QBluetoothLocalDevice>
 #include <QBluetoothDeviceDiscoveryAgent>
 #include <QLowEnergyController>
-#include <QElapsedTimer>
+#include <QTimer>
 
 class BluetoothHandler : public QObject
 {
@@ -60,7 +60,8 @@ private:
     QString                         m_localDeviceName;
     QBluetoothDeviceDiscoveryAgent *m_discoveryAgent;
     QLowEnergyController           *m_controller {nullptr};
-    QElapsedTimer                   m_connectionTimer;
+    QTimer                          m_connectionTimer;
+    bool                            m_isHitConnected;
     int                             m_index;
 };
 

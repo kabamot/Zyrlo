@@ -411,6 +411,7 @@ void MainWindow::onBluetoothConnectionError(const QString &name)
 
 void MainWindow::onBluetoothUnpaired(int index, const QString &name)
 {
+    m_controller.resetAudio();
     QString message = m_controller.translateTag(QStringLiteral("Removed %1").arg(name));
     MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
     if (menuWidget) {

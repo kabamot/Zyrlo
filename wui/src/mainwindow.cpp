@@ -400,6 +400,12 @@ void MainWindow::onBluetoothConnected(const QString &name)
     QString message = m_controller.translateTag(QStringLiteral("Successfully connected to %1").arg(name));
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
+
+    MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
+    if (menuWidget) {
+        m_controller.waitForSayTextFinished();
+        menuWidget->exit();
+    }
 }
 
 void MainWindow::onBluetoothConnectionError(const QString &name)
@@ -416,5 +422,6 @@ void MainWindow::onBluetoothUnpaired(int index, const QString &name)
     MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
     if (menuWidget) {
         menuWidget->removeItem(index);
+        menuWidget->exit();
     }
 }

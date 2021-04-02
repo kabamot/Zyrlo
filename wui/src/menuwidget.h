@@ -26,6 +26,9 @@ public:
     void enteredToMenu();
     void setItem(int nRow, const QString &item);
 
+public slots:
+    void exit();
+
 signals:
     void activated(int index, const QString &entryName);
 

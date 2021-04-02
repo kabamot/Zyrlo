@@ -12,6 +12,7 @@
 #include <QLayout>
 #include <QLabel>
 #include <QDebug>
+#include <QShortcut>
 
 #include "maincontroller.h"
 
@@ -45,6 +46,14 @@ MenuWidget::MenuWidget(const QString &name, MainController *controller, QWidget 
     {
         Q_UNUSED(previous);
         m_controller->sayTranslationTag(m_menuModel->data(current).toString());
+    });
+
+    // On Backspace activate last item in the menu (which has to be Exit)
+    QShortcut *backShortcut = new QShortcut(Qt::Key_Backspace, this);
+    connect(backShortcut, &QShortcut::activated, this, [this](){
+        auto lastRow = m_menuModel->rowCount() - 1;
+        auto item = m_menuModel->data(m_menuModel->index(lastRow)).toString();
+        emit activated(lastRow, item);
     });
 }
 

@@ -1146,7 +1146,12 @@ void MainController::SaySN() {
 
 void MainController::waitForSayTextFinished()
 {
+    size_t i = 0;
     while (m_state == State::SpeakingText) {
+        if (++i % 1000 == 0) {
+            qDebug() << "waitForSayTextFinished()";
+            i = 0;
+        }
         qApp->processEvents();
         qApp->sendPostedEvents();
         QThread::msleep(1);

@@ -14,6 +14,8 @@
 #include <QDebug>
 #include <QSettings>
 
+constexpr int AUTO_DISCONNECTION_TIMEOUT = 6000;
+
 BluetoothHandler::BluetoothHandler(QObject *parent)
     : QObject(parent)
     , m_discoveryAgent(new QBluetoothDeviceDiscoveryAgent(this))
@@ -47,6 +49,13 @@ BluetoothHandler::BluetoothHandler(QObject *parent)
                 qDebug() << "Local device error" << error;
                 emit connectionError(m_remoteDeviceInfo.name());
             });
+
+    connect(&m_connectionTimer, &QTimer::timeout, this, [this](){
+        if (m_isHitConnected) {
+            qDebug() << "Controller connected from the first attempt" << m_localDevice.hostMode();
+            emit connected(m_remoteDeviceInfo.name());
+        }
+    });
 
     init();
 }
@@ -219,22 +228,27 @@ void BluetoothHandler::onPairingFinished(const QBluetoothAddress &address, QBlue
                 });
 
         connect(m_controller, &QLowEnergyController::connected, this, [this]() {
-            qDebug() << "Controller connected.";
-            qDebug() << m_localDevice.hostMode();
-            emit connected(m_remoteDeviceInfo.name());
+            m_isHitConnected = true;
+            if (!m_connectionTimer.isActive()) {
+                qDebug() << "Controller connected from the second attempt " << m_localDevice.hostMode();
+                emit connected(m_remoteDeviceInfo.name());
+            }
         });
 
         connect(m_controller, &QLowEnergyController::disconnected, this, [this]() {
             qDebug() << "LowEnergy controller disconnected";
             qDebug() << m_localDevice.hostMode();
-            qDebug() << "elapsed" << m_connectionTimer.elapsed();
-            if (m_connectionTimer.elapsed() < 6000) {
+            if (m_connectionTimer.isActive()) {
+                m_connectionTimer.stop();
                 qDebug() << "It was automatically disconnected and now connecting again";
                 m_controller->connectToDevice();
             }
         });
 
-        m_connectionTimer.start();
+        m_connectionTimer.setSingleShot(true);
+        m_connectionTimer.start(AUTO_DISCONNECTION_TIMEOUT);
+        m_isHitConnected = false;
+
         m_controller->connectToDevice();
     } else if(m_index >=0 && m_index < m_pairedRemotes.size()) {
         // Unpaired

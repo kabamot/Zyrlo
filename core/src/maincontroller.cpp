@@ -32,6 +32,7 @@ using namespace std;
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
+#define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
@@ -116,6 +117,15 @@ void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice
 
 QVector<LangVoice> LANGUAGES;
 
+int FirstEnabledVoiceIndex(int nStartIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
+    for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
+        if(g_vLangVoiceSettings[nStartIndx].m_bEnabled)
+            return nStartIndx;
+        nStartIndx = (nStartIndx + 1) % g_vLangVoiceSettings.size();
+    }
+    return -1;
+}
+
 int NextEnabledVoiceIndex(int nCurrIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
     for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
         nCurrIndx = (nCurrIndx + 1) % g_vLangVoiceSettings.size();
@@ -148,8 +158,8 @@ MainController::MainController()
         FillLanguages(g_vLangVoiceSettings, LANGUAGES);
     else
         qDebug() << "Cant find voces.xml\n";
-
-    m_nCurrentLangaugeSettingIndx = NextEnabledVoiceIndex(-1, g_vLangVoiceSettings);
+    readSettings();
+    m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
     });
@@ -157,10 +167,10 @@ MainController::MainController()
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
     connect(this, &MainController::toggleAudioOutput, this, &MainController::onToggleAudioSink);
     connect(this, &MainController::spellCurrentWord, this, &MainController::onSpellCurrentWord);
-    connect(this, &MainController::resetDevice, this, &MainController::onResetDevice);
     connect(this, &MainController::toggleGestures, this, &MainController::onToggleGestures);
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
+    connect(this, &MainController::resetDevice, this, &MainController::onSayBatteryStatus);
 
     m_hwhandler = new HWHandler(this, read_keypad_config());
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
@@ -400,6 +410,71 @@ void MainController::nextSentence()
     }
 }
 
+void MainController::nextParagraph() {
+
+}
+
+void MainController::backParagraph() {
+
+}
+
+void MainController::nextSymbol() {
+    if (!isPageValid())
+        return;
+    QChar smbl = L'\0';
+    if(m_state == State::SpeakingPage || m_state == State::SpeakingText || m_nCurrSymbolPos < 0) {
+        auto position = paragraph().currentWordPosition(m_currentWordPosition.parPos());
+        if (!position.isValid())
+            return;
+        smbl = paragraph().text().at(position.parPos());
+        m_nCurrSymbolPos = position.absPos();
+    }
+    else {
+        auto position = paragraph().nextCharPosition(m_nCurrSymbolPos);
+        if (!position.isValid()) {
+            if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+                // Go the the next paragraph
+                ++m_currentParagraphNum;
+                position = paragraph().firstCharPosition();
+            } else if (ocr().textPage()->isComplete()) {
+                // Page finished
+                sayTranslationTag("END_OF_TEXT");
+                return;
+            }
+        }
+        if (!position.isValid())
+            return;
+        m_nCurrSymbolPos = position.absPos();
+        smbl = paragraph().text().at(position.parPos());
+    }
+    if(smbl != L'\0')
+        sayText(smbl);
+}
+
+void MainController::backSymbol() {
+//    if (!isPageValid())
+//        return;
+
+//    auto position = paragraph().nextWordPosition(m_currentWordPosition.parPos());
+//    if (!position.isValid()) {
+//        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+//            // Go the the next paragraph
+//            ++m_currentParagraphNum;
+//            position = paragraph().firstWordPosition();
+//        } else if (ocr().textPage()->isComplete()) {
+//            // Page finished
+//            sayTranslationTag("END_OF_TEXT");
+//            return;
+//        }
+//    }
+
+//    setCurrentWordPosition(position);
+//    m_ttsStartPositionInParagraph = position.parPos();
+
+//    m_wordNavigationWithDelay = m_state == State::SpeakingPage;
+//    sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
+}
+
 void MainController::sayText(QString text)
 {
     SetDefaultTts();
@@ -458,11 +533,15 @@ void MainController::setLed(bool bOn) {
      m_hwhandler->setLed(bOn);
 }
 
-static int getCurrentPulseSinkIndex() {
+static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
     FILE *fp;
     char path[1035];
-    int indx = -1;
-    fp = popen("pacmd info | grep \"* index:\"", "r");
+    int count = -1, indx = -1, active = -1;
+    char *p = NULL;
+
+    vSinkIndxs.clear();
+    builtinIndx = -1;
+    fp = popen("pacmd info", "r");
     if (fp == NULL) {
         qDebug() << "Failed to run command\n";
         exit(1);
@@ -470,30 +549,38 @@ static int getCurrentPulseSinkIndex() {
 
     /* Read the output a line at a time - output it. */
     while (fgets(path, sizeof(path), fp) != NULL) {
-        qDebug() << path;
-        if(strstr(path, "index: 1")) {
-            indx = 1;
-            break;
+        if(count < 0) {
+            if(strstr(path, "sink(s) available"))
+                sscanf(path, "%d sink(s) available", &count);
         }
-        if(strstr(path, "index: 0")) {
-            indx = 0;
-            break;
-        }
-     }
+        else {
+            if((p = strstr(path, "index:")) != NULL) {
+                if(int(vSinkIndxs.size()) >= count)
+                    break;
+                if(sscanf(p + strlen("index: "), "%d", &indx) > 0) {
+                    if(strstr(path, "*"))
+                        active = vSinkIndxs.size();
+                    vSinkIndxs.push_back(indx);
 
+                 }
+            }
+            if(strstr(path, "name:")&& strstr(path, "alsa_output"))
+                if(strstr(path, "alsa_output"))
+                    builtinIndx = indx;
+            if(strstr(path, "(s) available"))
+                break;
+         }
+    }
     /* close */
     pclose(fp);
-    return indx;
+    return active;
 }
 
-bool MainController::toggleAudioSink() {
-    int indx = getCurrentPulseSinkIndex();
-    if(indx < 0)
-        return false;
-    bool bret = true;
+bool MainController::setAutoSink(int indx) {
+     bool bret = true;
     FILE *fp;
     char path[1035], cmd[256];
-    sprintf(cmd, "pacmd set-default-sink %d", 1 - indx);
+    sprintf(cmd, "pacmd set-default-sink %d", indx);
     fp = popen(cmd, "r");
     if (fp == NULL) {
         qDebug() << "Failed to run command\n";
@@ -504,7 +591,7 @@ bool MainController::toggleAudioSink() {
         while (fgets(path, sizeof(path), fp) != NULL) {
             bret = false;
             qDebug() << path;
-         }
+        }
     }
     /* close */
     pclose(fp);
@@ -526,9 +613,28 @@ bool MainController::toggleAudioSink() {
         delete m_armClosedSound;
         m_armClosedSound = new QSound(ARMOPEN_SOUND_FILE, this);
     }
-
     resetAudio();
     return bret;
+}
+
+bool MainController::switchToBuiltInSink() {
+    vector<int> vSinkIndxs;
+    int builtinIndx = -1;
+    int active = getAvailableSinks(vSinkIndxs, builtinIndx);
+    if(builtinIndx < 0)
+        return false;
+    if(builtinIndx == active)
+        return true;
+    return setAutoSink(builtinIndx);
+}
+
+bool MainController::toggleAudioSink() {
+    vector<int> vSinkIndxs;
+    int builtinIndx = -1;
+    int active = getAvailableSinks(vSinkIndxs, builtinIndx);
+    if(active < 0)
+        return false;
+    return setAutoSink(vSinkIndxs[(active + 1) % vSinkIndxs.size()]);
 }
 
 void MainController::onToggleAudioSink() {
@@ -891,7 +997,7 @@ void MainController::onButton(int nButton, bool bDown) {
                 emit openMainMenu();
                 break;
             }
-            //startLongPressTimer(&MainController::resetDevice, LONG_PRESS_DELAY);
+            startLongPressTimer(&MainController::sayBatteryStatus, LONG_PRESS_DELAY);
             break;
         case BUTTON_RATE_UP_MASK     :
             if(m_bMenuOpen) {
@@ -905,8 +1011,10 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             if(BUTTON_BACK_MASK & m_deviceButtonsMask) {
-                m_deviceButtonsMask = 0;
-                emit openMainMenu();
+//                m_deviceButtonsMask = 0;
+//                emit openMainMenu();
+                startLongPressTimer(&MainController::openMainMenu, LONG_PRESS_DELAY);
+                break;
                 break;
             }
             if(BUTTON_PAUSE_MASK & m_deviceButtonsMask) {
@@ -1071,10 +1179,9 @@ void MainController::populateVoices()
     qDebug() << __func__ << m_voices;
 }
 
-void MainController::onResetDevice() {
+void MainController::onSayBatteryStatus() {
     if(m_beepSound)
         m_beepSound->play();
-    system("reboot");
 }
 
 void MainController::onToggleGestures() {
@@ -1100,6 +1207,7 @@ void MainController::onGesture(int nGest) {
 }
 
 MainController::~MainController() {
+    writeSettings();
     if(m_shutterSound)
         delete m_shutterSound;
     if(m_beepSound)
@@ -1194,4 +1302,86 @@ void MainController::saveVoiceSettings() {
 
 void MainController::setMenuOpen(bool bMenuOpen) {
     m_bMenuOpen = bMenuOpen;
+}
+
+void MainController::readSettings() {
+    FileStorage file(SETTINGS_FILE_PATH,  FileStorage::READ);
+    FileNode fn;
+    fn = file["nCurrentLangaugeSettingIndx"];
+    if (!fn.empty())
+        fn >> m_nCurrentLangaugeSettingIndx;
+    fn = file["navigationMode"];
+    if (!fn.empty()) {
+        int navigationMode;
+        fn >> navigationMode;
+        m_navigationMode = (NavigationMode) navigationMode;
+    }
+ }
+
+void MainController::writeSettings() const {
+    FileStorage file(SETTINGS_FILE_PATH, FileStorage::WRITE);
+
+    file << "nCurrentLangaugeSettingIndx" << m_nCurrentLangaugeSettingIndx;
+    file << "navigationMode" << (int)m_navigationMode;
+}
+
+
+void MainController::toggleNavigationMode(bool bForward) {
+    if(bForward)
+        m_navigationMode = (NavigationMode)((m_navigationMode + 1) % NUM_OF_NAV_MODES);
+    else
+        m_navigationMode = (NavigationMode)((m_navigationMode + NUM_OF_NAV_MODES - 1) % NUM_OF_NAV_MODES);
+    switch(m_navigationMode) {
+    case BY_SYMBOL:
+        sayTranslationTag("NAVIGATION_BY_SYMBOL");
+        break;
+    case BY_WORD:
+        sayTranslationTag("NAVIGATION_BY_WORD");
+        break;
+    case BY_SENTENCE:
+        sayTranslationTag("NAVIGATION_BY_SENTENCE");
+        break;
+    case BY_PARAGRAPH:
+        sayTranslationTag("NAVIGATION_BY_PARAGRAPH");
+        break;
+    default :
+        break;
+    }
+}
+void MainController::onLeftArrow() {
+    switch(m_navigationMode) {
+    case BY_SYMBOL:
+        backSymbol();
+        break;
+    case BY_WORD:
+        backWord();
+        break;
+    case BY_SENTENCE:
+        backSentence();
+        break;
+    case BY_PARAGRAPH:
+        backParagraph();
+        break;
+    default :
+        break;
+    }
+}
+
+void MainController::onRightArrow() {
+    switch(m_navigationMode) {
+    case BY_SYMBOL:
+        nextSymbol();
+        break;
+    case BY_WORD:
+        nextWord();
+        break;
+    case BY_SENTENCE:
+        nextSentence();
+        break;
+    case BY_PARAGRAPH:
+         nextParagraph();
+         break;
+    default :
+        break;
+    }
 }

@@ -82,7 +82,23 @@ MainWindow::~MainWindow()
 
 void MainWindow::keyPressEvent(QKeyEvent *ev) {
     switch(ev->key()) {
-    case Qt::Key_S:
+    case Qt::Key_Left:
+        m_controller.onLeftArrow();
+        //backWord();
+        break;
+    case Qt::Key_Right:
+        m_controller.onRightArrow();
+        //nextWord();
+        break;
+    case Qt::Key_Up:
+        m_controller.toggleNavigationMode(false);
+        //backSentence();
+        break;
+    case Qt::Key_Down:
+        m_controller.toggleNavigationMode(true);
+        //nextSentence();
+        break;
+     case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
             m_bPreviewOn = true;
             ui->previewLabel->setVisible(true);
@@ -360,6 +376,7 @@ void MainWindow::bluetoothPairedMenu()
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
+            m_controller.switchToBuiltInSink();
             m_bluetoothHandler.unpair(index);
         }
     });

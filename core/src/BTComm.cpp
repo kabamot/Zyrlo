@@ -91,10 +91,8 @@ int BTComm::btConnect(const std::atomic_bool &isStop) {
     qDebug() << "btConnect 0\n";
     for(; !isStop;  sleep(1)) {
         if(m_bConnectLock) {
-            qDebug() << "btConnect HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU LOCKED\n";
-            continue;
+             continue;
         }
-        qDebug() << "btConnect HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU UNLocked\n";
         m_s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
         m_addr.rc_family = AF_BLUETOOTH;
         m_addr.rc_channel = (uint8_t) 1;

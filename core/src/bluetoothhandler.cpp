@@ -236,7 +236,7 @@ void BluetoothHandler::onPairingFinished(const QBluetoothAddress &address, QBlue
 
         m_connectionTimer.start();
         m_controller->connectToDevice();
-    } else {
+    } else if(m_index >=0 && m_index < m_pairedRemotes.size()) {
         // Unpaired
         m_pairedRemotes.removeAt(m_index);
         saveSettings();

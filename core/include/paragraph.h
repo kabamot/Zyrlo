@@ -43,6 +43,10 @@ public:
     void setCompleted();
     bool hasText() const;
 
+    TextPosition prevCharPosition(int pos) const;
+    TextPosition nextCharPosition(int pos) const;
+    TextPosition firstCharPosition() const;
+    TextPosition lastCharPosition() const;
     TextPosition prevWordPosition(int pos) const;
     TextPosition nextWordPosition(int pos) const;
     TextPosition currentWordPosition(int pos) const;
@@ -56,6 +60,7 @@ public:
     TextPosition lastSentencePosition() const;
 
 private:
+    void parseChars();
     void parseWords();
     void parseSenteces();
     Positions parseToPositions(const QString &text, const QRegularExpression &re);
@@ -77,6 +82,7 @@ private:
     QStringList m_lines;
     std::map<int, QString> m_langTagPos;
 
+    Positions m_chars;
     Positions m_words;
     Positions m_sentences;
 };

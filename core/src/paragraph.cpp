@@ -71,6 +71,7 @@ void Paragraph::addLine(const QString &line, const QString &lang)
     }
 
     m_lines.append(newLine);
+    parseChars();
     parseWords();
     parseSenteces();
 }
@@ -93,6 +94,26 @@ void Paragraph::setCompleted()
 bool Paragraph::hasText() const
 {
     return !m_lines.isEmpty();
+}
+
+TextPosition Paragraph::prevCharPosition(int pos) const
+{
+    return prevPosition(m_chars, pos);
+}
+
+TextPosition Paragraph::nextCharPosition(int pos) const
+{
+    return nextPosition(m_chars, pos);
+}
+
+TextPosition Paragraph::firstCharPosition() const
+{
+    return firstPosition(m_chars);
+}
+
+TextPosition Paragraph::lastCharPosition() const
+{
+    return lastPosition(m_chars);
 }
 
 TextPosition Paragraph::prevWordPosition(int pos) const
@@ -143,6 +164,12 @@ TextPosition Paragraph::firstSentencePosition() const
 TextPosition Paragraph::lastSentencePosition() const
 {
     return lastPosition(m_sentences);
+}
+
+void Paragraph::parseChars()
+{
+    const static QRegularExpression re(R"(.|\n)");
+    m_chars = parseToPositions(text(), re);
 }
 
 void Paragraph::parseWords()

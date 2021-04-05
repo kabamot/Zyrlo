@@ -34,6 +34,14 @@ class MainController : public QObject
         Paused,
     };
 
+    typedef enum  {
+        BY_SYMBOL = 0,
+        BY_WORD,
+        BY_SENTENCE,
+        BY_PARAGRAPH,
+        NUM_OF_NAV_MODES
+    } NavigationMode;
+
 public:
     MainController();
     ~MainController();
@@ -46,6 +54,7 @@ public:
     void flashLed();
     void setLed(bool bOn);
     bool toggleAudioSink();
+    bool switchToBuiltInSink();
     void onToggleVoice();
     void SaveImage(int indx);
     void ReadImage(int indx);
@@ -54,11 +63,17 @@ public:
     bool write_keypad_config(const std::string & text);
     void SaySN();
     QString translateTag(const QString &tag);
+
     void resetAudio();
     void getListOfLanguges(QStringList & list) const;
     void toggleVoiceEnabled(int nIndx);
     void saveVoiceSettings();
     void setMenuOpen(bool bMenuOpen);
+    void readSettings();
+    void writeSettings() const;
+    void toggleNavigationMode(bool bForward);
+    void onLeftArrow();
+    void onRightArrow();
 
 signals:
     void textUpdated(const QString &text);
@@ -72,6 +87,7 @@ signals:
     void toggleVoice();
     void readHelp();
     void openMainMenu();
+    void sayBatteryStatus();
 
 public slots:
     void pauseResume();
@@ -81,6 +97,12 @@ public slots:
     void nextWord();
     void backSentence();
     void nextSentence();
+
+    void nextParagraph();
+    void backParagraph();
+    void nextSymbol();
+    void backSymbol();
+
     void sayText(QString text);
     void sayTranslationTag(const QString &tag);
     void spellText(const QString &text);
@@ -108,6 +130,7 @@ private:
     bool read_keypad_config();
     void InitTtsEngines();
     void ReleaseTtsEngines();
+    bool setAutoSink(int indx);
 
 private slots:
     void onNewTextExtracted();
@@ -119,10 +142,10 @@ private slots:
     void onBtButton(int nButton, bool bDown);
     void onButton(int nButton, bool bDown);
     void onBtBattery(int nVal);
-    void onResetDevice();
     void onToggleGestures();
     void onToggleSingleColumn();
     void onGesture(int nGest);
+    void onSayBatteryStatus();
 
 private:
     QVector<CerenceTTS *>m_ttsEnginesList;
@@ -151,5 +174,7 @@ private:
     bool m_bVoiceSettingsChanged = false;
     KbdInputInjector m_kbdInjctr;
     bool m_bMenuOpen = false;
+    NavigationMode m_navigationMode = BY_WORD;
+    int m_nCurrSymbolPos = -1;
 };
 

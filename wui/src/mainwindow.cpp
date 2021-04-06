@@ -356,7 +356,6 @@ void MainWindow::bluetoothPairedMenu()
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
         if (item == "Exit") {
             m_scanningTimer.stop();
-            m_controller.sayTranslationTag("Removing device");
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
@@ -415,13 +414,14 @@ void MainWindow::onBluetoothConnectionError(const QString &name)
     m_controller.sayText(message);
 }
 
-void MainWindow::onBluetoothUnpaired(int index, const QString &name)
+void MainWindow::onBluetoothUnpaired(int /*index*/, const QString &/*name*/)
 {
     m_controller.resetAudio();
-    QString message = m_controller.translateTag(QStringLiteral("Removed %1").arg(name));
+    QString message = m_controller.translateTag("Device disconnected");
     MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
+    m_controller.sayText(message);
     if (menuWidget) {
-        menuWidget->removeItem(index);
+        m_controller.waitForSayTextFinished();
         menuWidget->exit();
     }
 }

@@ -53,7 +53,7 @@ private slots:
     void onScanningTimer();
     void onBluetoothConnected(const QString &name);
     void onBluetoothConnectionError(const QString &name);
-    void onBluetoothUnpaired(int index, const QString &name);
+    void onBluetoothUnpaired(int, const QString &);
 
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);

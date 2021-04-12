@@ -202,7 +202,10 @@ Positions Paragraph::parseToPositions(const QString &text, const QRegularExpress
 
         nextPos = match.capturedEnd();
     }
-
+    if(nextPos < text.length() && QRegularExpression("[^-\\s]").match(text, nextPos).hasMatch())
+        positions.push_back(TextPosition(nextPos,
+                                         text.length() - nextPos,
+                                         paragraphPosition()));
     return positions;
 }
 

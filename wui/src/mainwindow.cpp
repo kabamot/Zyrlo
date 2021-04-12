@@ -81,21 +81,26 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *ev) {
+    qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" << ev << "\n";
     switch(ev->key()) {
-    case Qt::Key_Left:
-        m_controller.onLeftArrow();
+     case Qt::Key_Left:
+        //m_controller.onLeftArrow();
         //backWord();
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUL\n";
         break;
     case Qt::Key_Right:
-        m_controller.onRightArrow();
+        //m_controller.onRightArrow();
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n";
         //nextWord();
         break;
     case Qt::Key_Up:
-        m_controller.toggleNavigationMode(false);
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUP\n";
+        //m_controller.toggleNavigationMode(false);
         //backSentence();
         break;
     case Qt::Key_Down:
-        m_controller.toggleNavigationMode(true);
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUD\n";
+        //m_controller.toggleNavigationMode(true);
         //nextSentence();
         break;
      case Qt::Key_S:
@@ -170,6 +175,32 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         break;
     case Qt::Key_F6:
         m_controller.SaySN();
+        break;
+    }
+}
+
+void MainWindow::keyReleaseEvent(QKeyEvent *ev) {
+    qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" << ev << "\n";
+    switch(ev->key()) {
+     case Qt::Key_Left:
+        m_controller.onLeftArrow();
+        //backWord();
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUL\n";
+        break;
+    case Qt::Key_Right:
+        m_controller.onRightArrow();
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n";
+        //nextWord();
+        break;
+    case Qt::Key_Up:
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUP\n";
+        m_controller.toggleNavigationMode(false);
+        //backSentence();
+        break;
+    case Qt::Key_Down:
+        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUD\n";
+        m_controller.toggleNavigationMode(true);
+        //nextSentence();
         break;
     }
 }

@@ -40,6 +40,7 @@ public:
     void setGesturesUi(bool bOn);
     void setCameraArmPosition(bool bOpen);
     void UnlockBtConnect();
+    int getMainBatteryPercent() const { return int(m_battery / 2.55f + 0.5f); }
 
 public slots:
     void onSpeakingStarted();
@@ -63,4 +64,5 @@ private:
     cv::Mat m_recallImg;
     BTComm m_btc;
     bool m_btKeyboardFound = false;
+    float m_battery = -1.0f;
 };

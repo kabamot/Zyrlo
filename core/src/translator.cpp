@@ -21,8 +21,8 @@ bool Translator::Init(string sFileName) {
     for(TiXmlNode *pTag = spRoot->FirstChild(); pTag; pTag = pTag->NextSibling()) {
         iterator i = insert(value_type(pTag->Value(), map<string, string>())).first;
         for(TiXmlElement *pEl = pTag->FirstChildElement(); pEl; pEl = pEl->NextSiblingElement()) {
-            i->second.insert(pair<string, string>(pEl->Value(), pEl->GetText()));
-            //qDebug() << pEl->Value() << pTag->Value() << pEl->GetText() << Qt::endl;
+            if(!strstr(pEl->Value(), "Comments"))
+                i->second.insert(pair<string, string>(pEl->Value(), pEl->GetText()));
         }
     }
     return true;

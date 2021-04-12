@@ -14,6 +14,7 @@
 #define ZRL_DANISH			0x40ULL
 #define ZRL_DUTCH 			0x80ULL
 #define ZRL_NORWEGIAN		0x100ULL
+#define ZRL_RUSSIAN         0x400ULL
 
 inline unsigned long long langToMask(const char * lang) {
     if(strcmp(lang, "eng") == 0)
@@ -34,6 +35,8 @@ inline unsigned long long langToMask(const char * lang) {
         return ZRL_DUTCH;
     if(strcmp(lang, "nor") == 0)
         return ZRL_NORWEGIAN;
+    if(strcmp(lang, "rus") == 0)
+        return ZRL_RUSSIAN;
     return 0;
  }
 

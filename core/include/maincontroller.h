@@ -62,7 +62,7 @@ public:
     void onSpellCurrentWord();
     bool write_keypad_config(const std::string & text);
     void SaySN();
-    QString translateTag(const QString &tag);
+    QString translateTag(const QString &tag) const;
 
     void resetAudio();
     void getListOfLanguges(QStringList & list) const;
@@ -82,7 +82,6 @@ signals:
     void previewUpdated(const cv::Mat & img);
     void toggleAudioOutput();
     void spellCurrentWord();
-    void resetDevice();
     void toggleGestures();
     void toggleVoice();
     void readHelp();
@@ -131,6 +130,7 @@ private:
     void InitTtsEngines();
     void ReleaseTtsEngines();
     bool setAutoSink(int indx);
+    QString GetCharName(QChar c) const;
 
 private slots:
     void onNewTextExtracted();
@@ -175,6 +175,7 @@ private:
     KbdInputInjector m_kbdInjctr;
     bool m_bMenuOpen = false;
     NavigationMode m_navigationMode = BY_WORD;
-    int m_nCurrSymbolPos = -1;
+    int m_nCurrNavPos = -1;
+    bool m_bUseCameraFlash = true;
 };
 

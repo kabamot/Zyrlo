@@ -136,34 +136,40 @@ void HWHandler::buttonBtThreadRun() {
 }
 
 void HWHandler::buttonThreadRun() {
-    byte reply, xor_val, up_val, down_val;
+    byte reply[2], xor_val, up_val, down_val;
     BaseComm bc;
+    int nBatteryCheck = 40, nBatteryCheckCount = 0;
     bc.init();
-    bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, &reply);
+    bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, reply);
     for(; !m_stop; QThread::msleep(50)) {
-        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
-            qDebug() << "BaseComm error\n";
+        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
+            qDebug() << "BaseComm error" << reply[0] << reply[1] << Qt::endl;
             continue;
         }
-        m_nButtonMask = reply;
+        m_nButtonMask = reply[0];
         if((SWITCH_FOLDED_MASK | m_nButtonMask) != 0)
             onButtonsUp(SWITCH_FOLDED_MASK_UP);
         break;
     }
-    for(; !m_stop; QThread::msleep(50)) {
-        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, &reply) != 0) {
+    for(; !m_stop; QThread::msleep(50), --nBatteryCheckCount) {
+        if(nBatteryCheckCount <= 0 && bc.sendCommand(I2C_COMMAND_GET_BATTERY, reply, false) == 0) {
+            m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
+            qDebug() << "Battery" << m_battery <<Qt::endl;
+            nBatteryCheckCount = nBatteryCheck;
+        }
+        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error\n";
             continue;
         }
-        xor_val = m_nButtonMask ^ reply;
+        xor_val = m_nButtonMask ^ reply[0];
         if(xor_val != 0) {
-            down_val = reply & xor_val;
+            down_val = reply[1] & xor_val;
             if(down_val != 0)
                 onButtonsDown(down_val);
             up_val = m_nButtonMask & xor_val;
             if(up_val != 0)
                 onButtonsUp(up_val);
-            m_nButtonMask = reply;
+            m_nButtonMask = reply[0];
         }
     }
 }

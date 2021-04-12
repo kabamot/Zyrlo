@@ -55,18 +55,20 @@ int BTComm::init()
 int readByteFromSocket(int sd, unsigned char *val)
 {
 	int n;
-//printf(".\n");
 	int x = fcntl(sd, F_GETFL, 0);
-	fcntl(sd, F_SETFL, x | O_NONBLOCK);
-	if ( (n = read (sd, val, 2)) < 0) {
-			if(errno == EWOULDBLOCK)
-				return 0;
-			else {
-				printf("read error. Not WOULDBLOCK\n");
-				return -1;
-			}
-	}
-	return n;
+    fcntl(sd, F_SETFL, x | O_NONBLOCK);
+    if ( (n = read (sd, val, 2)) < 0) {
+        if(errno == EWOULDBLOCK)
+            return 0;
+        printf("read error. Not WOULDBLOCK\n");
+        return -1;
+    }
+    if(n == 1) {
+        x = fcntl(sd, F_GETFL, 0);
+        fcntl(sd, F_SETFL, x | O_NONBLOCK);
+        n+= read (sd, val + 1, 1);
+    }
+    return n;
 }
 
 int BTComm::receiveLoopStep(int & nVal)
@@ -78,8 +80,8 @@ int BTComm::receiveLoopStep(int & nVal)
         m_eStatus = eStatusDisconnected;
         return -1;
     }
-    if(status > 0) {
-           qDebug() << "Received: " <<  status << m_readBuffer[0] << m_readBuffer[1] << "\n";
+    if(status == 2) {
+           qDebug() << "ReceivedKP: " << m_readBuffer[0] << m_readBuffer[1] << "\n";
            nVal = m_readBuffer[1];
            return (int)m_readBuffer[0];
     }

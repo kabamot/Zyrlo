@@ -34,6 +34,7 @@ public:
 
 protected:
     void keyPressEvent(QKeyEvent *ev);
+    void keyReleaseEvent(QKeyEvent *ev);
 
 private slots:
     void start();

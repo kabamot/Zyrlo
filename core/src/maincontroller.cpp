@@ -170,7 +170,7 @@ MainController::MainController()
     connect(this, &MainController::toggleGestures, this, &MainController::onToggleGestures);
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
-    connect(this, &MainController::resetDevice, this, &MainController::onSayBatteryStatus);
+    connect(this, &MainController::sayBatteryStatus, this, &MainController::onSayBatteryStatus);
 
     m_hwhandler = new HWHandler(this, read_keypad_config());
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
@@ -245,6 +245,7 @@ void MainController::pauseResume()
 
 void MainController::pause()
 {
+    m_nCurrNavPos = -1;
     m_state = State::Paused;
     if (m_ttsEngine->isSpeaking()) {
         m_ttsEngine->pause();
@@ -253,6 +254,7 @@ void MainController::pause()
 
 void MainController::resume()
 {
+    m_nCurrNavPos = -1;
     switch (m_state) {
     case State::Stopped:
         m_state = State::SpeakingPage;
@@ -332,9 +334,12 @@ void MainController::nextWord()
             // Go the the next paragraph
             ++m_currentParagraphNum;
             position = paragraph().firstWordPosition();
-        } else if (ocr().textPage()->isComplete()) {
+        } else {
             // Page finished
-            sayTranslationTag("END_OF_TEXT");
+            if (ocr().textPage()->isComplete())
+                sayTranslationTag("END_OF_TEXT");
+            else
+                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
             return;
         }
     }
@@ -351,49 +356,25 @@ void MainController::backSentence()
     if (!isPageValid())
         return;
 
-    bool isPageBoundary = false;
-    auto position = paragraph().prevSentencePosition(m_currentWordPosition.parPos());
+    if (m_state == State::SpeakingPage) {
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = true;
+        pause();
+    }
+    else
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
+    TextPosition position;
+    if(m_isContinueAfterSpeakingFinished)
+        position = paragraph().nextSentencePosition(std::max(0, m_currentWordPosition.parPos() - 1));
+    else if(m_nCurrNavPos < 0)
+        position = paragraph().currentSentencePosition(std::max(0, m_currentWordPosition.parPos()));
+    else
+        position = paragraph().prevSentencePosition(m_nCurrNavPos);
+
     while (!position.isValid()) {
         if (--m_currentParagraphNum >= 0) {
-            // Go the the previous paragraph
-            position = paragraph().lastSentencePosition();
-        } else {
-            // Go to the beginning of the page
-            isPageBoundary = true;
-            m_currentParagraphNum = 0;
-            position = paragraph().firstWordPosition();
-            m_state = State::Paused;
-        }
-    }
-
-    setCurrentWordPosition(position);
-    m_ttsStartPositionInParagraph = position.parPos();
-
-    if (isPageBoundary) {
-        sayTranslationTag("TOP_OF_PAGE");
-    } else if (m_state == State::SpeakingPage && m_isContinueAfterSpeakingFinished) {
-        startSpeaking();
-    } else {
-        m_isContinueAfterSpeakingFinished = false;
-        m_state = State::SpeakingPage;
-        m_ttsEngine->say(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
-    }
-}
-
-void MainController::nextSentence()
-{
-    if (!isPageValid())
-        return;
-
-    auto position = paragraph().nextSentencePosition(std::max(0, m_currentWordPosition.parPos() - 1));
-    if (!position.isValid()) {
-        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
-            // Go the the next paragraph
-            ++m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
-        } else if (ocr().textPage()->isComplete()) {
-            // Page finished
-            sayTranslationTag("END_OF_TEXT");
+        } else {
+            sayTranslationTag("TOP_OF_PAGE");
             return;
         }
     }
@@ -401,78 +382,214 @@ void MainController::nextSentence()
     setCurrentWordPosition(position);
     m_ttsStartPositionInParagraph = position.parPos();
 
-    if (m_state == State::SpeakingPage && m_isContinueAfterSpeakingFinished) {
+    m_nCurrNavPos = position.parPos();
+    if(m_isContinueAfterSpeakingFinished)
         startSpeaking();
-    } else {
-        m_isContinueAfterSpeakingFinished = false;
-        m_state = State::SpeakingPage;
+    else
         m_ttsEngine->say(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
-    }
 }
 
-void MainController::nextParagraph() {
+void MainController::nextSentence() {
+    if (!isPageValid())
+        return;
+    if (m_state == State::SpeakingPage) {
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = true;
+        pause();
+    }
+    else
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
+    TextPosition position;
+    if(m_isContinueAfterSpeakingFinished)
+        position = paragraph().nextSentencePosition(std::max(0, m_currentWordPosition.parPos() - 1));
+    else if(m_nCurrNavPos < 0)
+        position = paragraph().currentSentencePosition(std::max(0, m_currentWordPosition.parPos()));
+    else
+        position = paragraph().nextSentencePosition(m_nCurrNavPos);
+    while (!position.isValid()) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = paragraph().firstSentencePosition();
+        } else {
+            if (ocr().textPage()->isComplete()) // Page finished
+                sayTranslationTag("END_OF_TEXT");
+            else
+                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+            return;
+        }
+    }
 
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+
+    m_nCurrNavPos = position.parPos();
+    if(m_isContinueAfterSpeakingFinished)
+        startSpeaking();
+    else
+        m_ttsEngine->say(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
+}
+
+
+void MainController::nextParagraph() {
+    if (!isPageValid())
+        return;
+    if (m_state == State::SpeakingPage) {
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = true;
+        pause();
+    }
+    else
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
+    TextPosition position;
+    if(m_isContinueAfterSpeakingFinished || m_nCurrNavPos >= 0) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            ++m_currentParagraphNum;
+            position = paragraph().firstSentencePosition();
+        }
+    }
+    else
+        position = paragraph().firstSentencePosition();
+    while (!position.isValid()) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            ++m_currentParagraphNum;
+            position = paragraph().firstSentencePosition();
+        }
+        else {
+            if (ocr().textPage()->isComplete()) // Page finished
+                sayTranslationTag("END_OF_TEXT");
+            else
+                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+            return;
+        }
+    }
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+
+    m_nCurrNavPos = position.parPos();
+    if(m_isContinueAfterSpeakingFinished)
+        startSpeaking();
+    else
+        m_ttsEngine->say(prepareTextToSpeak(paragraph().text()));
 }
 
 void MainController::backParagraph() {
+    if (!isPageValid())
+        return;
+    if (m_state == State::SpeakingPage) {
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = true;
+        pause();
+    }
+    else
+        m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
+    TextPosition position;
+     while (!position.isValid()) {
+        if (--m_currentParagraphNum >= 0) {
+            position = paragraph().firstSentencePosition();
+        }
+        else {
+            sayTranslationTag("TOP_OF_TEXT");
+            return;
+        }
+    }
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+
+    m_nCurrNavPos = position.parPos();
+    if(m_isContinueAfterSpeakingFinished)
+        startSpeaking();
+    else
+        m_ttsEngine->say(prepareTextToSpeak(paragraph().text()));
+}
+
+QString MainController::GetCharName(QChar c) const {
+    if(c == QChar(' '))
+        return translateTag("SPACE");
+    if(c == QChar('\n'))
+        return translateTag("END_OF_LINE");
+    if(c == QChar('\t'))
+        return translateTag("TAB");
+    return QString(c);
 
 }
 
 void MainController::nextSymbol() {
     if (!isPageValid())
         return;
-    QChar smbl = L'\0';
-    if(m_state == State::SpeakingPage || m_state == State::SpeakingText || m_nCurrSymbolPos < 0) {
-        auto position = paragraph().currentWordPosition(m_currentWordPosition.parPos());
-        if (!position.isValid())
-            return;
-        smbl = paragraph().text().at(position.parPos());
-        m_nCurrSymbolPos = position.absPos();
-    }
-    else {
-        auto position = paragraph().nextCharPosition(m_nCurrSymbolPos);
-        if (!position.isValid()) {
-            if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
-                // Go the the next paragraph
-                ++m_currentParagraphNum;
-                position = paragraph().firstCharPosition();
-            } else if (ocr().textPage()->isComplete()) {
+    if (m_state == State::SpeakingPage)
+        pause();
+    TextPosition position;
+    if(m_nCurrNavPos < 0)
+        position = paragraph().currentWordPosition(m_currentWordPosition.parPos());
+    else
+        position = paragraph().nextCharPosition(m_nCurrNavPos);
+
+    while(!position.isValid()) {
+        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
+            // Go the the next paragraph
+            ++m_currentParagraphNum;
+            position = paragraph().firstCharPosition();
+        } else {
+            if (ocr().textPage()->isComplete())
                 // Page finished
                 sayTranslationTag("END_OF_TEXT");
-                return;
-            }
-        }
-        if (!position.isValid())
+            else
+                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
             return;
-        m_nCurrSymbolPos = position.absPos();
-        smbl = paragraph().text().at(position.parPos());
+        }
     }
+
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+
+    m_nCurrNavPos = position.parPos();
+    m_wordNavigationWithDelay = false;
+    QChar smbl = paragraph().text().at(m_nCurrNavPos);
     if(smbl != L'\0')
-        sayText(smbl);
+        sayText(GetCharName(smbl));
 }
 
 void MainController::backSymbol() {
-//    if (!isPageValid())
-//        return;
+    if (!isPageValid())
+        return;
 
-//    auto position = paragraph().nextWordPosition(m_currentWordPosition.parPos());
-//    if (!position.isValid()) {
-//        if (m_currentParagraphNum + 1 <= ocr().processingParagraphNum()) {
-//            // Go the the next paragraph
-//            ++m_currentParagraphNum;
-//            position = paragraph().firstWordPosition();
-//        } else if (ocr().textPage()->isComplete()) {
-//            // Page finished
-//            sayTranslationTag("END_OF_TEXT");
-//            return;
-//        }
-//    }
+    bool isPageBoundary = false;
+    TextPosition position;
+    if(m_nCurrNavPos < 0) {
+        if (m_state == State::SpeakingPage)
+            pause();
+        position = paragraph().currentWordPosition(m_currentWordPosition.parPos());
+        if(position.isValid())
+            position = paragraph().prevCharPosition(position.parPos());
+    }
+    else
+        position = paragraph().prevCharPosition(m_nCurrNavPos);
 
-//    setCurrentWordPosition(position);
-//    m_ttsStartPositionInParagraph = position.parPos();
+    while (!position.isValid()) {
+        if (--m_currentParagraphNum >= 0) {
+            // Go the the previous paragraph
+            position = paragraph().lastCharPosition();
+        } else {
+            // Go to the beginning of the page
+            isPageBoundary = true;
+            m_currentParagraphNum = 0;
+            position = paragraph().firstWordPosition();
+            if(position.isValid()) {
+                setCurrentWordPosition(position);
+                m_ttsStartPositionInParagraph = position.parPos();
+                m_nCurrNavPos = position.parPos();
+            }
+            sayTranslationTag("TOP_OF_PAGE");
+            return;
+        }
+    }
 
-//    m_wordNavigationWithDelay = m_state == State::SpeakingPage;
-//    sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
+    setCurrentWordPosition(position);
+    m_ttsStartPositionInParagraph = position.parPos();
+
+    m_nCurrNavPos = position.parPos();
+    m_wordNavigationWithDelay = false;
+    QChar smbl = paragraph().text().at(m_nCurrNavPos);
+    if(smbl != L'\0')
+        sayText(GetCharName(smbl));
 }
 
 void MainController::sayText(QString text)
@@ -1094,6 +1211,7 @@ void MainController::onToggleVoice() {
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
     string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString("VOICE_SET_AUTO") : m_translator.GetString("VOICE_SET_TO");
     sayText(sMsg.c_str());
+    writeSettings();
 }
 
 void MainController::SetCurrentTts(const QString & lang) {
@@ -1118,8 +1236,7 @@ void MainController::SetDefaultTts() {
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
 }
 
-void MainController::onSpellCurrentWord()
-{
+void MainController::onSpellCurrentWord() {
     // Don't start spelling current word if it's already speaking
     if (!isPageValid() || m_state == State::SpeakingPage || m_state == State::SpeakingText)
         return;
@@ -1130,8 +1247,7 @@ void MainController::onSpellCurrentWord()
     }
 }
 
-QString MainController::translateTag(const QString &tag)
-{
+QString MainController::translateTag(const QString &tag) const {
     return m_translator.GetString(tag.toStdString()).c_str();
 }
 
@@ -1180,8 +1296,13 @@ void MainController::populateVoices()
 }
 
 void MainController::onSayBatteryStatus() {
-    if(m_beepSound)
-        m_beepSound->play();
+    int nLevel = m_hwhandler->getMainBatteryPercent();
+    if(nLevel < 0) {
+        if(m_beepSound)
+            m_beepSound->play();
+        return;
+    }
+    sayText(translateTag("MENU_BATTERY_LEVEL") + " " + QString::number(nLevel) + " %");
 }
 
 void MainController::onToggleGestures() {
@@ -1321,17 +1442,24 @@ void MainController::readSettings() {
         fn >> navigationMode;
         m_navigationMode = (NavigationMode) navigationMode;
     }
- }
+    fn = file["bUseCameraFlash"];
+    if (!fn.empty())
+        fn >> m_bUseCameraFlash;
+}
 
 void MainController::writeSettings() const {
     FileStorage file(SETTINGS_FILE_PATH, FileStorage::WRITE);
 
     file << "nCurrentLangaugeSettingIndx" << m_nCurrentLangaugeSettingIndx;
     file << "navigationMode" << (int)m_navigationMode;
+    file << "bUseCameraFlash" << m_bUseCameraFlash;
 }
 
 
 void MainController::toggleNavigationMode(bool bForward) {
+    if (m_state == State::SpeakingPage)
+        pause();
+    m_nCurrNavPos = -1;
     if(bForward)
         m_navigationMode = (NavigationMode)((m_navigationMode + 1) % NUM_OF_NAV_MODES);
     else

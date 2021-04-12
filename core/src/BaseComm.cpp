@@ -25,7 +25,7 @@ int BaseComm::init()
     return 0;
 }
 
-int BaseComm::sendCommand(byte pCommand, byte *pReply)
+int BaseComm::sendCommand(byte pCommand, byte *pReply, bool bCheckEquality)
 {
     byte bufferIn[16];
     byte bufferOut[16];
@@ -58,7 +58,7 @@ int BaseComm::sendCommand(byte pCommand, byte *pReply)
         }
     }
     //qDebug() << (int)bufferIn[1] << "    " << (int)bufferIn[0] << '\n';
-    if(bufferIn[1] != bufferIn[0]) {
+    if(bCheckEquality && bufferIn[1] != bufferIn[0]) {
         LogError("I2C read data error %x %x     %x %x\n", bufferOut[0], bufferIn[0], bufferOut[0], bufferIn[0] );
         usleep(100000);
         retVal = read(m_fdI2C, (void *)bufferIn, 2);
@@ -70,8 +70,7 @@ int BaseComm::sendCommand(byte pCommand, byte *pReply)
         return -1;
     }
 
-    *pReply = bufferIn[1];
-
+    memcpy(pReply, bufferIn, 2);
     return 0;
 }
 

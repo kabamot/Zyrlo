@@ -15,6 +15,10 @@
 #define I2C_COMMAND_OTHER_BOOT_COMPLETE         0x10       // RPI to Base. Base should sto beeps
 #define I2C_COMMAND_OTHER_SAFE_TO_POWER_DOWN    0x11       // RPI to Base
 #define I2C_COMMAND_OTHER_POWER_DOWN            0x12       // Base to RPI. Request to sync
+#define I2C_COMMAND_OTHER_GET_VERSION           0x13        // Base to RPI. Second byte is version. Two
+                                                            // responding bytes are different
+#define I2C_COMMAND_OTHER_GET_SERIAL1           0x14        // Serial (split into 2 bytes). Two
+#define I2C_COMMAND_OTHER_GET_SERIAL2           0x15        // responding bytes are different
 
 
 #define BUTTON_PAUSE_MASK        0x01
@@ -35,7 +39,7 @@ public:
 	int m_fdI2C;
 
 	int init();	
-	int sendCommand(byte pCommand, byte *pReply);
+    int sendCommand(byte pCommand, byte *pReply, bool bCheckEquality = true);
 	int flushInput();
 
 };

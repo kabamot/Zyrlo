@@ -989,7 +989,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
                 ReadImage(1);
                 break;
             }
-            backSentence();
+            toggleNavigationMode(false);
             break;
         case KP_BUTTON_DOWN     :
             if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
@@ -1000,7 +1000,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
                 ReadImage(2);
                 break;
             }
-            nextSentence();
+            toggleNavigationMode(true);
             break;
         case KP_BUTTON_LEFT     :
             if((1 << KP_BUTTON_RIGHT) & m_keypadButtonMask) {
@@ -1015,7 +1015,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
                 ReadImage(3);
                 break;
             }
-            backWord();
+            onLeftArrow();
             break;
         case KP_BUTTON_RIGHT    :
             if((1 << KP_BUTTON_LEFT) & m_keypadButtonMask) {
@@ -1030,7 +1030,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
                 ReadImage(4);
                 break;
             }
-            nextWord();
+            onRightArrow();
             break;
         case KP_BUTTON_HELP     :
             startLongPressTimer(&MainController::readHelp, LONG_PRESS_DELAY);

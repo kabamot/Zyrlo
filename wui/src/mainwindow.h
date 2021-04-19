@@ -47,6 +47,8 @@ private slots:
     void bluetoothScanMenu();
     void bluetoothPairedMenu();
     void langugesMenu();
+    void optionsMenu();
+    void aboutMenu();
 
     void onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error error, const QString &errorStr);
     void onDeviceScanningFinished();

@@ -202,6 +202,8 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
         return eCameraArmClosed;
     if(AcquireImage() == 1) // Full res snapshot
         return eStartOcr;
+    if(m_bIgnoreInputs)
+        return eShowPreviewImge;
     Zcevent zcev = eShowPreviewImge;
     switch(m_eState) {
     case eCalibration:
@@ -524,8 +526,12 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
-        flashLed(1000);
-        AcquireFullResImage(300, 200, 0);
+        if(m_bUseFlash) {
+            flashLed(1000);
+            AcquireFullResImage(300, 200, 0);
+        }
+        else
+            AcquireFullResImage(300, m_nNoFlashExp, 0);;
         //AcquireFullResImage(100, 2500, 1);
         SwitchMode(true);
         setGain(m_nGain);
@@ -558,6 +564,17 @@ int ZyrloCamera::AcquireImage() {
     return 0;
 }
 
+void WriteLog(string s) {
+    printf("HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUKOZEL\n");
+    FILE *fp = fopen("/home/pi/log.txt", "a");
+    if(!fp)
+        fp = fopen("/home/pi/log.txt", "w");
+    if(!fp)
+        return;
+    fprintf(fp, (s + '\n').c_str());
+    fclose(fp);
+}
+
 int ZyrloCamera::setExposure(int nValue) {
     //4 - 3522
     struct v4l2_control ctrl;
@@ -567,7 +584,23 @@ int ZyrloCamera::setExposure(int nValue) {
         printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
         return -1;
     }
+    m_nCurrExp = nValue;
     return 0;
+}
+
+int ZyrloCamera::getExposure() const {
+   //4 - 3522
+    struct v4l2_control ctrl;
+    ctrl.id = 0x00980911;
+    ctrl.value = 0;
+    if(ioctl(m_fd, VIDIOC_G_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    char num[16];
+    sprintf(num, "get_exp = %d", ctrl.value);
+    WriteLog(num);
+    return ctrl.value;
 }
 
 int ZyrloCamera::adjustColorGains() {
@@ -616,8 +649,8 @@ int ZyrloCamera::snapImage() {
     return 0;
 }
 
-int ZyrloCamera::setGain(int nValue)
-{
+
+int ZyrloCamera::setGain(int nValue) {
     struct v4l2_control ctrl;
     ctrl.id = 0x009e0903;
     ctrl.value = nValue;
@@ -628,28 +661,44 @@ int ZyrloCamera::setGain(int nValue)
     return 0;
 }
 
+int ZyrloCamera::getGain() const {
+    struct v4l2_control ctrl;
+    ctrl.id = 0x009e0903;
+    ctrl.value = 0;
+    if(ioctl(m_fd, VIDIOC_G_CTRL, &ctrl) <0) {
+        printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
+        return -1;
+    }
+    char num[16];
+    sprintf(num, "get_gain = %d", ctrl.value);
+    WriteLog(num);
+    return ctrl.value;
+}
+
 void ZyrloCamera::ReserExposureLimits() {
     m_nMinExp = m_nMaxExpValue;
     m_nMaxExp = m_nMaxExpValue;
 }
 
-
 int ZyrloCamera::AcquireFullResImage(int nGain, int nExposure, int indx) {
     long int timeStamp = GetTickCount();
 
     //flashLed();
+    int nresExp = setExposure(nExposure);
     SwitchMode(false);
-    setGain(nGain);
-    setExposure(nExposure);
+    char msg[512];
+    int nresGain = 0;//setGain(nGain);
+    sprintf(msg, "G = %d, Exp = %d", nresGain, nresExp);
+    WriteLog(msg);
     //adjustColorGains();
     acquireBuffer(0);
     //digitalWrite(21, 0);
     timeStamp = GetTickCount() - timeStamp;
     printf("PicTaken. Time: %ld\n", timeStamp);
     Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_vFullResRawImgs[indx]);
-    char fname[256];
-    sprintf(fname, "FullResRawImg_%d.bmp", indx);
-    //imwrite(fname, m_vFullResRawImgs[indx]);
+//    char fname[256];
+//    sprintf(fname, "/home/pi/FullResRawImg_%d.bmp", indx);
+//    imwrite(fname, m_vFullResRawImgs[indx]);
 
     releaseBuffer(0);
     return 0;

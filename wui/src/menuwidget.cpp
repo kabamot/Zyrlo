@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QDebug>
 #include <QShortcut>
+#include <QtEvents>
 
 #include "maincontroller.h"
 
@@ -81,4 +82,17 @@ void MenuWidget::exit()
     auto lastRow = m_menuModel->rowCount() - 1;
     auto item = m_menuModel->data(m_menuModel->index(lastRow)).toString();
     emit activated(lastRow, item);
+}
+
+void MenuWidget::keyPressEvent(QKeyEvent *ev) {
+    if(ev->key() == Qt::Key_Escape) {
+        exit();
+        return;
+    }
+    QWidget::keyReleaseEvent(ev);
+
+}
+
+void MenuWidget::keyReleaseEvent(QKeyEvent *ev) {
+    QWidget::keyReleaseEvent(ev);
 }

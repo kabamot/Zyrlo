@@ -46,9 +46,9 @@ private:
 
         buffer *m_buffers;
         unsigned int m_nBuffers =  0;
-        int m_nGain = 200, m_nExposure = 1788;
+        int m_nGain = 200, m_nExposure = 1788, m_nCurrExp = -1, m_nNoFlashExp = 1750;
         int m_nCamBufInd = 0, m_nCnt = 0, m_timeStamp = 0;
-        bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true;
+        bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true, m_bIgnoreInputs = false;
 
         int m_PrintMessLocation = 0;
         FILE *m_PrintMessageFile = NULL;
@@ -69,6 +69,7 @@ private:
 
         int m_nWait = 20, m_nMotionPX = 0, m_nMotionNX = 0;
         bool m_bArmOpen = false;
+        bool m_bUseFlash = true;
 
 
         typedef enum {
@@ -123,6 +124,12 @@ public:
         bool gesturesOn() const;
         void setGesturesUi(bool bOn);
         void setArmPosition(bool bOpen);
-};
+        int getCurrExp() const { return m_nCurrExp; }
+        int getExposure() const;
+        int getGain() const;
+        void setIgnoreInputs(bool bIgnoreInputs) { m_bIgnoreInputs = bIgnoreInputs; }
+        void setUseFlash(bool bUseFlash) {m_bUseFlash = bUseFlash; }
+        bool getUseFlash() const { return m_bUseFlash; }
+  };
 
 #endif /* ZYRLOCAMERA_H_ */

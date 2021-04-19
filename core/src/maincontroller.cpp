@@ -158,6 +158,7 @@ MainController::MainController()
         FillLanguages(g_vLangVoiceSettings, LANGUAGES);
     else
         qDebug() << "Cant find voces.xml\n";
+    m_hwhandler = new HWHandler(this, read_keypad_config());
     readSettings();
     m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
@@ -172,13 +173,12 @@ MainController::MainController()
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
     connect(this, &MainController::sayBatteryStatus, this, &MainController::onSayBatteryStatus);
 
-    m_hwhandler = new HWHandler(this, read_keypad_config());
-    connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound){
-        qDebug() << "imageReceived 0\n";
+     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound) {
+        if(m_bMenuOpen)
+            return;
         if(bPlayShutterSound)
             m_ttsEngine->stop();
 
-        qDebug() << "imageReceived 2\n";
         if(m_shutterSound && bPlayShutterSound)
             m_shutterSound->play();
         startBeeping();
@@ -1109,6 +1109,11 @@ void MainController::onButton(int nButton, bool bDown) {
             startLongPressTimer(&MainController::toggleGestures, LONG_PRESS_DELAY);
             break;
         case BUTTON_BACK_MASK       :
+            if(m_bMenuOpen) {
+                m_deviceButtonsMask = 0;
+                m_kbdInjctr.sendKeyEvent(KEYCODE_ESC);
+                break;
+            }
             if(BUTTON_RATE_UP_MASK & m_deviceButtonsMask) {
                 m_deviceButtonsMask = 0;
                 emit openMainMenu();
@@ -1401,6 +1406,17 @@ void MainController::getListOfLanguges(QStringList & list) const {
     }
 }
 
+void MainController::getListOfOptions(QStringList & list) const {
+    list.clear();
+    list.push_back(QString("Camera flash ") + (m_hwhandler->getUseCameraFlash() ?  "- Enabled" : "- Disabled"));
+}
+
+void MainController::toggleOption(int nIndx) {
+    if(nIndx == 0)
+        m_hwhandler->setUseCameraFlash(!m_hwhandler->getUseCameraFlash());
+
+}
+
 bool isLastEnabledVoice(int nIndx) {
     if(!g_vLangVoiceSettings[nIndx].m_bEnabled)
         return false;
@@ -1428,6 +1444,12 @@ void MainController::saveVoiceSettings() {
 
 void MainController::setMenuOpen(bool bMenuOpen) {
     m_bMenuOpen = bMenuOpen;
+    m_hwhandler->setIgnoreCameraInputs(m_bMenuOpen);
+}
+
+void MainController::getListOfAboutItems(QStringList & list) const {
+    list.push_back(QString("Serial number: " + QString::number(m_hwhandler->getSN())));
+    list.push_back(QString("Version: " + QString::number(m_hwhandler->getVersion())));
 }
 
 void MainController::readSettings() {
@@ -1443,8 +1465,11 @@ void MainController::readSettings() {
         m_navigationMode = (NavigationMode) navigationMode;
     }
     fn = file["bUseCameraFlash"];
-    if (!fn.empty())
-        fn >> m_bUseCameraFlash;
+    if (!fn.empty()) {
+        int bUseCameraFlash;
+        fn >> bUseCameraFlash;
+        m_hwhandler->setUseCameraFlash(bUseCameraFlash);
+    }
 }
 
 void MainController::writeSettings() const {
@@ -1452,7 +1477,7 @@ void MainController::writeSettings() const {
 
     file << "nCurrentLangaugeSettingIndx" << m_nCurrentLangaugeSettingIndx;
     file << "navigationMode" << (int)m_navigationMode;
-    file << "bUseCameraFlash" << m_bUseCameraFlash;
+    file << "bUseCameraFlash" << m_hwhandler->getUseCameraFlash();
 }
 
 
@@ -1517,4 +1542,8 @@ void MainController::onRightArrow() {
     default :
         break;
     }
+}
+
+bool MainController::ChangeCameraExposure(int delta) {
+    return m_hwhandler->ChangeCameraExposure(delta);
 }

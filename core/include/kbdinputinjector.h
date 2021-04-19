@@ -6,6 +6,7 @@
 #define KEYCODE_UP     103
 #define KEYCODE_DOWN   108
 #define KEYCODE_ENTER  28
+#define KEYCODE_ESC    1
 
 class KbdInputInjector
 {

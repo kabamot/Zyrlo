@@ -81,29 +81,10 @@ MainWindow::~MainWindow()
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *ev) {
-    qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" << ev << "\n";
+    if(m_controller.isMenuOpen())
+        return;
     switch(ev->key()) {
-     case Qt::Key_Left:
-        //m_controller.onLeftArrow();
-        //backWord();
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUL\n";
-        break;
-    case Qt::Key_Right:
-        //m_controller.onRightArrow();
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n";
-        //nextWord();
-        break;
-    case Qt::Key_Up:
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUP\n";
-        //m_controller.toggleNavigationMode(false);
-        //backSentence();
-        break;
-    case Qt::Key_Down:
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUD\n";
-        //m_controller.toggleNavigationMode(true);
-        //nextSentence();
-        break;
-     case Qt::Key_S:
+    case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
             m_bPreviewOn = true;
             ui->previewLabel->setVisible(true);
@@ -176,31 +157,30 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_F6:
         m_controller.SaySN();
         break;
+    case Qt::Key_B:
+        m_controller.ChangeCameraExposure(100);
+        break;
+    case Qt::Key_M:
+        m_controller.ChangeCameraExposure(-100);
+        break;
     }
 }
 
 void MainWindow::keyReleaseEvent(QKeyEvent *ev) {
-    qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" << ev << "\n";
-    switch(ev->key()) {
+    if(m_controller.isMenuOpen())
+        return;
+     switch(ev->key()) {
      case Qt::Key_Left:
         m_controller.onLeftArrow();
-        //backWord();
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUL\n";
         break;
     case Qt::Key_Right:
         m_controller.onRightArrow();
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n";
-        //nextWord();
         break;
     case Qt::Key_Up:
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUP\n";
         m_controller.toggleNavigationMode(false);
-        //backSentence();
         break;
     case Qt::Key_Down:
-        qDebug() << "HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUD\n";
         m_controller.toggleNavigationMode(true);
-        //nextSentence();
         break;
     }
 }
@@ -291,7 +271,7 @@ void MainWindow::mainMenu()
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
-    QStringList items{"Bluetooth", "Language", "Power Options", "Exit"};
+    QStringList items{"Bluetooth", "Language", "Options", "About", "Exit"};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
@@ -307,6 +287,10 @@ void MainWindow::mainMenu()
             bluetoothMenu();
         } else if (item == "Language") {
             langugesMenu();
+        } else if (item == "Options") {
+            optionsMenu();
+        } else if (item == "About") {
+            aboutMenu();
         }
     });
 }
@@ -357,6 +341,53 @@ void MainWindow::langugesMenu()
             QStringList items;
             m_controller.getListOfLanguges(items);
             menuWidget->setItem(i, items[i]);
+        }
+    });
+}
+
+void MainWindow::optionsMenu() {
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("About menu", &m_controller, ui->stackedWidget);
+    QStringList items;
+    m_controller.getListOfOptions(items);
+    items.push_back("Exit");
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
+        if (item == "Exit") {
+            m_controller.writeSettings();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
+        } else {
+            m_controller.toggleOption(i);
+            QStringList items;
+            m_controller.getListOfOptions(items);
+            menuWidget->setItem(i, items[i]);
+        }
+    });
+}
+
+void MainWindow::aboutMenu() {
+    m_controller.pause();
+
+    auto *menuWidget = new MenuWidget("About menu", &m_controller, ui->stackedWidget);
+    QStringList items;
+    m_controller.getListOfAboutItems(items);
+    items.push_back("Exit");
+    menuWidget->setItems(items);
+
+    ui->stackedWidget->addWidget(menuWidget);
+    ui->stackedWidget->setCurrentWidget(menuWidget);
+
+    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
+        if (item == "Exit") {
+            m_controller.saveVoiceSettings();
+            ui->stackedWidget->removeWidget(menuWidget);
+            delete menuWidget;
         }
     });
 }

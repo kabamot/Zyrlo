@@ -63,6 +63,7 @@ public:
     bool write_keypad_config(const std::string & text);
     void SaySN();
     QString translateTag(const QString &tag) const;
+    bool ChangeCameraExposure(int delta);
 
     void resetAudio();
     void getListOfLanguges(QStringList & list) const;
@@ -74,6 +75,10 @@ public:
     void toggleNavigationMode(bool bForward);
     void onLeftArrow();
     void onRightArrow();
+    void getListOfAboutItems(QStringList & list) const;
+    bool isMenuOpen() const { return m_bMenuOpen; }
+    void getListOfOptions(QStringList & list) const;
+    void toggleOption(int nIndx);
 
 signals:
     void textUpdated(const QString &text);
@@ -176,6 +181,5 @@ private:
     bool m_bMenuOpen = false;
     NavigationMode m_navigationMode = BY_WORD;
     int m_nCurrNavPos = -1;
-    bool m_bUseCameraFlash = true;
 };
 

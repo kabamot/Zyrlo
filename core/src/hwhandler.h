@@ -7,6 +7,8 @@
 #include "BTComm.h"
 #include <opencv2/opencv.hpp>
 
+class BaseComm;
+
 enum class Button {
     Up,
     Down,
@@ -41,6 +43,13 @@ public:
     void setCameraArmPosition(bool bOpen);
     void UnlockBtConnect();
     int getMainBatteryPercent() const { return int(m_battery / 2.55f + 0.5f); }
+    bool ChangeCameraExposure(int delta);
+    int getSN() const {return m_nSN;}
+    int getVersion() const {return m_nVersion;}
+    void setIgnoreCameraInputs(bool bIgnore);
+    void setUseCameraFlash(bool bUseFlash);
+    bool getUseCameraFlash() const;
+
 
 public slots:
     void onSpeakingStarted();
@@ -65,4 +74,7 @@ private:
     BTComm m_btc;
     bool m_btKeyboardFound = false;
     float m_battery = -1.0f;
+    int m_nSN = -1, m_nVersion = -1;
+
+    void ReadSnAndVersion(BaseComm & bc);
 };

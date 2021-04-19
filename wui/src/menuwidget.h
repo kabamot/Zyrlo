@@ -26,6 +26,10 @@ public:
     void enteredToMenu();
     void setItem(int nRow, const QString &item);
 
+protected:
+    void keyPressEvent(QKeyEvent *ev);
+    void keyReleaseEvent(QKeyEvent *ev);
+
 public slots:
     void exit();
 

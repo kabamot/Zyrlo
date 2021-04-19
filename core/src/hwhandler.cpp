@@ -135,12 +135,32 @@ void HWHandler::buttonBtThreadRun() {
     }
 }
 
+void HWHandler::ReadSnAndVersion(BaseComm & bc) {
+    byte reply[2];
+    int res[] = {-1, -1, -1};
+    unsigned char commands[] = {I2C_COMMAND_OTHER_GET_VERSION, I2C_COMMAND_OTHER_GET_SERIAL1, I2C_COMMAND_OTHER_GET_SERIAL2};
+
+    for(int i = 0; i != 3; ++i) {
+        for(; !m_stop && res[i] < 0; QThread::msleep(50)) {
+            if(bc.sendCommand(I2C_COMMAND_OTHER | commands[i], reply, false) != 0) {
+                qDebug() << "BaseComm error" << reply[0] << reply[1] << Qt::endl;
+                continue;
+            }
+            res[i] = reply[1];
+        }
+    }
+    m_nSN = res[1] * 256 + res[2];
+    m_nVersion = res[0];
+
+}
+
 void HWHandler::buttonThreadRun() {
     byte reply[2], xor_val, up_val, down_val;
     BaseComm bc;
     int nBatteryCheck = 40, nBatteryCheckCount = 0;
     bc.init();
     bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, reply);
+    ReadSnAndVersion(bc);
     for(; !m_stop; QThread::msleep(50)) {
         if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error" << reply[0] << reply[1] << Qt::endl;
@@ -229,4 +249,22 @@ void HWHandler::onSpeakingStarted() {
 void HWHandler::UnlockBtConnect() {
     qDebug() << "HWHandler::onSpeakingFinished\n";
     m_btc.ConnectUlnock();
+}
+
+bool HWHandler::ChangeCameraExposure(int delta) {
+
+    int nExp = m_zcam.getCurrExp();
+    return m_zcam.setExposure(nExp + delta) == 0;
+}
+
+void HWHandler::setIgnoreCameraInputs(bool bIgnore) {
+    m_zcam.setIgnoreInputs(bIgnore);
+}
+
+void HWHandler::setUseCameraFlash(bool bUseFlash) {
+    m_zcam.setUseFlash(bUseFlash);
+}
+
+bool HWHandler::getUseCameraFlash() const {
+    return m_zcam.getUseFlash();
 }

@@ -27,8 +27,8 @@ using namespace std;
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
-#define ARMOPEN_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-09.wav"
-#define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/button-10.wav"
+#define ARMOPEN_SOUND_FILE "/opt/zyrlo/Distrib/Data/open_arm.wav"
+#define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/close_arm.wav"
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
@@ -142,6 +142,7 @@ void MainController::InitTtsEngines() {
         connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
         connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
         connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
+        connect(ttsEngine, &CerenceTTS::convertTextToWaveDone, this, &MainController::onConvertTextToWaveDone);
         m_ttsEnginesList.append(ttsEngine);
     }
 }
@@ -201,6 +202,7 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::onButton, this, &MainController::onButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onGesture, this, &MainController::onGesture, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::usbKeyInsert, this, &MainController::onUsbKeyInsert, Qt::QueuedConnection);
 
     m_translator.Init(TRANSLATION_FILE);
     m_help.Init(HELP_FILE);
@@ -703,12 +705,10 @@ bool MainController::setAutoSink(int indx) {
         qDebug() << "Failed to run command\n";
         return false;
     }
-    else {
-        /* Read the output a line at a time - output it. */
-        while (fgets(path, sizeof(path), fp) != NULL) {
-            bret = false;
-            qDebug() << path;
-        }
+    /* Read the output a line at a time - output it. */
+    while (fgets(path, sizeof(path), fp) != NULL) {
+        bret = false;
+        qDebug() << path;
     }
     /* close */
     pclose(fp);
@@ -1546,4 +1546,30 @@ void MainController::onRightArrow() {
 
 bool MainController::ChangeCameraExposure(int delta) {
     return m_hwhandler->ChangeCameraExposure(delta);
+}
+
+void MainController::convertTextToWave(const QString & sText, const QString & sWaveFileName) {
+     m_ttsEnginesList[m_currentTTSIndex]->convertTextToWave(sText, sWaveFileName);
+}
+
+string RemoveFileNameExtension(const string & sFileName) {
+    auto pos = sFileName.find_last_of(".");
+    if(pos == string::npos)
+        return sFileName;
+    return sFileName.substr(0, pos);
+}
+
+string GetFileNameFromPath(const string & sPath) {
+    auto pos = sPath.find_last_of("/");
+    if(pos == string::npos)
+        return RemoveFileNameExtension(sPath);
+    return RemoveFileNameExtension(sPath.substr(pos + 1));
+}
+
+void MainController::onConvertTextToWaveDone(QString sFileName) {
+    sayText(translateTag("CONVERTED_TO_AUDIO") + " " + GetFileNameFromPath(sFileName.toStdString()).c_str());
+}
+
+void MainController::onUsbKeyInsert(bool bInserted) {
+    sayTranslationTag(bInserted ? "USB_KEY_INSERTED" : "USB_KEY_REMOVED");
 }

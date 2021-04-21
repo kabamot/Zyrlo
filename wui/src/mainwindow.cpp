@@ -163,6 +163,9 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_M:
         m_controller.ChangeCameraExposure(-100);
         break;
+    case Qt::Key_W:
+        m_controller.convertTextToWave("Gyl byl u babushki serenkij kozlik, seryj kozjol", "/home/pi/hru.wav");
+        break;
     }
 }
 

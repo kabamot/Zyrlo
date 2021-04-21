@@ -64,6 +64,7 @@ signals:
     void onButton(int nButton, bool bDown);
     void onBtBattery(int nVal);
     void onGesture(int nGesture);
+    void usbKeyInsert(bool bInserted);
 
 private:
     std::atomic_bool    m_stop {false};
@@ -75,6 +76,7 @@ private:
     bool m_btKeyboardFound = false;
     float m_battery = -1.0f;
     int m_nSN = -1, m_nVersion = -1;
+    bool m_bUsbKeyInserted = false;
 
     void ReadSnAndVersion(BaseComm & bc);
 };

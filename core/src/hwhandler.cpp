@@ -154,6 +154,20 @@ void HWHandler::ReadSnAndVersion(BaseComm & bc) {
 
 }
 
+bool usbKeyInserted() {
+    char path[1024];
+    bool bret = false;
+    FILE *fp = popen("ls /dev/sd*", "r");
+    if (fp == NULL) {
+        qDebug() << "Failed to run command\n";
+        return false;
+    }
+    if(fgets(path, sizeof(path), fp) != NULL)
+        bret = true;
+    pclose(fp);
+    return bret;
+}
+
 void HWHandler::buttonThreadRun() {
     byte reply[2], xor_val, up_val, down_val;
     BaseComm bc;
@@ -176,6 +190,11 @@ void HWHandler::buttonThreadRun() {
             m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
             qDebug() << "Battery" << m_battery <<Qt::endl;
             nBatteryCheckCount = nBatteryCheck;
+            bool bUsbKeyInserted = usbKeyInserted();
+            if(bUsbKeyInserted != m_bUsbKeyInserted) {
+                m_bUsbKeyInserted = bUsbKeyInserted;
+                emit usbKeyInsert(m_bUsbKeyInserted);
+            }
         }
         if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error\n";

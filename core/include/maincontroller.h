@@ -79,6 +79,7 @@ public:
     bool isMenuOpen() const { return m_bMenuOpen; }
     void getListOfOptions(QStringList & list) const;
     void toggleOption(int nIndx);
+    void convertTextToWave(const QString & sText, const QString & sWaveFileName);
 
 signals:
     void textUpdated(const QString &text);
@@ -151,6 +152,9 @@ private slots:
     void onToggleSingleColumn();
     void onGesture(int nGest);
     void onSayBatteryStatus();
+    void onConvertTextToWaveDone(QString sFileName);
+    void onUsbKeyInsert(bool bInserted);
+
 
 private:
     QVector<CerenceTTS *>m_ttsEnginesList;

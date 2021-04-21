@@ -15,6 +15,8 @@
 #include <QThread>
 #include <QtConcurrent>
 
+void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize);
+
 static const char *INSTALL_PATHS[] = {
     "/opt/zyrlo/ve/languages",
 };
@@ -35,6 +37,9 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
 
     case VE_MSG_ENDPROCESS:
         qDebug() << "Text-to-speech process has ended";
+        if(p->outputToFile()) {
+            p->writeToWave(p->getAudioOutFileName().toStdString().c_str());
+        }
         break;
 
     case VE_MSG_OUTBUFREQ:
@@ -362,7 +367,8 @@ void CerenceTTS::initAudio()
 
     m_speakingStartTimer.setSingleShot(true);
     connect(&m_speakingStartTimer, &QTimer::timeout, this, [this](){
-        m_audioOutput->start(m_audioIO);
+        if(!outputToFile())
+            m_audioOutput->start(m_audioIO);
     });
 
 }
@@ -455,4 +461,50 @@ int CerenceTTS::getSpeechRate() {
     if (nErrcode != NUAN_OK)
         qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
     return (int) prm.uValue.usValue;
+}
+
+bool CerenceTTS::writeToWave(const char *sFileName) {
+    FILE *fp = fopen(sFileName, "w");
+    if(!fp)
+        return false;
+    WriteWaveHeader(fp, 22050, 16, 1, m_audioIO->buffer().size());
+    fwrite(m_audioIO->buffer().constData(), 2, m_audioIO->buffer().size(), fp);
+    fclose(fp);
+    m_bOutputToFile = false;
+    emit convertTextToWaveDone(sFileName);
+    return true;
+}
+
+void CerenceTTS::convertTextToWave(const QString & sText, const QString & sWaveFileName) {
+    m_bOutputToFile = true;
+    m_audioOutFileName = sWaveFileName;
+    say(sText);
+}
+
+void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize) {
+    fwrite("RIFF", 1, 4, fp);
+    int nBiteRate = nSampleRate * nBitsPerSample / 8 * nChannels;
+    int nSubchunk2Size = nBuffSize;
+    int nChunksize = nSubchunk2Size + 36;
+    fwrite(&nChunksize, 4, 1, fp);
+    fwrite("WAVE", 1, 4, fp);
+    char sTmp[4] = "fmt";
+    sTmp[3] = 0x20;
+    fwrite(sTmp, 1, 4, fp);
+    sTmp[0] = 16;
+    memset(sTmp + 1, 0, 3);
+    fwrite(sTmp, 1, 4, fp);
+    sTmp[0] = 1;
+    sTmp[1] = sTmp[3] = 0;
+    sTmp[2] = nChannels;
+    fwrite(sTmp, 1, 4, fp);
+    fwrite(&nSampleRate, 4 , 1, fp);
+    fwrite(&nBiteRate, 4, 1, fp);
+    sTmp[0] = 4;
+    sTmp[1] = 0;
+    sTmp[2] = nBitsPerSample;
+    sTmp[3] = 0;
+    fwrite(sTmp, 1, 4, fp);
+    fwrite("data", 1, 4, fp);
+    fwrite(&nSubchunk2Size, 4, 1, fp);
 }

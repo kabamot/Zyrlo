@@ -55,12 +55,18 @@ public:
     QStringList availableVoices(const QString &language) const;
     const QMap<QString, QStringList> &voicesMap() const;
     const QMap<QString, QString> &languageNames() const;
+    bool writeToWave(const char *sFileName);
+    bool outputToFile() const { return m_bOutputToFile; }
+    void convertTextToWave(const QString & sText, const QString & sWaveFileName);
+    const QString & getAudioOutFileName() const { return m_audioOutFileName; }
 
 signals:
     void sayStarted();
     void sayFinished();
     void wordMarksAdded();
     void wordNotify(int wordPosition, int wordLength);
+    void convertTextToWaveDone(QString sfilename);
+    void usbKeyInsert(bool bInserted);
 
 private:
     void initTTS(const QString &voice);
@@ -91,5 +97,7 @@ private:
     PositionMapper          m_positionMapper;
     QMap<QString, QString>  m_languageNames;
     QMap<QString, QStringList>  m_voicesMap;
+    bool m_bOutputToFile = false;
+    QString m_audioOutFileName;
 };
 

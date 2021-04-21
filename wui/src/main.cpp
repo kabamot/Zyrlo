@@ -80,6 +80,7 @@ string GetProgName(const string & sPath) {
 
 int main(int argc, char *argv[])
 {
+    system("aplay /opt/zyrlo/Distrib/Data/start_up.wav &");
     KillProgramsByName(GetProgName(argv[0]));
     // This is required for tesseract
     qputenv("LC_ALL", "C");

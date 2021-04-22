@@ -80,6 +80,9 @@ public:
     void getListOfOptions(QStringList & list) const;
     void toggleOption(int nIndx);
     void convertTextToWave(const QString & sText, const QString & sWaveFileName);
+    bool saveScannedImage(const cv::Mat & img);
+    bool isSpeaking();
+    bool isPlayingSound();
 
 signals:
     void textUpdated(const QString &text);
@@ -135,7 +138,7 @@ private:
     bool read_keypad_config();
     void InitTtsEngines();
     void ReleaseTtsEngines();
-    bool setAutoSink(int indx);
+    bool setAudioSink(int indx);
     QString GetCharName(QChar c) const;
 
 private slots:
@@ -185,5 +188,6 @@ private:
     bool m_bMenuOpen = false;
     NavigationMode m_navigationMode = BY_WORD;
     int m_nCurrNavPos = -1;
+    int m_nBuiltInSink = 0, m_nActiveSink = 0;
 };
 

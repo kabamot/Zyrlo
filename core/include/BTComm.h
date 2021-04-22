@@ -36,28 +36,31 @@ typedef enum {
 	eStatusOff
 } eBtCommStatus;
 
+class MainController;
+
 class BTComm
 {
     struct sockaddr_rc m_addr = { 0 };
     unsigned char m_readBuffer[10];
     int m_s = -1;
-    volatile bool m_bConnectLock = false;
+    bool m_bUsingMainAudioSink = true;
 
 public:
 
 	int m_exitRequest;
 	pthread_t m_ConnectThread;
-	eBtCommStatus m_eStatus;
+    eBtCommStatus m_eStatus;
 
-	char keypadMacStr[18];
+    char keypadMacStr[18];
 
-
-	int init();
-	void btStop() { m_exitRequest = 1; };
+    BTComm(MainController *pMainController) : m_pMainController(pMainController) {}
+    int init();
+    void btStop() { m_exitRequest = 1; };
     int receiveLoopStep(int & nVal);
     int btConnect(const std::atomic_bool &isStop);
-    void ConnectLock() {m_bConnectLock = true;}
-    void ConnectUlnock() {m_bConnectLock = false;}
+    bool readKpConfig();
+    void setUsingMainAudioSink(bool bUsingMainAudioSink) { m_bUsingMainAudioSink = bUsingMainAudioSink; }
+    MainController *m_pMainController {nullptr};
 };
 
 #endif // __BT_COMM_H__

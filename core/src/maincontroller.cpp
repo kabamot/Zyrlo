@@ -34,6 +34,8 @@ using namespace std;
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 #define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
 
+static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx);
+
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
 
@@ -141,7 +143,6 @@ void MainController::InitTtsEngines() {
         auto ttsEngine = new CerenceTTS(language.voice, this);
         connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
         connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
-        connect(ttsEngine, &CerenceTTS::sayStarted, m_hwhandler, &HWHandler::onSpeakingStarted);
         connect(ttsEngine, &CerenceTTS::convertTextToWaveDone, this, &MainController::onConvertTextToWaveDone);
         m_ttsEnginesList.append(ttsEngine);
     }
@@ -161,6 +162,10 @@ MainController::MainController()
         qDebug() << "Cant find voces.xml\n";
     m_hwhandler = new HWHandler(this, read_keypad_config());
     readSettings();
+    vector<int> vSinkIndxs;
+    m_nActiveSink = getAvailableSinks(vSinkIndxs, m_nBuiltInSink);
+    m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
+
     m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
     connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
         emit textUpdated(ocr().textPage()->text());
@@ -174,7 +179,7 @@ MainController::MainController()
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
     connect(this, &MainController::sayBatteryStatus, this, &MainController::onSayBatteryStatus);
 
-     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound) {
+    connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound) {
         if(m_bMenuOpen)
             return;
         if(bPlayShutterSound)
@@ -182,8 +187,13 @@ MainController::MainController()
 
         if(m_shutterSound && bPlayShutterSound)
             m_shutterSound->play();
-        startBeeping();
-        startImage(image);
+        if(m_hwhandler->IsUsbKeyInserted()) {
+            saveScannedImage(image);
+        }
+        else {
+            startBeeping();
+            startImage(image);
+        }
     }, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::buttonReceived, this, [](Button button){
         qDebug() << "received" << (int)button;
@@ -245,6 +255,10 @@ void MainController::pauseResume()
     }
 }
 
+bool MainController::isSpeaking() {
+    return m_ttsEngine->isSpeaking();
+}
+
 void MainController::pause()
 {
     m_nCurrNavPos = -1;
@@ -267,7 +281,6 @@ void MainController::resume()
         m_state = State::Paused;
         if (m_ttsEngine->isSpeaking()) {
             m_ttsEngine->pause();
-            m_hwhandler->UnlockBtConnect();
         }
         break;
 
@@ -695,7 +708,7 @@ static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
     return active;
 }
 
-bool MainController::setAutoSink(int indx) {
+bool MainController::setAudioSink(int indx) {
      bool bret = true;
     FILE *fp;
     char path[1035], cmd[256];
@@ -731,6 +744,8 @@ bool MainController::setAutoSink(int indx) {
         m_armClosedSound = new QSound(ARMOPEN_SOUND_FILE, this);
     }
     resetAudio();
+    m_nActiveSink = indx;
+    m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
     return bret;
 }
 
@@ -742,7 +757,7 @@ bool MainController::switchToBuiltInSink() {
         return false;
     if(builtinIndx == active)
         return true;
-    return setAutoSink(builtinIndx);
+    return setAudioSink(builtinIndx);
 }
 
 bool MainController::toggleAudioSink() {
@@ -751,7 +766,7 @@ bool MainController::toggleAudioSink() {
     int active = getAvailableSinks(vSinkIndxs, builtinIndx);
     if(active < 0)
         return false;
-    return setAutoSink(vSinkIndxs[(active + 1) % vSinkIndxs.size()]);
+    return setAudioSink(vSinkIndxs[(active + 1) % vSinkIndxs.size()]);
 }
 
 void MainController::onToggleAudioSink() {
@@ -858,8 +873,7 @@ void MainController::onSpeakingFinished()
         qDebug() << __func__ << "position in paragraph" << m_ttsStartPositionInParagraph;
         startSpeaking(m_wordNavigationWithDelay ? DELAY_ON_NAVIGATION : 0);
     }
-    else
-        m_hwhandler->UnlockBtConnect();
+
     if (!isSpeakingTextState && !m_isContinueAfterSpeakingFinished) {
         // The normal mode (not service text speak) with stop after sentence is finished,
         // so set continue mode back to true
@@ -1363,6 +1377,7 @@ bool MainController::write_keypad_config(const string & text) {
         strcpy(m_btKbdMac, sMac.c_str());
         system((string("echo ") + sMac + " > /home/pi/keypad_config.txt").c_str());
         sayText("Serial number saved");
+        m_hwhandler->readKpConfig();
         return true;
     }
     sayText("Invalid serial number");
@@ -1572,4 +1587,29 @@ void MainController::onConvertTextToWaveDone(QString sFileName) {
 
 void MainController::onUsbKeyInsert(bool bInserted) {
     sayTranslationTag(bInserted ? "USB_KEY_INSERTED" : "USB_KEY_REMOVED");
+}
+
+int GetLastImageIndex(const string & sDir, const string regex) {
+
+}
+
+bool MainController::saveScannedImage(const cv::Mat & img) {
+    if(!imwrite("ScannedImd_0000.bmp", img))
+        return false;
+    sayTranslationTag("SCANNED_IMG_SAVED");
+    return true;
+}
+
+bool MainController::isPlayingSound() {
+    if(m_shutterSound && !m_shutterSound->isFinished())
+        return true;
+    if(m_beepSound && !m_beepSound->isFinished())
+        return true;
+    if(m_shutterSound && !m_shutterSound->isFinished())
+        return true;
+    if(m_armOpenSound && !m_armOpenSound->isFinished())
+        return true;
+    if(m_armClosedSound && !m_armClosedSound->isFinished())
+        return true;
+    return false;
 }

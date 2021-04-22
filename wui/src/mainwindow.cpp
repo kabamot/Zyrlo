@@ -71,7 +71,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_scanningTimer, &QTimer::timeout, this, &MainWindow::onScanningTimer);
 
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
-    m_controller.setLed(true);
 }
 
 MainWindow::~MainWindow()

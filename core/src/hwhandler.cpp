@@ -8,6 +8,9 @@
 #include <QMediaPlayer>
 #include <QAudioOutputSelectorControl>
 #include <QMediaService>
+#include <sys/types.h>
+#include <dirent.h>
+#include <regex>
 
 // This is important to receive cv::Mat from another thread
 Q_DECLARE_METATYPE(cv::Mat);
@@ -15,6 +18,7 @@ Q_DECLARE_METATYPE(Button);
 
 HWHandler::HWHandler(QObject *parent, bool btKeyboardFound)
     : QObject(parent)
+    , m_btc((MainController*)parent)
     , m_btKeyboardFound(btKeyboardFound)
 {
     // This is important to receive cv::Mat from another thread
@@ -26,16 +30,13 @@ HWHandler::~HWHandler()
 {
     stop();
     m_future.waitForFinished();
-    m_buttonBtThread.waitForFinished();
+    if(m_btKeyboardFound)
+        m_buttonBtThread.waitForFinished();
     m_buttonThread.waitForFinished();
 }
 
 void HWHandler::start()
 {
-//    const auto deviceInfos = QAudioDeviceInfo::availableDevices(QAudio::AudioOutput);
-//    for (const QAudioDeviceInfo &deviceInfo : deviceInfos)
-//        qDebug() << "Device name: " << deviceInfo.deviceName();
-
     QMediaPlayer player;
     QMediaService *svc = player.service();
     if (svc != nullptr)
@@ -107,6 +108,7 @@ void HWHandler::onButtonsUp(byte up_val) {
 void HWHandler::buttonBtThreadRun() {
      int nVal;
     m_btc.init();
+    QThread::sleep(5);
     for(;!m_stop; QThread::msleep(100)) {
         m_btc.btConnect(m_stop);
         bool bCont = true;
@@ -129,6 +131,7 @@ void HWHandler::buttonBtThreadRun() {
                 break;
             case -1:
                 bCont = false;
+                qDebug() << "BT Disconnected\n";
                 break;
             }
         }
@@ -155,16 +158,18 @@ void HWHandler::ReadSnAndVersion(BaseComm & bc) {
 }
 
 bool usbKeyInserted() {
-    char path[1024];
-    bool bret = false;
-    FILE *fp = popen("ls /dev/sd*", "r");
-    if (fp == NULL) {
-        qDebug() << "Failed to run command\n";
+    DIR *fd = opendir("/dev");
+    if(!fd)
         return false;
+    bool bret = false;
+    struct dirent *dp;
+    while ((dp = readdir (fd))) {
+        if(strncmp(dp->d_name, "sd", 2) == 0) {
+            bret = true;
+            break;
+        }
     }
-    if(fgets(path, sizeof(path), fp) != NULL)
-        bret = true;
-    pclose(fp);
+    closedir(fd);
     return bret;
 }
 
@@ -181,10 +186,12 @@ void HWHandler::buttonThreadRun() {
             continue;
         }
         m_nButtonMask = reply[0];
-        if((SWITCH_FOLDED_MASK | m_nButtonMask) != 0)
+        if((SWITCH_FOLDED_MASK & m_nButtonMask) != 0) {
             onButtonsUp(SWITCH_FOLDED_MASK_UP);
-        break;
+            break;
+        }
     }
+    setLed(true);
     for(; !m_stop; QThread::msleep(50), --nBatteryCheckCount) {
         if(nBatteryCheckCount <= 0 && bc.sendCommand(I2C_COMMAND_GET_BATTERY, reply, false) == 0) {
             m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
@@ -260,16 +267,6 @@ void HWHandler::setCameraArmPosition(bool bOpen) {
     m_zcam.setArmPosition(bOpen);
 }
 
-void HWHandler::onSpeakingStarted() {
-    qDebug() << "HWHandler::onSpeakingStarted\n";
-    m_btc.ConnectLock();
-}
-
-void HWHandler::UnlockBtConnect() {
-    qDebug() << "HWHandler::onSpeakingFinished\n";
-    m_btc.ConnectUlnock();
-}
-
 bool HWHandler::ChangeCameraExposure(int delta) {
 
     int nExp = m_zcam.getCurrExp();
@@ -287,3 +284,4 @@ void HWHandler::setUseCameraFlash(bool bUseFlash) {
 bool HWHandler::getUseCameraFlash() const {
     return m_zcam.getUseFlash();
 }
+

@@ -15,6 +15,7 @@
 #include <bluetooth/rfcomm.h>
 #include <errno.h>
 #include <QDebug>
+#include "maincontroller.h"
 
 #define LOGI(x) qDebug() << x
 
@@ -24,36 +25,36 @@ const char RFCOMM_FILE[] =	"/dev/rfcomm0";
 
 
 
+bool BTComm::readKpConfig() {
+    int iRet;
+    FILE *fp = fopen(KEYPAD_CONFIG_FILE, "r");
+    if(fp == NULL) {
+        LOGI("Keypad config file not found\n");
+        m_eStatus = eStatusOff;
+        return false;
+    }
 
-int BTComm::init()
-{
-	int iRet;
-	FILE *fp = fopen(KEYPAD_CONFIG_FILE, "r");
-	if(fp == NULL) {
-		LOGI("Keypad config file not found\n");
-		m_eStatus = eStatusOff;
-		return -1;
-	}
-
-	iRet = fread(keypadMacStr, 1, 17, fp);
-	if(iRet != 17) {
-		LOGI("Keypad config file error\n");
-		m_eStatus = eStatusOff;
-		return -1;
-	}
-	keypadMacStr[17] = '\0';
-	fclose(fp);
-
-	m_exitRequest = 0;
-	m_eStatus = eStatusIdle;
-
-    m_eStatus = eStatusDisconnected;
-
-	return 0;
+    iRet = fread(keypadMacStr, 1, 17, fp);
+    if(iRet != 17) {
+        LOGI("Keypad config file error\n");
+        m_eStatus = eStatusOff;
+        return false;
+    }
+    keypadMacStr[17] = '\0';
+    fclose(fp);
+    return true;
 }
 
-int readByteFromSocket(int sd, unsigned char *val)
-{
+int BTComm::init() {
+    if(!readKpConfig())
+        return -1;
+    m_exitRequest = 0;
+    m_eStatus = eStatusIdle;
+    m_eStatus = eStatusDisconnected;
+    return 0;
+}
+
+int readByteFromSocket(int sd, unsigned char *val) {
 	int n;
 	int x = fcntl(sd, F_GETFL, 0);
     fcntl(sd, F_SETFL, x | O_NONBLOCK);
@@ -71,8 +72,7 @@ int readByteFromSocket(int sd, unsigned char *val)
     return n;
 }
 
-int BTComm::receiveLoopStep(int & nVal)
-{
+int BTComm::receiveLoopStep(int & nVal) {
     int status = readByteFromSocket(m_s, &m_readBuffer[0]);
     if(status < 0) {
         close(m_s);
@@ -89,18 +89,17 @@ int BTComm::receiveLoopStep(int & nVal)
 }
 
 int BTComm::btConnect(const std::atomic_bool &isStop) {
-    int status;
-    qDebug() << "btConnect 0\n";
+    int status = 0;
     for(; !isStop;  sleep(1)) {
-        if(m_bConnectLock) {
-             continue;
+        if((m_pMainController->isSpeaking()  || m_pMainController->isPlayingSound()) && !m_bUsingMainAudioSink) {
+            continue;
         }
         m_s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
         m_addr.rc_family = AF_BLUETOOTH;
         m_addr.rc_channel = (uint8_t) 1;
         str2ba( keypadMacStr, &m_addr.rc_bdaddr );
         status = connect(m_s, (struct sockaddr *)&m_addr, sizeof(m_addr));
-        if( status < 0 )
+                if( status < 0 )
             perror("Connect err: ");
         else {
             qDebug() << "Connected\n";

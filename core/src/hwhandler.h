@@ -41,7 +41,6 @@ public:
     bool gesturesOn() const;
     void setGesturesUi(bool bOn);
     void setCameraArmPosition(bool bOpen);
-    void UnlockBtConnect();
     int getMainBatteryPercent() const { return int(m_battery / 2.55f + 0.5f); }
     bool ChangeCameraExposure(int delta);
     int getSN() const {return m_nSN;}
@@ -49,10 +48,9 @@ public:
     void setIgnoreCameraInputs(bool bIgnore);
     void setUseCameraFlash(bool bUseFlash);
     bool getUseCameraFlash() const;
-
-
-public slots:
-    void onSpeakingStarted();
+    bool IsUsbKeyInserted() const { return m_bUsbKeyInserted; }
+    bool readKpConfig() { return m_btc.readKpConfig(); }
+    void setmUsingMainAudioSink(bool bUsingMainAudioSink) { m_btc.setUsingMainAudioSink(bUsingMainAudioSink); }
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);
@@ -77,6 +75,5 @@ private:
     float m_battery = -1.0f;
     int m_nSN = -1, m_nVersion = -1;
     bool m_bUsbKeyInserted = false;
-
     void ReadSnAndVersion(BaseComm & bc);
 };

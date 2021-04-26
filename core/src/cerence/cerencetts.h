@@ -60,8 +60,9 @@ public:
     const QMap<QString, QString> &languageNames() const;
     bool writeToWave(const char *sFileName);
     bool outputToFile() const { return m_bOutputToFile; }
-    void convertTextToWave(const QString & sText, const QString & sWaveFileName);
+    void convertTextToAudio(const QString & sText, const QString & sAudioFileName);
     const QString & getAudioOutFileName() const { return m_audioOutFileName; }
+    bool writeToMp3(const char *sFileName);
 
 signals:
     void sayStarted();

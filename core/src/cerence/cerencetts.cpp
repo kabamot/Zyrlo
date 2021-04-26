@@ -14,6 +14,7 @@
 #include <QDebug>
 #include <QThread>
 #include <QtConcurrent>
+#include <lame/lame.h>
 
 void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize);
 
@@ -38,7 +39,7 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
     case VE_MSG_ENDPROCESS:
         qDebug() << "Text-to-speech process has ended";
         if(p->outputToFile()) {
-            p->writeToWave(p->getAudioOutFileName().toStdString().c_str());
+            p->writeToMp3(p->getAudioOutFileName().toStdString().c_str());
             QtConcurrent::run([p](){ emit p->savingAudioDone(p->getAudioOutFileName()); });
         }
         break;
@@ -479,7 +480,7 @@ bool CerenceTTS::writeToWave(const char *sFileName) {
     int nBuffSize = m_audioIO->buffer().size();
     if(nBuffSize < 1)
         return false;
-    FILE *fp = fopen(sFileName, "w");
+    FILE *fp = fopen(sFileName, "wb");
     if(!fp)
         return false;
     WriteWaveHeader(fp, 22050, 16, 1, nBuffSize);
@@ -489,10 +490,38 @@ bool CerenceTTS::writeToWave(const char *sFileName) {
     return nWritten == nBuffSize;
 }
 
-void CerenceTTS::convertTextToWave(const QString & sText, const QString & sWaveFileName) {
+bool CerenceTTS::writeToMp3(const char *sFileName) {
+    int nBuffSize = m_audioIO->buffer().size();
+    if(nBuffSize < 1)
+        return false;
+    FILE *fp = fopen(sFileName, "wb");
+    if(!fp)
+        return false;
+    const int PCM_SIZE = 8192;
+    const int MP3_SIZE = 1.25 * PCM_SIZE * 0.5  + 7200;
+    unsigned char mp3_buffer[MP3_SIZE];
+    lame_t lame = lame_init();
+    lame_set_in_samplerate(lame, 22050);
+    lame_set_VBR(lame, vbr_default);
+    lame_set_mode(lame, MONO);
+    lame_set_num_channels(lame, 1);
+    lame_init_params(lame);
+    int nWritten = 0;
+    for(int i = 0, chunk = std::min(PCM_SIZE, nBuffSize); chunk > 0; nBuffSize -=  PCM_SIZE, chunk = std::min(PCM_SIZE, nBuffSize), ++i) {
+        nWritten = lame_encode_buffer(lame, (short int*)(m_audioIO->buffer().constData() + i * PCM_SIZE), NULL, chunk / 2, mp3_buffer, MP3_SIZE);
+        fwrite(mp3_buffer, nWritten, 1, fp);
+    }
+    nWritten = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
+    fwrite(mp3_buffer, nWritten, 1, fp);
+    fclose(fp);
+    m_bOutputToFile = false;
+    return true;
+}
+
+void CerenceTTS::convertTextToAudio(const QString & sText, const QString & sAudioFileName) {
     m_bOutputToFile = true;
-    m_audioOutFileName = sWaveFileName;
-    say(sText + "\n");
+    m_audioOutFileName = sAudioFileName;
+    say(sText);
 }
 
 void CerenceTTS::sayAfter(const QString &text) {

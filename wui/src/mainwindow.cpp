@@ -160,17 +160,11 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_F6:
         m_controller.SaySN();
         break;
-    case Qt::Key_F7:
-        m_controller.ProcessScannedImage("/home/pi/RawImage_2.bmp");
-        break;
     case Qt::Key_B:
         m_controller.ChangeCameraExposure(100);
         break;
     case Qt::Key_M:
         m_controller.ChangeCameraExposure(-100);
-        break;
-    case Qt::Key_W:
-        m_controller.convertTextToWave("Gyl byl u babushki serenkij kozlik, seryj kozjol", "/home/pi/hru.wav");
         break;
     }
 }

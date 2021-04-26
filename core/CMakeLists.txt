@@ -95,6 +95,7 @@ target_link_libraries(${LIB_NAME}
         opencv_world
         wiringPi
         bluetooth
+        mp3lame
 
     PRIVATE
         ${ZYRLO_OCR_LIB}

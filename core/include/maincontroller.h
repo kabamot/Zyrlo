@@ -80,7 +80,7 @@ public:
     bool isMenuOpen() const { return m_bMenuOpen; }
     void getListOfOptions(QStringList & list) const;
     void toggleOption(int nIndx);
-    void convertTextToWave(const QString & sText, const QString & sWaveFileName);
+    void convertTextToAudio(const QString & sText, const QString & sAudioFileName);
     bool saveScannedImage(const cv::Mat & img);
     bool isSpeaking();
     bool isPlayingSound();

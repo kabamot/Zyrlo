@@ -1249,7 +1249,7 @@ void MainController::onButton(int nButton, bool bDown) {
             case BUTTON_PAUSE_MASK   :
                 if(m_bUsbKeyInserted) {
                     if(StartProcessScannedImages())
-                        sayTranslationTag("SCANNED_IMGS_PROC_STARTED");
+                        sayText(QString::number(m_nImagesToConvert) + " " + translateTag("FILES_TO_CONVERT"));
                     else if(m_beepSound)
                         m_beepSound->play();
                     break;
@@ -1623,8 +1623,8 @@ bool MainController::ChangeCameraExposure(int delta) {
     return m_hwhandler->ChangeCameraExposure(delta);
 }
 
-void MainController::convertTextToWave(const QString & sText, const QString & sWaveFileName) {
-     m_ttsEnginesList[m_currentTTSIndex]->convertTextToWave(sText, sWaveFileName);
+void MainController::convertTextToAudio(const QString & sText, const QString & sAudioFileName) {
+     m_ttsEnginesList[m_currentTTSIndex]->convertTextToAudio(sText, sAudioFileName);
 }
 
 string RemoveFileNameExtension(const string & sFileName) {
@@ -1643,8 +1643,11 @@ string GetFileNameFromPath(const string & sPath) {
 
 void MainController::onSavingAudioDone(QString sFileName) {
     int nImageConverted = m_nImagesToConvert - m_vScannedImagesQue.size() + 1;
-    sayText(translateTag("CONVERTED_FILE") + " " + QString::number(nImageConverted));
- }
+    if(m_vScannedImagesQue.size() == 1)
+        sayTranslationTag("CONVERTION_DONE");
+    else
+        sayText(translateTag("CONVERTED_FILE") + " " + QString::number(nImageConverted));
+}
 
 static int GetFileIndx(const string & sPagename) {
     int nIndx = -1;
@@ -1780,11 +1783,14 @@ bool MainController::StartProcessScannedImages() {
     for(auto & i : vBooks) {
         vector<string> vPages;
         GetBookPages(string(ZYRLO_BOOKS_PATH) + '/' + i, vPages);
-        for(auto & j : vPages)
-            m_vScannedImagesQue.push_back(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + j);
+        for(auto & j : vPages) {
+            string path(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + j);
+            if(!MatchinTextFileExists(path) || !MatchinAudioFileExists(path) )
+                m_vScannedImagesQue.push_back(path);
+        }
     }
     m_nImagesToConvert = m_vScannedImagesQue.size();
-    return ProcessNextScannedImg();
+    return true;
 }
 
 bool MainController::ConvertTextToAudio(const string & sPath) {
@@ -1800,7 +1806,7 @@ bool MainController::ConvertTextToAudio(const string & sPath) {
     file.close();
     if(sText.isEmpty())
         return false;
-    convertTextToWave(sText, (sPath.substr(0, pos) + ".wav").c_str());
+    convertTextToAudio(sText, (sPath.substr(0, pos) + ".mp3").c_str());
     return true;
 }
 

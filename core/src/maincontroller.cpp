@@ -21,6 +21,10 @@
 #include "ZyrloOcr.h"
 #include <regex>
 #include "tinyxml.h"
+#include <sys/types.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace cv;
 using namespace std;
@@ -33,8 +37,13 @@ using namespace std;
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 #define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
+#define ZYRLO_BOOKS_PATH "/home/pi/ZyrloBooks" //"/home/pi/media/ZyrloBooks"
 
 static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx);
+static bool FindZyrloBooks(vector<string> & vBooks);
+static bool IsUpdateDrive();
+static bool file_exists (const char *filename);
+
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
 constexpr int LONG_PRESS_DELAY = 1500;
@@ -143,7 +152,7 @@ void MainController::InitTtsEngines() {
         auto ttsEngine = new CerenceTTS(language.voice, this);
         connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
         connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
-        connect(ttsEngine, &CerenceTTS::convertTextToWaveDone, this, &MainController::onConvertTextToWaveDone);
+        connect(ttsEngine, &CerenceTTS::savingAudioDone, this, &MainController::onSavingAudioDone);
         m_ttsEnginesList.append(ttsEngine);
     }
 }
@@ -152,6 +161,12 @@ void MainController::ReleaseTtsEngines() {
     for(auto ttsEngine : m_ttsEnginesList)
         delete ttsEngine;
     m_ttsEnginesList.clear();
+}
+bool MatchinAudioFileExists(const string & sPath) {
+    size_t pos = sPath.find_last_of('.');
+    if(pos == string::npos)
+        return false;
+    return file_exists((sPath.substr(0, pos) + ".wav").c_str()) || file_exists((sPath.substr(0, pos) + ".mp3").c_str());
 }
 
 MainController::MainController()
@@ -167,9 +182,17 @@ MainController::MainController()
     m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
 
     m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
-    connect(&ocr(), &OcrHandler::lineAdded, this, [this](){
+    connect(&ocr(), &OcrHandler::lineAdded, this, [this]() {
         emit textUpdated(ocr().textPage()->text());
     });
+
+    connect(&ocr(), &OcrHandler::finished, this, [this]() {
+        if(m_bUsbKeyInserted) {
+            saveScannedText();
+            ProcessNextScannedImg();
+        }
+    });
+
 
     connect(&ocr(), &OcrHandler::lineAdded, this, &MainController::onNewTextExtracted);
     connect(this, &MainController::toggleAudioOutput, this, &MainController::onToggleAudioSink);
@@ -227,7 +250,7 @@ MainController::MainController()
 
 void MainController::startFile(const QString &filename)
 {
-    cv::Mat image = cv::imread(filename.toStdString(), cv::IMREAD_GRAYSCALE);
+    Mat image = imread(filename.toStdString(), IMREAD_GRAYSCALE);
     startImage(image);
 }
 
@@ -316,7 +339,8 @@ void MainController::backWord()
     bool isPageBoundary = false;
     auto position = paragraph().prevWordPosition(m_currentWordPosition.parPos());
     while (!position.isValid()) {
-        if (--m_currentParagraphNum >= 0) {
+        if (m_currentParagraphNum - 1 >= 0) {
+            --m_currentParagraphNum;
             // Go the the previous paragraph
             position = paragraph().lastWordPosition();
         } else {
@@ -386,7 +410,8 @@ void MainController::backSentence()
         position = paragraph().prevSentencePosition(m_nCurrNavPos);
 
     while (!position.isValid()) {
-        if (--m_currentParagraphNum >= 0) {
+        if (m_currentParagraphNum - 1 >= 0) {
+            --m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
         } else {
             sayTranslationTag("TOP_OF_PAGE");
@@ -497,7 +522,8 @@ void MainController::backParagraph() {
         m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
     TextPosition position;
      while (!position.isValid()) {
-        if (--m_currentParagraphNum >= 0) {
+        if (m_currentParagraphNum - 1>= 0) {
+            --m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
         }
         else {
@@ -579,7 +605,8 @@ void MainController::backSymbol() {
         position = paragraph().prevCharPosition(m_nCurrNavPos);
 
     while (!position.isValid()) {
-        if (--m_currentParagraphNum >= 0) {
+        if (m_currentParagraphNum - 1 >= 0) {
+            --m_currentParagraphNum;
             // Go the the previous paragraph
             position = paragraph().lastCharPosition();
         } else {
@@ -607,7 +634,7 @@ void MainController::backSymbol() {
         sayText(GetCharName(smbl));
 }
 
-void MainController::sayText(QString text)
+void MainController::sayText(QString text, bool bAfter)
 {
     SetDefaultTts();
     if (m_ttsEngine) {
@@ -617,7 +644,10 @@ void MainController::sayText(QString text)
             m_prevState = m_state;
             m_state = State::SpeakingText;
         }
-        m_ttsEngine->say(text);
+        if(bAfter)
+            m_ttsEngine->sayAfter(text);
+        else
+            m_ttsEngine->say(text);
     } else {
         qWarning() << "TTS engine is not created, can't say text:" << text;
     }
@@ -776,16 +806,24 @@ void MainController::onToggleAudioSink() {
 
 void MainController::readerReady() {
     stopBeeping();
-    m_state = State::Paused;
-    if (m_ttsEngine->isSpeaking()) {
-        m_ttsEngine->pause();
+    if(m_bUsbKeyInserted) {
+        sayText(translateTag("PLACE_DOC"), true);
     }
-    sayTranslationTag("PLACE_DOC");
- }
+    else {
+        m_state = State::Paused;
+        if (m_ttsEngine->isSpeaking()) {
+            m_ttsEngine->pause();
+        }
+        sayTranslationTag("PLACE_DOC");
+    }
+}
 
 void MainController::targetNotFound()
 {
-    sayTranslationTag("CLEAR_SURF");
+    if(m_bUsbKeyInserted)
+        sayText(translateTag("CLEAR_SURF"), true);
+    else
+        sayTranslationTag("CLEAR_SURF");
 }
 
 const OcrHandler &MainController::ocr() const
@@ -844,8 +882,14 @@ bool MainController::isPageValid() const
     return tp != nullptr && m_currentParagraphNum >= 0 && m_currentParagraphNum <  tp->numParagraphs();
 }
 
-void MainController::onNewTextExtracted()
-{
+int MainController::numOfParagraphs() const {
+    auto tp = ocr().textPage();
+    if(tp == nullptr)
+        return -1;
+    return tp->numParagraphs();
+}
+
+void MainController::onNewTextExtracted() {
     stopBeeping();
     if (m_state == State::SpeakingPage && m_ttsEngine->isStoppedSpeaking()) {
         qDebug() << __func__ << m_currentParagraphNum;
@@ -854,8 +898,10 @@ void MainController::onNewTextExtracted()
     }
 }
 
-void MainController::onSpeakingFinished()
-{
+void MainController::onSpeakingFinished() {
+    if(m_bUsbKeyInserted)
+        ProcessNextScannedImg();
+
     const bool isSpeakingTextState = m_state == State::SpeakingText;
     if (isSpeakingTextState) {
         qDebug() << __func__ << "changing state to" << (int)m_prevState;
@@ -884,7 +930,7 @@ void MainController::onSpeakingFinished()
     }
 
     m_wordNavigationWithDelay = false;
- }
+}
 
 void MainController::setCurrentWord(int wordPosition, int wordLength)
 {
@@ -988,6 +1034,13 @@ void MainController::onBtButton(int nButton, bool bDown) {
         m_keypadButtonMask |= (1 << nButton);
         switch(nButton) {
         case KP_BUTTON_CENTER   :
+            if(m_bUsbKeyInserted) {
+                if(StartProcessScannedImages())
+                     sayText(QString::number(m_nImagesToConvert) + " " + translateTag("FILES_TO_CONVERT"));
+                else if(m_beepSound)
+                    m_beepSound->play();
+                break;
+            }
             pauseResume();
             break;
         case KP_BUTTON_UP       :
@@ -1194,6 +1247,13 @@ void MainController::onButton(int nButton, bool bDown) {
             m_deviceButtonsMask = 0;
             switch(nButton) {
             case BUTTON_PAUSE_MASK   :
+                if(m_bUsbKeyInserted) {
+                    if(StartProcessScannedImages())
+                        sayTranslationTag("SCANNED_IMGS_PROC_STARTED");
+                    else if(m_beepSound)
+                        m_beepSound->play();
+                    break;
+                }
                 pauseResume();
                 break;
             case BUTTON_BACK_MASK       :
@@ -1581,20 +1641,81 @@ string GetFileNameFromPath(const string & sPath) {
     return RemoveFileNameExtension(sPath.substr(pos + 1));
 }
 
-void MainController::onConvertTextToWaveDone(QString sFileName) {
-    sayText(translateTag("CONVERTED_TO_AUDIO") + " " + GetFileNameFromPath(sFileName.toStdString()).c_str());
+void MainController::onSavingAudioDone(QString sFileName) {
+    int nImageConverted = m_nImagesToConvert - m_vScannedImagesQue.size() + 1;
+    sayText(translateTag("CONVERTED_FILE") + " " + QString::number(nImageConverted));
+ }
+
+static int GetFileIndx(const string & sPagename) {
+    int nIndx = -1;
+    size_t pos = sPagename.find('_');
+    if(pos == string::npos)
+        return -1;
+     sscanf(sPagename.substr(pos + 1, 4).c_str(), "%d",  &nIndx);
+     return nIndx;
+}
+
+const string GetBookPath(const string & sBooksDir, int nIndx) {
+    char imgPath[512];
+    sprintf(imgPath, "%s/Book_%04d", sBooksDir.c_str(), nIndx);
+    return imgPath;
 }
 
 void MainController::onUsbKeyInsert(bool bInserted) {
-    sayTranslationTag(bInserted ? "USB_KEY_INSERTED" : "USB_KEY_REMOVED");
+    m_bUsbKeyInserted = bInserted;
+    int nIndx = 0;
+    pause();
+    sayText(translateTag(bInserted ? "USB_KEY_INSERTED" : "USB_KEY_REMOVED"), true);
+    m_sCurrentBookDir.clear();
+    if(bInserted) {
+        if(IsUpdateDrive())
+            return;
+        vector<string> vBooks;
+        FindZyrloBooks(vBooks);
+        if(!vBooks.empty())
+            nIndx = GetFileIndx(vBooks.back());
+    }
+    m_sCurrentBookDir = GetBookPath(ZYRLO_BOOKS_PATH, nIndx + 1);
 }
 
-int GetLastImageIndex(const string & sDir, const string regex) {
+static bool GetBookPages(const string & sDir, vector<string> & vPages) {
+    vPages.clear();
+    DIR *pd = opendir(sDir.c_str());
+    if(!pd)
+        return false;
+    struct dirent *dp;
+    while ((dp = readdir (pd))) {
+        if(dp->d_type != DT_DIR && strncmp(dp->d_name, "Page_", strlen("Page_")) == 0 && strncmp(dp->d_name + strlen(dp->d_name) - 4, ".bmp", 4) == 0) {
+            vPages.push_back(dp->d_name);
+        }
+    }
+    closedir(pd);
+    sort(vPages.begin(), vPages.end());
+    return true;
+}
 
+static int GetLastPageIndex(const string & sDir) {
+    vector<string> vPages;
+    GetBookPages(sDir, vPages);
+    if(vPages.empty())
+        return 0;
+    return GetFileIndx(vPages.back());
+}
+
+const string GetBookPagePath(const string & sCurrentBookDir, int nIndx) {
+    char imgPath[512];
+    sprintf(imgPath, "%s/Page_%04d.bmp", sCurrentBookDir.c_str(), nIndx);
+    return imgPath;
 }
 
 bool MainController::saveScannedImage(const cv::Mat & img) {
-    if(!imwrite("ScannedImd_0000.bmp", img))
+    if(!file_exists(m_sCurrentBookDir.c_str())) {
+        if(!file_exists (ZYRLO_BOOKS_PATH))
+            mkdir(ZYRLO_BOOKS_PATH, 0777);
+        mkdir(m_sCurrentBookDir.c_str(), 0777);
+    }
+    int indx = GetLastPageIndex(m_sCurrentBookDir);
+    if(!imwrite(GetBookPagePath(m_sCurrentBookDir, indx + 1), img))
         return false;
     sayTranslationTag("SCANNED_IMG_SAVED");
     return true;
@@ -1612,4 +1733,114 @@ bool MainController::isPlayingSound() {
     if(m_armClosedSound && !m_armClosedSound->isFinished())
         return true;
     return false;
+}
+
+bool MainController::ProcessScannedImage(const string & path) {
+    if(ocr().isOcring())
+        return false;
+    Mat img = imread(path, IMREAD_GRAYSCALE);
+    if(img.empty())
+        return false;
+    ocr().startProcess(img);
+    return true;
+}
+
+bool MatchinTextFileExists(const string & sPath) {
+    size_t pos = sPath.find_last_of('.');
+    if(pos == string::npos)
+        return false;
+    return file_exists((sPath.substr(0, pos) + ".txt").c_str());
+}
+
+bool MainController::ProcessNextScannedImg() {
+    if(!ocr().isIdle())
+        return false;
+    bool bTextExists = false, bAudioExists = false;
+    while(!m_vScannedImagesQue.empty()) {
+        bTextExists = MatchinTextFileExists(m_vScannedImagesQue.front());
+        bAudioExists = MatchinAudioFileExists(m_vScannedImagesQue.front());
+        if(!bTextExists || !bAudioExists)
+            break;
+        m_vScannedImagesQue.pop_front();
+    }
+    if(m_vScannedImagesQue.empty())
+        return false;
+    m_sCurrentImgPath = m_vScannedImagesQue.front();
+    if(!bTextExists)
+        return ProcessScannedImage(m_sCurrentImgPath);
+    if(!bAudioExists)
+        return ConvertTextToAudio(m_sCurrentImgPath);
+    return false;
+}
+
+bool MainController::StartProcessScannedImages() {
+    m_vScannedImagesQue.clear();
+    vector<string> vBooks;
+    FindZyrloBooks(vBooks);
+    for(auto & i : vBooks) {
+        vector<string> vPages;
+        GetBookPages(string(ZYRLO_BOOKS_PATH) + '/' + i, vPages);
+        for(auto & j : vPages)
+            m_vScannedImagesQue.push_back(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + j);
+    }
+    m_nImagesToConvert = m_vScannedImagesQue.size();
+    return ProcessNextScannedImg();
+}
+
+bool MainController::ConvertTextToAudio(const string & sPath) {
+    size_t pos = sPath.find_last_of('.');
+    if(pos == string::npos)
+        return false;
+    QFile file((sPath.substr(0, pos) + ".txt").c_str());
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        return false;
+    QTextStream stream(&file);
+    QString sText;
+    sText.append(stream.readAll());
+    file.close();
+    if(sText.isEmpty())
+        return false;
+    convertTextToWave(sText, (sPath.substr(0, pos) + ".wav").c_str());
+    return true;
+}
+
+bool MainController::saveScannedText() const {
+    QString sText(ocr().textPage()->text());
+    if(sText.isEmpty())
+        return false;
+    size_t pos = m_sCurrentImgPath.find_last_of('.');
+    if(pos == string::npos)
+        return false;
+    QFile file((m_sCurrentImgPath.substr(0, pos) + ".txt").c_str());
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    QTextStream stream(&file);
+    stream << sText;
+    file.close();
+    return true;
+}
+
+static bool file_exists (const char *filename) {
+  struct stat   buffer;
+  return (stat (filename, &buffer) == 0);
+}
+
+static bool IsUpdateDrive() {
+    return file_exists("/media/pi/_ZyrloUpdate");
+}
+
+static bool FindZyrloBooks(vector<string> & vBooks) {
+    vBooks.clear();
+    DIR *pd = opendir(ZYRLO_BOOKS_PATH);
+    if(!pd)
+        return false;
+    struct dirent *dp;
+    while ((dp = readdir (pd))) {
+        if(dp->d_type == DT_DIR && strncmp(dp->d_name, "Book_", strlen("Book_")) == 0) {
+            vBooks.push_back(dp->d_name);
+        }
+    }
+    closedir(pd);
+    sort(vBooks.begin(), vBooks.end());
+    return true;
 }

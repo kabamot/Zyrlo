@@ -16,6 +16,10 @@
 #include "menuwidget.h"
 #include "bluetoothhandler.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+
 using namespace cv;
 using namespace std;
 
@@ -155,6 +159,9 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         break;
     case Qt::Key_F6:
         m_controller.SaySN();
+        break;
+    case Qt::Key_F7:
+        m_controller.ProcessScannedImage("/home/pi/RawImage_2.bmp");
         break;
     case Qt::Key_B:
         m_controller.ChangeCameraExposure(100);

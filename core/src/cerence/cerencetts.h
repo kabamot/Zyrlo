@@ -26,6 +26,8 @@
 class QAudioOutput;
 class QIODevice;
 
+#include <deque>
+
 class CerenceTTS : public QObject
 {
     Q_OBJECT
@@ -34,6 +36,7 @@ public:
     ~CerenceTTS();
 
     void say(const QString &text, int delayMs = 0);
+    void sayAfter(const QString &text);
     void stop();
     void pause();
     void resume();
@@ -65,7 +68,7 @@ signals:
     void sayFinished();
     void wordMarksAdded();
     void wordNotify(int wordPosition, int wordLength);
-    void convertTextToWaveDone(QString sfilename);
+    void savingAudioDone(QString sfilename);
     void usbKeyInsert(bool bInserted);
 
 private:
@@ -99,5 +102,7 @@ private:
     QMap<QString, QStringList>  m_voicesMap;
     bool m_bOutputToFile = false;
     QString m_audioOutFileName;
+    QMutex m_messageQueMutex;
+    std::deque<QString> m_messageQue;
 };
 

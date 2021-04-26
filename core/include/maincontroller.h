@@ -13,6 +13,7 @@
 #include "translator.h"
 #include "textposition.h"
 #include "kbdinputinjector.h"
+#include <deque>
 
 class OcrHandler;
 class Paragraph;
@@ -83,6 +84,11 @@ public:
     bool saveScannedImage(const cv::Mat & img);
     bool isSpeaking();
     bool isPlayingSound();
+    bool ProcessScannedImage(const std::string & path);
+    bool StartProcessScannedImages();
+    bool saveScannedText() const;
+    bool ConvertTextToAudio(const std::string & sPath);
+    bool ProcessNextScannedImg();
 
 signals:
     void textUpdated(const QString &text);
@@ -111,7 +117,7 @@ public slots:
     void nextSymbol();
     void backSymbol();
 
-    void sayText(QString text);
+    void sayText(QString text, bool bAfter = false);
     void sayTranslationTag(const QString &tag);
     void spellText(const QString &text);
     void speechRateUp();
@@ -140,6 +146,7 @@ private:
     void ReleaseTtsEngines();
     bool setAudioSink(int indx);
     QString GetCharName(QChar c) const;
+    int numOfParagraphs() const;
 
 private slots:
     void onNewTextExtracted();
@@ -155,7 +162,7 @@ private slots:
     void onToggleSingleColumn();
     void onGesture(int nGest);
     void onSayBatteryStatus();
-    void onConvertTextToWaveDone(QString sFileName);
+    void onSavingAudioDone(QString sFileName);
     void onUsbKeyInsert(bool bInserted);
 
 
@@ -189,5 +196,10 @@ private:
     NavigationMode m_navigationMode = BY_WORD;
     int m_nCurrNavPos = -1;
     int m_nBuiltInSink = 0, m_nActiveSink = 0;
+    std::string m_sCurrentBookDir;
+    bool m_bUsbKeyInserted = false;
+    std::string m_sCurrentImgPath;
+    std::deque<std::string> m_vScannedImagesQue;
+    int m_nImagesToConvert = 0;
 };
 

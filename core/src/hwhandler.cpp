@@ -10,7 +10,6 @@
 #include <QMediaService>
 #include <sys/types.h>
 #include <dirent.h>
-#include <regex>
 
 // This is important to receive cv::Mat from another thread
 Q_DECLARE_METATYPE(cv::Mat);

@@ -39,6 +39,7 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
         qDebug() << "Text-to-speech process has ended";
         if(p->outputToFile()) {
             p->writeToWave(p->getAudioOutFileName().toStdString().c_str());
+            QtConcurrent::run([p](){ emit p->savingAudioDone(p->getAudioOutFileName()); });
         }
         break;
 
@@ -354,6 +355,17 @@ void CerenceTTS::initAudio()
             if (m_ttsFuture.isFinished()) {
                 m_audioOutput->stop();
                 emit sayFinished();
+                m_messageQueMutex.lock();
+                if(m_messageQue.empty()) {
+                    m_messageQueMutex.unlock();
+                }
+                else {
+                    QString text = m_messageQue.front();
+                    m_messageQue.pop_front();
+                    m_messageQueMutex.unlock();
+                    say(text);
+                }
+
             }
             break;
 
@@ -464,21 +476,32 @@ int CerenceTTS::getSpeechRate() {
 }
 
 bool CerenceTTS::writeToWave(const char *sFileName) {
+    int nBuffSize = m_audioIO->buffer().size();
+    if(nBuffSize < 1)
+        return false;
     FILE *fp = fopen(sFileName, "w");
     if(!fp)
         return false;
-    WriteWaveHeader(fp, 22050, 16, 1, m_audioIO->buffer().size());
-    fwrite(m_audioIO->buffer().constData(), 2, m_audioIO->buffer().size(), fp);
+    WriteWaveHeader(fp, 22050, 16, 1, nBuffSize);
+    int nWritten = fwrite(m_audioIO->buffer().constData(), 2, nBuffSize, fp);
     fclose(fp);
     m_bOutputToFile = false;
-    emit convertTextToWaveDone(sFileName);
-    return true;
+    return nWritten == nBuffSize;
 }
 
 void CerenceTTS::convertTextToWave(const QString & sText, const QString & sWaveFileName) {
     m_bOutputToFile = true;
     m_audioOutFileName = sWaveFileName;
-    say(sText);
+    say(sText + "\n");
+}
+
+void CerenceTTS::sayAfter(const QString &text) {
+    m_messageQueMutex.lock();
+    if(isSpeaking() || !m_messageQue.empty())
+        m_messageQue.push_back(text);
+    else
+        say(text);
+    m_messageQueMutex.unlock();
 }
 
 void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize) {

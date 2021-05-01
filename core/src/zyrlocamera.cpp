@@ -56,6 +56,33 @@ unsigned long long GetTickCount(void)
   return (unsigned long long)now.tv_sec * 1000 + (unsigned long long)now.tv_nsec / 1000000;
 }
 
+float CalcBrightness(const Mat & img, int topPercent, int bottomPercent) {
+    int pHist[256], i, j, k;
+    const Rect frame(0, 0, img.cols, img.rows);
+    build_histogram(img, frame, pHist);
+    int nSum = 0;
+    for(i = 0; i != 256; ++i)
+        nSum += pHist[i];
+    int nTop = int(float(topPercent * nSum) * 0.01f + 0.5f);
+    int nBot = int(float(bottomPercent * nSum) * 0.01f + 0.5f);
+
+    for(i = 255, nSum = 0; i >= 0 && nSum < nTop; --i)
+        nSum += pHist[i];
+    for(j = 0, nSum = 0; j < 256 && nSum < nBot; ++j)
+        nSum += pHist[j];
+
+    int avg = 0;
+    j = max(0, j - 1);
+    i = min(255, i + 1);
+    for(k = j, nSum = 0; k <= i; ++k) {
+        nSum += pHist[k];
+        avg += k * pHist[k];
+    }
+    if(nSum < 1)
+        return -1;
+   return float(avg) / float(nSum);
+}
+
 int BaseCommAdapter();
 
 ZyrloCamera::ZyrloCamera()
@@ -205,10 +232,24 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
     if(m_bIgnoreInputs)
         return eShowPreviewImge;
     Zcevent zcev = eShowPreviewImge;
+    if(m_nDelayCount == 0) {
+        m_nDelayCount = exp_setting_delay;
+        m_fLastBrightness = CalcBrightness(m_previewImgPyr2, 5, 90);
+        float newExp = m_fPreviewExposure;
+        if(m_fLastBrightness > m_brightUpperLimit)
+            newExp = max(m_fPreviewExposure * 0.9f, float(m_nMinExpValue));
+        if(m_fLastBrightness < m_brightLowerLimit)
+            newExp = min(m_fPreviewExposure * 1.1f, float(m_nMaxExpValue));
+        if(fabs(newExp - m_fPreviewExposure) > 1.0e-6) {
+            m_fPreviewExposure = newExp;
+            setExposure(int(m_fPreviewExposure + 0.5f));
+        }
+    }
+    --m_nDelayCount;
     switch(m_eState) {
     case eCalibration:
         if(--m_nDelayCount == 0) {
-            m_nDelayCount = 30;
+            m_nDelayCount = exp_setting_delay;
             if(adjustExposure(m_previewImgPyr2) == 0) {
                 m_wb = true;
                 m_eState = eLookinForTarget;
@@ -452,7 +493,7 @@ int ZyrloCamera::initCamera()
 
     SetMode(true);
     setGain(m_nGain);
-    setExposure(m_nExposure);
+    setExposure(int(m_fPreviewExposure + 0.5f));
      return 0;
 }
 
@@ -510,32 +551,33 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
     if(nSum < 1)
         return -1;
     avg = avg / nSum;
-    qDebug() << "adjustExposure Exp = " << m_nExposure << " avg = " <<  avg  << Qt::endl;
+    qDebug() << "adjustExposure Exp = " << m_fPreviewExposure << " avg = " <<  avg  << Qt::endl;
     if(avg < m_nAvgTargetBrightness) {
-        m_nMinExp = m_nExposure;
+        m_nMinExp = int(m_fPreviewExposure + 0.5f);
     }
     else if(avg > m_nAvgTargetBrightness)
-        m_nMaxExp = m_nExposure;
+        m_nMaxExp = int(m_fPreviewExposure + 0.5f);
     else
         return 0;
-    m_nExposure = (m_nMinExp +  m_nMaxExp) / 2;
-    setExposure(m_nExposure);
+    m_fPreviewExposure = float(m_nMinExp +  m_nMaxExp) * 0.5f;
+    setExposure(int(m_fPreviewExposure + 0.5f));
     return 1;
 }
 
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
+        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 200.0f;
         if(m_bUseFlash) {
             flashLed(1000);
-            AcquireFullResImage(300, 200, 0);
+            AcquireFullResImage(300, int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f), 0);
         }
         else
-            AcquireFullResImage(300, m_nNoFlashExp, 0);;
+            AcquireFullResImage(300, int(fExpNoFlash + 0.5f), 0);
         //AcquireFullResImage(100, 2500, 1);
         SwitchMode(true);
         setGain(m_nGain);
-        setExposure(m_nExposure);
+        setExposure(int(m_fPreviewExposure + 0.5f));
         digitalWrite(21, 0);
         return 1;
     }
@@ -565,7 +607,6 @@ int ZyrloCamera::AcquireImage() {
 }
 
 void WriteLog(string s) {
-    printf("HRUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUKOZEL\n");
     FILE *fp = fopen("/home/pi/log.txt", "a");
     if(!fp)
         fp = fopen("/home/pi/log.txt", "w");

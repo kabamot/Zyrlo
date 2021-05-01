@@ -513,6 +513,7 @@ bool CerenceTTS::writeToMp3(const char *sFileName) {
     }
     nWritten = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
     fwrite(mp3_buffer, nWritten, 1, fp);
+    lame_close(lame);
     fclose(fp);
     m_bOutputToFile = false;
     return true;

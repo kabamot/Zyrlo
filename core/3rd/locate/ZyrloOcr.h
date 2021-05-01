@@ -14,7 +14,31 @@
 #define ZRL_DANISH			0x40ULL
 #define ZRL_DUTCH 			0x80ULL
 #define ZRL_NORWEGIAN		0x100ULL
-#define ZRL_RUSSIAN         0x400ULL
+#define ZRL_SWEDISH			0x200ULL
+#define ZRL_RUSSIAN			0x400ULL
+#define ZRL_FINNISH			0x800ULL
+#define ZRL_SLOVENIAN		0x1000ULL
+#define ZRL_POLISH			0x2000ULL
+#define ZRL_ENGLISH_UK		0x4000ULL
+#define ZRL_SPANISH_MX		0x8000ULL
+#define ZRL_ENGLISH_IN		0x10000ULL
+#define ZRL_HEBREW			0x20000ULL
+#define ZRL_WELSH			0x40000ULL
+#define ZRL_BELGIAN_DUTCH 	0x80000ULL
+#define ZRL_ENGLISH_AU		0x100000ULL
+#define ZRL_FRENCH_CA		0x200000ULL
+#define ZRL_TURKISH			0x400000ULL
+#define ZRL_HUNGARIAN		0x800000ULL
+#define ZRL_CZECH			0x1000000ULL
+#define ZRL_SERB_CYR		0x2000000ULL
+#define ZRL_ICELANDIC		0x4000000ULL
+#define ZRL_AFRIKAANS		0x8000000ULL
+#define ZRL_PORTUGUESE_BR	0x10000000ULL
+#define ZRL_CHINESE			0x20000000ULL
+#define ZRL_GREEK			0x40000000ULL
+#define ZRL_KOREAN			0x80000000ULL
+#define ZRL_ARABIC			0x100000000ULL
+#define ZRL_SLOVAK			0x200000000ULL
 
 inline unsigned long long langToMask(const char * lang) {
     if(strcmp(lang, "eng") == 0)
@@ -37,7 +61,41 @@ inline unsigned long long langToMask(const char * lang) {
         return ZRL_NORWEGIAN;
     if(strcmp(lang, "rus") == 0)
         return ZRL_RUSSIAN;
-    return 0;
+    if(strcmp(lang, "swe") == 0)
+        return ZRL_SWEDISH;
+    if(strcmp(lang, "fin") == 0)
+        return ZRL_FINNISH;
+    if(strcmp(lang, "slv") == 0)
+        return ZRL_SLOVENIAN;
+    if(strcmp(lang, "pol") == 0)
+        return ZRL_POLISH;
+    if(strcmp(lang, "heb") == 0)
+        return ZRL_HEBREW;
+    if(strcmp(lang, "wel") == 0)
+        return ZRL_WELSH;
+    if(strcmp(lang, "tur") == 0)
+        return ZRL_TURKISH;
+    if(strcmp(lang, "hun") == 0)
+        return ZRL_HUNGARIAN;
+    if(strcmp(lang, "ces") == 0)
+        return ZRL_CZECH;
+    if(strcmp(lang, "srp") == 0)
+        return ZRL_SERB_CYR;
+    if(strcmp(lang, "ice") == 0)
+        return ZRL_ICELANDIC;
+    if(strcmp(lang, "afr") == 0)
+        return ZRL_AFRIKAANS;
+    if(strcmp(lang, "chn") == 0)
+        return ZRL_CHINESE;
+    if(strcmp(lang, "ell") == 0)
+        return ZRL_GREEK;
+    if(strcmp(lang, "kor") == 0)
+        return ZRL_KOREAN;
+    if(strcmp(lang, "ara") == 0)
+        return ZRL_ARABIC;
+    if(strcmp(lang, "slk") == 0)
+        return ZRL_SLOVAK;
+      return 0;
  }
 
 extern "C" {
@@ -53,7 +111,7 @@ typedef struct _text_line {
 // Initializer the library. Call after boot.
 // return 	0 if OK and line is returned
 //		<0 if error
-int zyrlo_proc_init(const char *sDataDir, int nLanguage);
+int zyrlo_proc_init(const char *sDataDir, unsigned long long nLanguage);
 
 // Start processing image.
 // Partams: sImgPath - any image (jpg, bmp, etc)
@@ -111,7 +169,7 @@ int zyrlo_proc_cancel();
 // Parameter:	nLanguage - language ID defined in Languages.h
 // return 	0 if OK and line is returned
 //		<0 if error
-int zyrlo_proc_set_ocr_language(int nLanguage);
+int zyrlo_proc_set_ocr_language(unsigned long long nLanguage);
 
 // Get text of a whole page
 // caller should call delete() to free memory

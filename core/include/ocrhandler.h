@@ -30,7 +30,7 @@ public:
     void operator=(OcrHandler const&) = delete;
     ~OcrHandler();
 
-    bool setLanguage(int languageCode);
+    bool setLanguage(unsigned long long languageCode);
 
     bool startProcess(const cv::Mat &image);
     bool stopProcess();
@@ -60,7 +60,7 @@ private:
     bool getOcrResults();
 
 private:
-    int m_languageCode {1};
+    unsigned long long m_languageCode {1};
     int m_processingParagraphNum {-1};
     int m_currentParagraphId {-1};
     TextPage *m_page {nullptr};

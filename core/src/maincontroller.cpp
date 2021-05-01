@@ -37,7 +37,10 @@ using namespace std;
 #define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 #define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
-#define ZYRLO_BOOKS_PATH "/home/pi/ZyrloBooks" //"/home/pi/media/ZyrloBooks"
+#define ZYRLO_BOOKS_PATH "/home/pi/media/ZyrloBooks"
+#define BOOK_IMG_DIR "Tmages"
+#define BOOK_TXT_DIR "Text"
+#define BOOK_AUDIO_DIR "Audio"
 
 static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx);
 static bool FindZyrloBooks(vector<string> & vBooks);
@@ -129,6 +132,9 @@ void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice
 QVector<LangVoice> LANGUAGES;
 
 int FirstEnabledVoiceIndex(int nStartIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
+    if(g_vLangVoiceSettings.empty())
+        return -1;
+    nStartIndx = (nStartIndx + 1) % g_vLangVoiceSettings.size();
     for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
         if(g_vLangVoiceSettings[nStartIndx].m_bEnabled)
             return nStartIndx;
@@ -162,20 +168,34 @@ void MainController::ReleaseTtsEngines() {
         delete ttsEngine;
     m_ttsEnginesList.clear();
 }
-bool MatchinAudioFileExists(const string & sPath) {
-    size_t pos = sPath.find_last_of('.');
+
+string changeSubdirInPath(string path, const string & old_subir, const string & new_subir, const string & new_suffix) {
+    size_t pos =  path.find(old_subir);
     if(pos == string::npos)
-        return false;
-    return file_exists((sPath.substr(0, pos) + ".wav").c_str()) || file_exists((sPath.substr(0, pos) + ".mp3").c_str());
+        return "";
+    path.replace(pos, old_subir.length(), new_subir);
+    pos = path.find_last_of('.');
+    if(pos == string::npos)
+        return "";
+    return path.substr(0, pos) + '.' + new_suffix;
+}
+
+bool MatchingTextFileExists(const string & sPath) {
+    return file_exists(changeSubdirInPath(sPath, BOOK_IMG_DIR, BOOK_TXT_DIR, "txt").c_str());
+}
+
+bool MatchingAudioFileExists(const string & sPath) {
+    return file_exists(changeSubdirInPath(sPath, BOOK_IMG_DIR, BOOK_AUDIO_DIR, "mp3").c_str());
 }
 
 MainController::MainController()
 {
+    m_hwhandler = new HWHandler(this, read_keypad_config());
+    m_hwhandler->init();
     if(ReadLangVoiceSettings(g_vLangVoiceSettings))
         FillLanguages(g_vLangVoiceSettings, LANGUAGES);
     else
         qDebug() << "Cant find voces.xml\n";
-    m_hwhandler = new HWHandler(this, read_keypad_config());
     readSettings();
     vector<int> vSinkIndxs;
     m_nActiveSink = getAvailableSinks(vSinkIndxs, m_nBuiltInSink);
@@ -1643,8 +1663,10 @@ string GetFileNameFromPath(const string & sPath) {
 
 void MainController::onSavingAudioDone(QString sFileName) {
     int nImageConverted = m_nImagesToConvert - m_vScannedImagesQue.size() + 1;
-    if(m_vScannedImagesQue.size() == 1)
+    if(m_vScannedImagesQue.size() == 1) {
+        system("sync");
         sayTranslationTag("CONVERTION_DONE");
+    }
     else
         sayText(translateTag("CONVERTED_FILE") + " " + QString::number(nImageConverted));
 }
@@ -1665,6 +1687,8 @@ const string GetBookPath(const string & sBooksDir, int nIndx) {
 }
 
 void MainController::onUsbKeyInsert(bool bInserted) {
+    if(IsUpdateDrive())
+        return;
     m_bUsbKeyInserted = bInserted;
     int nIndx = 0;
     pause();
@@ -1716,11 +1740,14 @@ bool MainController::saveScannedImage(const cv::Mat & img) {
         if(!file_exists (ZYRLO_BOOKS_PATH))
             mkdir(ZYRLO_BOOKS_PATH, 0777);
         mkdir(m_sCurrentBookDir.c_str(), 0777);
+        mkdir((m_sCurrentBookDir + '/' + BOOK_IMG_DIR).c_str(), 0777);
+        mkdir((m_sCurrentBookDir + '/' + BOOK_TXT_DIR).c_str(), 0777);
+        mkdir((m_sCurrentBookDir + '/' + BOOK_AUDIO_DIR).c_str(), 0777);
     }
-    int indx = GetLastPageIndex(m_sCurrentBookDir);
-    if(!imwrite(GetBookPagePath(m_sCurrentBookDir, indx + 1), img))
+    int indx = GetLastPageIndex(m_sCurrentBookDir + '/' + BOOK_IMG_DIR);
+    if(!imwrite(GetBookPagePath(m_sCurrentBookDir + '/' + BOOK_IMG_DIR, indx + 1), img))
         return false;
-    sayTranslationTag("SCANNED_IMG_SAVED");
+    sayTranslationTag("PAGE_SAVED");
     return true;
 }
 
@@ -1748,20 +1775,13 @@ bool MainController::ProcessScannedImage(const string & path) {
     return true;
 }
 
-bool MatchinTextFileExists(const string & sPath) {
-    size_t pos = sPath.find_last_of('.');
-    if(pos == string::npos)
-        return false;
-    return file_exists((sPath.substr(0, pos) + ".txt").c_str());
-}
-
 bool MainController::ProcessNextScannedImg() {
     if(!ocr().isIdle())
         return false;
     bool bTextExists = false, bAudioExists = false;
     while(!m_vScannedImagesQue.empty()) {
-        bTextExists = MatchinTextFileExists(m_vScannedImagesQue.front());
-        bAudioExists = MatchinAudioFileExists(m_vScannedImagesQue.front());
+        bTextExists = MatchingTextFileExists(m_vScannedImagesQue.front());
+        bAudioExists = MatchingAudioFileExists(m_vScannedImagesQue.front());
         if(!bTextExists || !bAudioExists)
             break;
         m_vScannedImagesQue.pop_front();
@@ -1782,10 +1802,10 @@ bool MainController::StartProcessScannedImages() {
     FindZyrloBooks(vBooks);
     for(auto & i : vBooks) {
         vector<string> vPages;
-        GetBookPages(string(ZYRLO_BOOKS_PATH) + '/' + i, vPages);
+        GetBookPages(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + BOOK_IMG_DIR, vPages);
         for(auto & j : vPages) {
-            string path(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + j);
-            if(!MatchinTextFileExists(path) || !MatchinAudioFileExists(path) )
+            string path(string(ZYRLO_BOOKS_PATH) + '/' + i + '/' + BOOK_IMG_DIR + '/' + j);
+            if(!MatchingTextFileExists(path) || !MatchingAudioFileExists(path) )
                 m_vScannedImagesQue.push_back(path);
         }
     }
@@ -1794,10 +1814,7 @@ bool MainController::StartProcessScannedImages() {
 }
 
 bool MainController::ConvertTextToAudio(const string & sPath) {
-    size_t pos = sPath.find_last_of('.');
-    if(pos == string::npos)
-        return false;
-    QFile file((sPath.substr(0, pos) + ".txt").c_str());
+    QFile file(changeSubdirInPath(sPath, BOOK_IMG_DIR, BOOK_TXT_DIR, "txt").c_str());
     if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return false;
     QTextStream stream(&file);
@@ -1806,7 +1823,7 @@ bool MainController::ConvertTextToAudio(const string & sPath) {
     file.close();
     if(sText.isEmpty())
         return false;
-    convertTextToAudio(sText, (sPath.substr(0, pos) + ".mp3").c_str());
+    convertTextToAudio(sText, changeSubdirInPath(sPath, BOOK_IMG_DIR, BOOK_AUDIO_DIR, "mp3").c_str());
     return true;
 }
 
@@ -1817,7 +1834,7 @@ bool MainController::saveScannedText() const {
     size_t pos = m_sCurrentImgPath.find_last_of('.');
     if(pos == string::npos)
         return false;
-    QFile file((m_sCurrentImgPath.substr(0, pos) + ".txt").c_str());
+    QFile file(changeSubdirInPath(m_sCurrentImgPath, BOOK_IMG_DIR, BOOK_TXT_DIR, "txt").c_str());
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
     QTextStream stream(&file);
@@ -1832,7 +1849,7 @@ static bool file_exists (const char *filename) {
 }
 
 static bool IsUpdateDrive() {
-    return file_exists("/media/pi/_ZyrloUpdate");
+    return file_exists("/home/pi/media/_ZyrloUpdate");
 }
 
 static bool FindZyrloBooks(vector<string> & vBooks) {

@@ -2,8 +2,6 @@
 
 #include <QtConcurrent>
 #include <QDebug>
-#include "BaseComm.h"
-#include "BTComm.h"
 #include <QAudioDeviceInfo>
 #include <QMediaPlayer>
 #include <QAudioOutputSelectorControl>
@@ -25,8 +23,7 @@ HWHandler::HWHandler(QObject *parent, bool btKeyboardFound)
     qRegisterMetaType<Button>();
 }
 
-HWHandler::~HWHandler()
-{
+HWHandler::~HWHandler() {
     stop();
     m_future.waitForFinished();
     if(m_btKeyboardFound)
@@ -34,12 +31,16 @@ HWHandler::~HWHandler()
     m_buttonThread.waitForFinished();
 }
 
-void HWHandler::start()
-{
+bool HWHandler::init() {
+    byte reply[2];
+    return m_bc.init() == 0
+            && m_bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, reply) == 0;
+}
+
+void HWHandler::start() {
     QMediaPlayer player;
     QMediaService *svc = player.service();
-    if (svc != nullptr)
-    {
+    if (svc != nullptr) {
         QAudioOutputSelectorControl *out = qobject_cast<QAudioOutputSelectorControl *>
                                            (svc->requestControl(QAudioOutputSelectorControl_iid));
         if (out != nullptr)
@@ -174,13 +175,10 @@ bool usbKeyInserted() {
 
 void HWHandler::buttonThreadRun() {
     byte reply[2], xor_val, up_val, down_val;
-    BaseComm bc;
     int nBatteryCheck = 40, nBatteryCheckCount = 0;
-    bc.init();
-    bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, reply);
-    ReadSnAndVersion(bc);
+    ReadSnAndVersion(m_bc);
     for(; !m_stop; QThread::msleep(50)) {
-        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
+        if(m_bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error" << reply[0] << reply[1] << Qt::endl;
             continue;
         }
@@ -192,7 +190,7 @@ void HWHandler::buttonThreadRun() {
     }
     setLed(true);
     for(; !m_stop; QThread::msleep(50), --nBatteryCheckCount) {
-        if(nBatteryCheckCount <= 0 && bc.sendCommand(I2C_COMMAND_GET_BATTERY, reply, false) == 0) {
+        if(nBatteryCheckCount <= 0 && m_bc.sendCommand(I2C_COMMAND_GET_BATTERY, reply, false) == 0) {
             m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
             qDebug() << "Battery" << m_battery <<Qt::endl;
             nBatteryCheckCount = nBatteryCheck;
@@ -202,7 +200,7 @@ void HWHandler::buttonThreadRun() {
                 emit usbKeyInsert(m_bUsbKeyInserted);
             }
         }
-        if(bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
+        if(m_bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error\n";
             continue;
         }

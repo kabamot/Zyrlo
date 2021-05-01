@@ -39,7 +39,7 @@ OcrHandler::~OcrHandler()
     zyrlo_proc_end();
 }
 
-bool OcrHandler::setLanguage(int languageCode)
+bool OcrHandler::setLanguage(unsigned long long  languageCode)
 {
     m_languageCode = languageCode;
     const auto retCode = zyrlo_proc_set_ocr_language(m_languageCode);

@@ -4,6 +4,7 @@
 #include <QFuture>
 #include <atomic>
 #include "zyrlocamera.h"
+#include "BaseComm.h"
 #include "BTComm.h"
 #include <opencv2/opencv.hpp>
 
@@ -22,6 +23,8 @@ class HWHandler : public QObject
 public:
     explicit HWHandler(QObject *parent, bool btKeyboardFound);
     ~HWHandler() override;
+
+    bool init();
 
     void start();
     void stop();
@@ -70,6 +73,7 @@ private:
     ZyrloCamera m_zcam;
     int m_nButtonMask = -1; //0x40;
     cv::Mat m_recallImg;
+    BaseComm m_bc;
     BTComm m_btc;
     bool m_btKeyboardFound = false;
     float m_battery = -1.0f;

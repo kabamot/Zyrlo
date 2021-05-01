@@ -251,7 +251,7 @@ void MainWindow::addDiscoveredDevicesToMenu()
     auto menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
     if (menuWidget) {
         QStringList items = m_bluetoothHandler.deviceNames();
-        items.append("Exit");
+        items.append(m_controller.translateTag("EXIT_MENU"));
         menuWidget->setItems(items);
     }
 }
@@ -274,25 +274,25 @@ void MainWindow::mainMenu()
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
-    QStringList items{"Bluetooth", "Language", "Options", "About", "Exit"};
+    QStringList items{m_controller.translateTag("BLUETOOTH_MENU"), m_controller.translateTag("LANGUAGES_MENU"),  m_controller.translateTag("OPTIONS_MENU"), m_controller.translateTag("ABOUT_MENU"), m_controller.translateTag("EXIT_MENU")};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
             m_controller.sayTranslationTag("EXITED_MENU");
             m_controller.setMenuOpen(false);
-        } else if (item == "Bluetooth") {
+        } else if (item == m_controller.translateTag("BLUETOOTH_MENU")) {
             bluetoothMenu();
-        } else if (item == "Language") {
+        } else if (item == m_controller.translateTag("LANGUAGES_MENU")) {
             langugesMenu();
-        } else if (item == "Options") {
+        } else if (item == m_controller.translateTag("OPTIONS_MENU")) {
             optionsMenu();
-        } else if (item == "About") {
+        } else if (item == m_controller.translateTag("ABOUT_MENU")) {
             aboutMenu();
         }
     });
@@ -303,19 +303,19 @@ void MainWindow::bluetoothMenu()
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Bluetooth menu", &m_controller, ui->stackedWidget);
-    QStringList items{"Scan for devices", "Paired devices", "Exit"};
+    QStringList items{m_controller.translateTag("SCANN_FOR_DEVICES_MENU"), m_controller.translateTag("PAIRED_DEVICES_MENU"), m_controller.translateTag("EXIT_MENU")};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
-        } else if (item == "Scan for devices") {
+        } else if (item == m_controller.translateTag("SCANN_FOR_DEVICES_MENU")) {
             bluetoothScanMenu();
-        } else if (item == "Paired devices") {
+        } else if (item == m_controller.translateTag("PAIRED_DEVICES_MENU")) {
             bluetoothPairedMenu();
         }
     });
@@ -325,17 +325,17 @@ void MainWindow::langugesMenu()
 {
     m_controller.pause();
 
-    auto *menuWidget = new MenuWidget("Languages menu", &m_controller, ui->stackedWidget);
+    auto *menuWidget = new MenuWidget(m_controller.translateTag("LANGUAGES_MENU"), &m_controller, ui->stackedWidget);
     QStringList items;
     m_controller.getListOfLanguges(items);
-    items.push_back("Exit");
+    items.push_back(m_controller.translateTag("EXIT_MENU"));
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
-        if (item == "Exit") {
+        if (item == "EXIT_MENU") {
             m_controller.saveVoiceSettings();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -354,14 +354,14 @@ void MainWindow::optionsMenu() {
     auto *menuWidget = new MenuWidget("About menu", &m_controller, ui->stackedWidget);
     QStringList items;
     m_controller.getListOfOptions(items);
-    items.push_back("Exit");
+    items.push_back("EXIT_MENU");
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             m_controller.writeSettings();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -380,14 +380,14 @@ void MainWindow::aboutMenu() {
     auto *menuWidget = new MenuWidget("About menu", &m_controller, ui->stackedWidget);
     QStringList items;
     m_controller.getListOfAboutItems(items);
-    items.push_back("Exit");
+    items.push_back(m_controller.translateTag("EXIT_MENU"));
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             m_controller.saveVoiceSettings();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -400,24 +400,24 @@ void MainWindow::bluetoothScanMenu()
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Bluetooth scan", &m_controller, ui->stackedWidget);
-    QStringList items{"Exit"};
+    QStringList items{m_controller.translateTag("EXIT_MENU")};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             m_scanningTimer.stop();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
-            m_controller.sayTranslationTag("Pairing with device");
+            m_controller.sayTranslationTag("PAIRING_WITH_DEVICE");
             m_bluetoothHandler.startPairing(index);
         }
     });
 
-    m_controller.sayTranslationTag("Bluetooth scanning started");
+    m_controller.sayTranslationTag("BLUETOOTH_SCANNING_STARTED");
     m_bluetoothHandler.startDeviceDiscovery();
     m_scanningTimer.start(BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME);
 }
@@ -426,16 +426,16 @@ void MainWindow::bluetoothPairedMenu()
 {
     m_bluetoothHandler.prepareConnectedDevices();
 
-    auto *menuWidget = new MenuWidget("Paired devices", &m_controller, ui->stackedWidget);
+    auto *menuWidget = new MenuWidget(m_controller.translateTag("PAIRED_DEVICES"), &m_controller, ui->stackedWidget);
     QStringList items = m_bluetoothHandler.pairedDeviceNames();
-    items.append("Exit");
+    items.append(m_controller.translateTag("EXIT_MENU"));
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int index, const QString &item){
-        if (item == "Exit") {
+        if (item == m_controller.translateTag("EXIT_MENU")) {
             m_scanningTimer.stop();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -450,7 +450,7 @@ void MainWindow::onDeviceScanningError(QBluetoothDeviceDiscoveryAgent::Error err
 {
     qDebug() << "Bluetooth scanning error:" << error << errorStr;
     m_scanningTimer.stop();
-    QString message = m_controller.translateTag(QStringLiteral("Bluetooth error: %1").arg(errorStr));
+    QString message = m_controller.translateTag("BLUETOOTH_ERROR") + " " + errorStr;
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
 }
@@ -460,7 +460,7 @@ void MainWindow::onDeviceScanningFinished()
     qDebug() << "Bluetooth scanning finished";
     m_scanningTimer.stop();
 
-    QString message = m_controller.translateTag("Bluetooth scanning finished");
+    QString message = m_controller.translateTag("BLUETOOTH_SCANNING_FINISHED");
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
 
@@ -469,7 +469,7 @@ void MainWindow::onDeviceScanningFinished()
 
 void MainWindow::onScanningTimer()
 {
-    QString message = m_controller.translateTag("Scanning for devices. Please wait...");
+    QString message = m_controller.translateTag("SCANNING_FOR_DEVICES_PLEASE_WAIT");
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
 
@@ -478,7 +478,7 @@ void MainWindow::onScanningTimer()
 
 void MainWindow::onBluetoothConnected(const QString &name)
 {
-    QString message = m_controller.translateTag(QStringLiteral("Successfully connected to %1").arg(name));
+    QString message = m_controller.translateTag("SUCCESFULLY_CONNECTED_TO") + " " + name;
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
 
@@ -491,7 +491,7 @@ void MainWindow::onBluetoothConnected(const QString &name)
 
 void MainWindow::onBluetoothConnectionError(const QString &name)
 {
-    QString message = m_controller.translateTag(QStringLiteral("Error, can't connect to %1").arg(name));
+    QString message = m_controller.translateTag("ERROR_CANNOT_CONNECT_TO") + " " + name;
     ui->statusbar->showMessage(message, STATUS_MESSAGE_TIMEOUT);
     m_controller.sayText(message);
 }
@@ -499,7 +499,7 @@ void MainWindow::onBluetoothConnectionError(const QString &name)
 void MainWindow::onBluetoothUnpaired(int /*index*/, const QString &/*name*/)
 {
     m_controller.resetAudio();
-    QString message = m_controller.translateTag("Device disconnected");
+    QString message = m_controller.translateTag("DEVICE_DISCONNECTED");
     MenuWidget *menuWidget = dynamic_cast<MenuWidget *>(ui->stackedWidget->currentWidget());
     m_controller.sayText(message);
     if (menuWidget) {

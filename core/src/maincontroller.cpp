@@ -1401,7 +1401,7 @@ void MainController::onSayBatteryStatus() {
             m_beepSound->play();
         return;
     }
-    sayText(translateTag("MENU_BATTERY_LEVEL") + " " + QString::number(nLevel) + " %");
+    sayText(translateTag("MAIN_BATTERY_LEVEL") + " " + QString::number(nLevel) + " %");
 }
 
 void MainController::onToggleGestures() {

@@ -31,13 +31,13 @@ public:
     } Zcevent;
 
 private:
-        const int m_nFullResImgNum = 1, m_nMinExpValue = 4, m_nMaxExpValue = 1800, m_nAvgTargetBrightness = 150, exp_setting_delay = 10, m_brightUpperLimit = 250, m_brightLowerLimit = 60;
+        const int m_nFullResImgNum = 1, m_nMinExpValue = 4, m_nMaxExpValue = 1759, m_nAvgTargetBrightness = 150, exp_setting_delay = 10, m_brightUpperLimit = 250, m_brightLowerLimit = 60;
         int m_nCurrImgWidth = 0, m_nCurrImgHeight = 0, m_nCurrBytesPerLine = 0;
         int m_fd = -1;
         int m_cr = 256, m_cb = 256;
         int m_nMinExp = m_nMinExpValue, m_nMaxExp = m_nMaxExpValue;
         int m_nDelayCount = exp_setting_delay;
-        float m_fLastBrightness = -1.0f, m_fPreviewExposure = 1788.0f;
+        float m_fLastBrightness = -1.0f, m_fPreviewExposure = m_nMaxExpValue;
 
         struct buffer {
                 void *start;
@@ -47,7 +47,7 @@ private:
 
         buffer *m_buffers;
         unsigned int m_nBuffers =  0;
-        int m_nGain = 200, m_nCurrExp = -1;
+        int m_nGain = 300, m_nCurrExp = -1;
         int m_nCamBufInd = 0, m_nCnt = 0, m_timeStamp = 0;
         bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true, m_bIgnoreInputs = false;
 

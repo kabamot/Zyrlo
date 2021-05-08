@@ -21,7 +21,7 @@ class HWHandler : public QObject
 {
     Q_OBJECT
 public:
-    explicit HWHandler(QObject *parent, bool btKeyboardFound);
+    explicit HWHandler(QObject *parent);
     ~HWHandler() override;
 
     bool init();

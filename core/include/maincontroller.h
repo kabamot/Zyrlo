@@ -89,6 +89,7 @@ public:
     bool saveScannedText() const;
     bool ConvertTextToAudio(const std::string & sPath);
     bool ProcessNextScannedImg();
+    void onReaderReady();
 
 signals:
     void textUpdated(const QString &text);
@@ -141,8 +142,7 @@ private:
     void populateVoices();
     void SetCurrentTts(const QString & lang);
     void SetDefaultTts();
-    bool read_keypad_config();
-    void InitTtsEngines();
+     void InitTtsEngines();
     void ReleaseTtsEngines();
     bool setAudioSink(int indx);
     QString GetCharName(QChar c) const;
@@ -179,7 +179,7 @@ private:
     State       m_prevState {State::Stopped};
     State       m_state {State::Stopped};
     QSound *m_shutterSound {nullptr}, *m_beepSound{nullptr}, *m_armOpenSound{nullptr}, *m_armClosedSound{nullptr};
-    Translator m_translator, m_help;
+    Translator m_translator;//, m_help;
     bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
     bool        m_isContinueAfterSpeakingFinished {true};
     bool m_bKeepBeeping = false;

@@ -34,7 +34,7 @@ using namespace std;
 #define ARMOPEN_SOUND_FILE "/opt/zyrlo/Distrib/Data/open_arm.wav"
 #define ARMCLOSED_SOUND_FILE "/opt/zyrlo/Distrib/Data/close_arm.wav"
 #define TRANSLATION_FILE "/opt/zyrlo/Distrib/Data/ZyrloTranslate.xml"
-#define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
+//#define HELP_FILE "/opt/zyrlo/Distrib/Data/ZyrloHelp.xml"
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 #define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
 #define ZYRLO_BOOKS_PATH "/home/pi/media/ZyrloBooks"
@@ -115,8 +115,8 @@ void FillLanguages(vector<LangVoiceComb> & vLangVoiceSettings, QVector<LangVoice
     vVoices.clear();
     map<QString, int> setVoices;
     for(auto i = vLangVoiceSettings.begin(); i != vLangVoiceSettings.end(); ++i) {
-//        if(!i->m_bEnabled)
-//            continue;
+        //        if(!i->m_bEnabled)
+        //            continue;
         i->m_ttsEngIndxs.clear();
         i->m_uLang_mask = 0;
         for(auto j = i->m_vlangs.begin(); j != i->m_vlangs.end(); ++j) {
@@ -190,8 +190,9 @@ bool MatchingAudioFileExists(const string & sPath) {
 
 MainController::MainController()
 {
-    m_hwhandler = new HWHandler(this, read_keypad_config());
+    m_hwhandler = new HWHandler(this);
     m_hwhandler->init();
+
     if(ReadLangVoiceSettings(g_vLangVoiceSettings))
         FillLanguages(g_vLangVoiceSettings, LANGUAGES);
     else
@@ -202,6 +203,7 @@ MainController::MainController()
     m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
 
     m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
+
     connect(&ocr(), &OcrHandler::lineAdded, this, [this]() {
         emit textUpdated(ocr().textPage()->text());
     });
@@ -248,9 +250,9 @@ MainController::MainController()
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
     populateVoices();
 
-    connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::previewImgUpdate, this, &MainController::previewImgUpdate, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtButton, this, &MainController::onBtButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onButton, this, &MainController::onButton, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
@@ -258,10 +260,10 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::usbKeyInsert, this, &MainController::onUsbKeyInsert, Qt::QueuedConnection);
 
     m_translator.Init(TRANSLATION_FILE);
-    m_help.Init(HELP_FILE);
+    //m_help.Init(HELP_FILE);
     m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
-    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
-     m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
+    //m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs[0].lang.toStdString().c_str());
+    m_shutterSound = new QSound(SHUTER_SOUND_WAVE_FILE, this);
     m_beepSound = new QSound(BEEP_SOUND_WAVE_FILE, this);
     m_armOpenSound = new QSound(ARMOPEN_SOUND_FILE, this);
     m_armClosedSound = new QSound(ARMCLOSED_SOUND_FILE, this);
@@ -375,7 +377,7 @@ void MainController::backWord()
     m_ttsStartPositionInParagraph = position.parPos();
 
     if (isPageBoundary) {
-        sayTranslationTag("TOP_OF_PAGE");
+        sayTranslationTag(TOP_OF_TEXT);
     } else {
         m_wordNavigationWithDelay = m_state == State::SpeakingPage;
         sayText(prepareTextToSpeak(paragraph().text().mid(position.parPos(), position.length())));
@@ -396,9 +398,9 @@ void MainController::nextWord()
         } else {
             // Page finished
             if (ocr().textPage()->isComplete())
-                sayTranslationTag("END_OF_TEXT");
+                sayTranslationTag(END_OF_TEXT);
             else
-                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+                sayTranslationTag(WAIT_FOR_OCR_TO_COMPLETE);
             return;
         }
     }
@@ -434,7 +436,7 @@ void MainController::backSentence()
             --m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
         } else {
-            sayTranslationTag("TOP_OF_PAGE");
+            sayTranslationTag(TOP_OF_TEXT);
             return;
         }
     }
@@ -472,9 +474,9 @@ void MainController::nextSentence() {
             position = paragraph().firstSentencePosition();
         } else {
             if (ocr().textPage()->isComplete()) // Page finished
-                sayTranslationTag("END_OF_TEXT");
+                sayTranslationTag(END_OF_TEXT);
             else
-                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+                sayTranslationTag(WAIT_FOR_OCR_TO_COMPLETE);
             return;
         }
     }
@@ -515,9 +517,9 @@ void MainController::nextParagraph() {
         }
         else {
             if (ocr().textPage()->isComplete()) // Page finished
-                sayTranslationTag("END_OF_TEXT");
+                sayTranslationTag(END_OF_TEXT);
             else
-                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+                sayTranslationTag(WAIT_FOR_OCR_TO_COMPLETE);
             return;
         }
     }
@@ -541,13 +543,13 @@ void MainController::backParagraph() {
     else
         m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
     TextPosition position;
-     while (!position.isValid()) {
+    while (!position.isValid()) {
         if (m_currentParagraphNum - 1>= 0) {
             --m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
         }
         else {
-            sayTranslationTag("TOP_OF_TEXT");
+            sayTranslationTag(TOP_OF_TEXT);
             return;
         }
     }
@@ -563,11 +565,11 @@ void MainController::backParagraph() {
 
 QString MainController::GetCharName(QChar c) const {
     if(c == QChar(' '))
-        return translateTag("SPACE");
+        return translateTag(PUNCT_SPACE);
     if(c == QChar('\n'))
-        return translateTag("END_OF_LINE");
+        return translateTag(PUNCT_EOL);
     if(c == QChar('\t'))
-        return translateTag("TAB");
+        return translateTag(PUNCT_TAB);
     return QString(c);
 
 }
@@ -591,9 +593,9 @@ void MainController::nextSymbol() {
         } else {
             if (ocr().textPage()->isComplete())
                 // Page finished
-                sayTranslationTag("END_OF_TEXT");
+                sayTranslationTag(END_OF_TEXT);
             else
-                sayTranslationTag("WAIT_FOR_OCR_TO_COMPLETE");
+                sayTranslationTag(WAIT_FOR_OCR_TO_COMPLETE);
             return;
         }
     }
@@ -639,7 +641,7 @@ void MainController::backSymbol() {
                 m_ttsStartPositionInParagraph = position.parPos();
                 m_nCurrNavPos = position.parPos();
             }
-            sayTranslationTag("TOP_OF_PAGE");
+            sayTranslationTag(TOP_OF_TEXT);
             return;
         }
     }
@@ -712,7 +714,7 @@ void MainController::flashLed() {
 }
 
 void MainController::setLed(bool bOn) {
-     m_hwhandler->setLed(bOn);
+    m_hwhandler->setLed(bOn);
 }
 
 static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
@@ -726,7 +728,7 @@ static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
     fp = popen("pacmd info", "r");
     if (fp == NULL) {
         qDebug() << "Failed to run command\n";
-        exit(1);
+        return -1;
     }
 
     /* Read the output a line at a time - output it. */
@@ -744,14 +746,14 @@ static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
                         active = vSinkIndxs.size();
                     vSinkIndxs.push_back(indx);
 
-                 }
+                }
             }
             if(strstr(path, "name:")&& strstr(path, "alsa_output"))
                 if(strstr(path, "alsa_output"))
                     builtinIndx = indx;
             if(strstr(path, "(s) available"))
                 break;
-         }
+        }
     }
     /* close */
     pclose(fp);
@@ -759,7 +761,7 @@ static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx) {
 }
 
 bool MainController::setAudioSink(int indx) {
-     bool bret = true;
+    bool bret = true;
     FILE *fp;
     char path[1035], cmd[256];
     sprintf(cmd, "pacmd set-default-sink %d", indx);
@@ -820,30 +822,30 @@ bool MainController::toggleAudioSink() {
 }
 
 void MainController::onToggleAudioSink() {
-      toggleAudioSink();
-      m_beepSound->play();
+    toggleAudioSink();
+    m_beepSound->play();
 }
 
 void MainController::readerReady() {
     stopBeeping();
     if(m_bUsbKeyInserted) {
-        sayText(translateTag("PLACE_DOC"), true);
+        sayText(translateTag(PLACE_DOC), true);
     }
     else {
         m_state = State::Paused;
         if (m_ttsEngine->isSpeaking()) {
             m_ttsEngine->pause();
         }
-        sayTranslationTag("PLACE_DOC");
+        sayTranslationTag(PLACE_DOC);
     }
 }
 
 void MainController::targetNotFound()
 {
     if(m_bUsbKeyInserted)
-        sayText(translateTag("CLEAR_SURF"), true);
+        sayText(translateTag(CLEAR_SURF), true);
     else
-        sayTranslationTag("CLEAR_SURF");
+        sayTranslationTag(CLEAR_SURF);
 }
 
 const OcrHandler &MainController::ocr() const
@@ -877,7 +879,7 @@ void MainController::startSpeaking(int delayMs)
             // Page finished
             qDebug() << "Page finished";
             m_state = State::Stopped;
-            sayTranslationTag("END_OF_TEXT");
+            sayTranslationTag(END_OF_TEXT);
             emit finished();
         }
 
@@ -958,8 +960,8 @@ void MainController::setCurrentWord(int wordPosition, int wordLength)
         return;
 
     TextPosition wordPos{m_ttsStartPositionInParagraph + wordPosition,
-                         wordLength,
-                         paragraph().paragraphPosition()};
+                wordLength,
+                paragraph().paragraphPosition()};
 
     setCurrentWordPosition(wordPos);
 }
@@ -1006,7 +1008,7 @@ void MainController::stopBeeping() {
 
 void MainController::SaveImage(int indx) {
     m_hwhandler->saveImage(indx);
-    sayTranslationTag("PAGE_SAVED");
+    sayTranslationTag(PAGE_SAVED);
 }
 
 void MainController::ReadImage(int indx) {
@@ -1014,35 +1016,35 @@ void MainController::ReadImage(int indx) {
         m_beepSound->play();
         return;
     }
-    sayTranslationTag("PAGE_RECALL");
+    sayTranslationTag(PAGE_RECALL);
     m_hwhandler->readRecallImage();
 }
 
 void MainController::onReadHelp() {
     m_keypadButtonMask = (1 << KP_BUTTON_HELP);
-    sayText(m_help.GetString("BUTTON_HELP").c_str());
+    sayText(m_translator.GetString(BUTTON_HELP).c_str());
 }
 
 static string getHelpTag(int nButton) {
     switch(nButton) {
     case KP_BUTTON_CENTER  :
-        return "BUTTON_PAUSE_RESUME";
-     case KP_BUTTON_UP      :
-        return "BUTTON_ARROW_UP";
+        return BUTTON_PAUSE_RESUME;
+    case KP_BUTTON_UP      :
+        return BUTTON_ARROW_UP;
     case KP_BUTTON_DOWN    :
-        return "BUTTON_ARROW_DOWN";
+        return BUTTON_ARROW_DOWN;
     case KP_BUTTON_LEFT    :
-        return "BUTTON_ARROW_LEFT";
+        return BUTTON_ARROW_LEFT;
     case KP_BUTTON_RIGHT   :
-        return "BUTTON_ARROW_RIGHT";
+        return BUTTON_ARROW_RIGHT;
     case KP_BUTTON_ROUND_L :
-        return "BUTTON_VOICE";
+        return BUTTON_VOICE;
     case KP_BUTTON_ROUND_R :
-        return "BUTTON_SPELL";
+        return BUTTON_SPELL;
     case KP_BUTTON_SQUARE_L:
-        return "BUTTON_SAVE";
+        return BUTTON_SAVE;
     case KP_BUTTON_SQUARE_R:
-        return "BUTTON_RECALL";
+        return BUTTON_RECALL;
     }
     return "";
 }
@@ -1056,7 +1058,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
         case KP_BUTTON_CENTER   :
             if(m_bUsbKeyInserted) {
                 if(StartProcessScannedImages())
-                     sayText(QString::number(m_nImagesToConvert) + " " + translateTag("FILES_TO_CONVERT"));
+                    sayText(QString::number(m_nImagesToConvert) + " " + translateTag(USB_FILES_TO_CONVERT));
                 else if(m_beepSound)
                     m_beepSound->play();
                 break;
@@ -1142,7 +1144,7 @@ void MainController::onBtButton(int nButton, bool bDown) {
         }
         if((1 << KP_BUTTON_HELP) & m_keypadButtonMask) {
             m_keypadButtonMask = (1 << KP_BUTTON_HELP);
-            sayText(m_help.GetString(getHelpTag(nButton)).c_str());
+            sayText(m_translator.GetString(getHelpTag(nButton)).c_str());
             return;
         }
         if(m_keypadButtonMask != 0) {
@@ -1220,8 +1222,8 @@ void MainController::onButton(int nButton, bool bDown) {
                 break;
             }
             if(BUTTON_BACK_MASK & m_deviceButtonsMask) {
-//                m_deviceButtonsMask = 0;
-//                emit openMainMenu();
+                //                m_deviceButtonsMask = 0;
+                //                emit openMainMenu();
                 startLongPressTimer(&MainController::openMainMenu, LONG_PRESS_DELAY);
                 break;
                 break;
@@ -1255,7 +1257,7 @@ void MainController::onButton(int nButton, bool bDown) {
         if(nButton == SWITCH_FOLDED_MASK_UP) {
             m_hwhandler->setCameraArmPosition(true);
             setLed(true);
-           return;
+            return;
         }
         if(SWITCH_FOLDED_MASK & nButton) {
             m_hwhandler->setCameraArmPosition(false);
@@ -1269,7 +1271,7 @@ void MainController::onButton(int nButton, bool bDown) {
             case BUTTON_PAUSE_MASK   :
                 if(m_bUsbKeyInserted) {
                     if(StartProcessScannedImages())
-                        sayText(QString::number(m_nImagesToConvert) + " " + translateTag("FILES_TO_CONVERT"));
+                        sayText(QString::number(m_nImagesToConvert) + " " + translateTag(USB_FILES_TO_CONVERT));
                     else if(m_beepSound)
                         m_beepSound->play();
                     break;
@@ -1305,10 +1307,10 @@ void MainController::onToggleVoice() {
     }
     m_nCurrentLangaugeSettingIndx = nIndx;
     m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
-    m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
+    //m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-    string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString("VOICE_SET_AUTO") : m_translator.GetString("VOICE_SET_TO");
+    string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString(VOICE_SET_AUTO) : m_translator.GetString(VOICE_SET_TO);
     sayText(sMsg.c_str());
     writeSettings();
 }
@@ -1321,7 +1323,7 @@ void MainController::SetCurrentTts(const QString & lang) {
         if(lang.compare(vlangs[i].lang) == 0) {
             if(m_currentTTSIndex == vindxs[i])
                 return;
-             m_currentTTSIndex = vindxs[i];
+            m_currentTTSIndex = vindxs[i];
             m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
         }
 }
@@ -1401,12 +1403,12 @@ void MainController::onSayBatteryStatus() {
             m_beepSound->play();
         return;
     }
-    sayText(translateTag("MAIN_BATTERY_LEVEL") + " " + QString::number(nLevel) + " %");
+    sayText(translateTag(MAIN_BATTERY_LEVEL) + " " + QString::number(nLevel) + " %");
 }
 
 void MainController::onToggleGestures() {
     bool bOn = !m_hwhandler->gesturesOn();
-    sayTranslationTag(bOn ? "GESTURES_ON" : "GESTURES_OFF");
+    sayTranslationTag(bOn ? GESTURES_ON : GESTURES_OFF);
     m_hwhandler->setGesturesUi(bOn);
 }
 
@@ -1414,7 +1416,7 @@ void MainController::onToggleSingleColumn() {
     if(m_beepSound)
         m_beepSound->play();
     m_bForceSingleColumn = !m_bForceSingleColumn;
-    sayTranslationTag(m_bForceSingleColumn ? "READ_THRU_COLUMNS" : "READ_NORMAL");
+    sayTranslationTag(m_bForceSingleColumn ? READ_THRU_COLUMNS : READ_NORMAL);
 }
 
 void MainController::onGesture(int nGest) {
@@ -1436,15 +1438,6 @@ MainController::~MainController() {
         delete m_armOpenSound;
     if(m_armClosedSound)
         delete m_armClosedSound;
-}
-
-bool MainController::read_keypad_config() {
-    FILE *fp = fopen("/home/pi/keypad_config.txt", "r");
-    if(!fp)
-        return false;
-    fscanf(fp, "%s", m_btKbdMac);
-    fclose(fp);
-    return true;
 }
 
 bool MainController::write_keypad_config(const string & text) {
@@ -1492,8 +1485,8 @@ void MainController::getListOfLanguges(QStringList & list) const {
     for(auto & vlc : g_vLangVoiceSettings) {
         QString lngs;
         for(auto & i : vlc.m_vlangs) {
-           if(!lngs.isEmpty())
-               lngs += ", ";
+            if(!lngs.isEmpty())
+                lngs += ", ";
             lngs += i.voice + " (" + i.lang + ")";
         }
         lngs += vlc.m_bEnabled ? " - Enabled" : " - Disabled";
@@ -1586,16 +1579,16 @@ void MainController::toggleNavigationMode(bool bForward) {
         m_navigationMode = (NavigationMode)((m_navigationMode + NUM_OF_NAV_MODES - 1) % NUM_OF_NAV_MODES);
     switch(m_navigationMode) {
     case BY_SYMBOL:
-        sayTranslationTag("NAVIGATION_BY_SYMBOL");
+        sayTranslationTag(NAVIGATION_BY_SYMBOL);
         break;
     case BY_WORD:
-        sayTranslationTag("NAVIGATION_BY_WORD");
+        sayTranslationTag(NAVIGATION_BY_WORD);
         break;
     case BY_SENTENCE:
-        sayTranslationTag("NAVIGATION_BY_SENTENCE");
+        sayTranslationTag(NAVIGATION_BY_SENTENCE);
         break;
     case BY_PARAGRAPH:
-        sayTranslationTag("NAVIGATION_BY_PARAGRAPH");
+        sayTranslationTag(NAVIGATION_BY_PARAGRAPH);
         break;
     default :
         break;
@@ -1632,8 +1625,8 @@ void MainController::onRightArrow() {
         nextSentence();
         break;
     case BY_PARAGRAPH:
-         nextParagraph();
-         break;
+        nextParagraph();
+        break;
     default :
         break;
     }
@@ -1644,7 +1637,7 @@ bool MainController::ChangeCameraExposure(int delta) {
 }
 
 void MainController::convertTextToAudio(const QString & sText, const QString & sAudioFileName) {
-     m_ttsEnginesList[m_currentTTSIndex]->convertTextToAudio(sText, sAudioFileName);
+    m_ttsEnginesList[m_currentTTSIndex]->convertTextToAudio(sText, sAudioFileName);
 }
 
 string RemoveFileNameExtension(const string & sFileName) {
@@ -1665,10 +1658,10 @@ void MainController::onSavingAudioDone(QString sFileName) {
     int nImageConverted = m_nImagesToConvert - m_vScannedImagesQue.size() + 1;
     if(m_vScannedImagesQue.size() == 1) {
         system("sync");
-        sayTranslationTag("CONVERTION_DONE");
+        sayTranslationTag(USB_CONVERT_COMPLETE);
     }
     else
-        sayText(translateTag("CONVERTED_FILE") + " " + QString::number(nImageConverted));
+        sayText(translateTag(USB_KEY_CONV_PAGE) + " " + QString::number(nImageConverted));
 }
 
 static int GetFileIndx(const string & sPagename) {
@@ -1676,8 +1669,8 @@ static int GetFileIndx(const string & sPagename) {
     size_t pos = sPagename.find('_');
     if(pos == string::npos)
         return -1;
-     sscanf(sPagename.substr(pos + 1, 4).c_str(), "%d",  &nIndx);
-     return nIndx;
+    sscanf(sPagename.substr(pos + 1, 4).c_str(), "%d",  &nIndx);
+    return nIndx;
 }
 
 const string GetBookPath(const string & sBooksDir, int nIndx) {
@@ -1692,7 +1685,7 @@ void MainController::onUsbKeyInsert(bool bInserted) {
     m_bUsbKeyInserted = bInserted;
     int nIndx = 0;
     pause();
-    sayText(translateTag(bInserted ? "USB_KEY_INSERTED" : "USB_KEY_REMOVED"), true);
+    sayText(translateTag(bInserted ? USB_KEY_INSERTED : USB_KEY_REMOVED), true);
     m_sCurrentBookDir.clear();
     if(bInserted) {
         if(IsUpdateDrive())
@@ -1747,7 +1740,7 @@ bool MainController::saveScannedImage(const cv::Mat & img) {
     int indx = GetLastPageIndex(m_sCurrentBookDir + '/' + BOOK_IMG_DIR);
     if(!imwrite(GetBookPagePath(m_sCurrentBookDir + '/' + BOOK_IMG_DIR, indx + 1), img))
         return false;
-    sayTranslationTag("PAGE_SAVED");
+    sayTranslationTag(PAGE_SAVED);
     return true;
 }
 
@@ -1844,8 +1837,8 @@ bool MainController::saveScannedText() const {
 }
 
 static bool file_exists (const char *filename) {
-  struct stat   buffer;
-  return (stat (filename, &buffer) == 0);
+    struct stat   buffer;
+    return (stat (filename, &buffer) == 0);
 }
 
 static bool IsUpdateDrive() {

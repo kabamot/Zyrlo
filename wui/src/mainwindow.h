@@ -60,6 +60,7 @@ private slots:
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);
     void addDiscoveredDevicesToMenu();
+    void ShowButtons(bool bShow);
 
 private:
     Ui::MainWindow *ui;
@@ -67,7 +68,7 @@ private:
     TextPosition m_prevPosition;
     QTextCharFormat m_prevFormat;
     cv::Mat m_prevImg;
-    bool m_bSavePreviewImage = false, m_bPreviewOn = false;
+    bool m_bSavePreviewImage = false, m_bPreviewOn = false, m_bShowButtons = false;
 
     QAction m_actionExit;
     BluetoothHandler m_bluetoothHandler;

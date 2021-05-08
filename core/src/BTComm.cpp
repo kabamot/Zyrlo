@@ -99,7 +99,7 @@ int BTComm::btConnect(const std::atomic_bool &isStop) {
         m_addr.rc_channel = (uint8_t) 1;
         str2ba( keypadMacStr, &m_addr.rc_bdaddr );
         status = connect(m_s, (struct sockaddr *)&m_addr, sizeof(m_addr));
-                if( status < 0 )
+        if( status < 0 )
             perror("Connect err: ");
         else {
             qDebug() << "Connected\n";

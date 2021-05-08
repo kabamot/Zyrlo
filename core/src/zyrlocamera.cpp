@@ -50,10 +50,10 @@ using namespace cv;
 
 unsigned long long GetTickCount(void)
 {
-  struct timespec now;
-  if (clock_gettime(CLOCK_MONOTONIC, &now))
-    return 0;
-  return (unsigned long long)now.tv_sec * 1000 + (unsigned long long)now.tv_nsec / 1000000;
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now))
+        return 0;
+    return (unsigned long long)now.tv_sec * 1000 + (unsigned long long)now.tv_nsec / 1000000;
 }
 
 float CalcBrightness(const Mat & img, int topPercent, int bottomPercent) {
@@ -80,7 +80,7 @@ float CalcBrightness(const Mat & img, int topPercent, int bottomPercent) {
     }
     if(nSum < 1)
         return -1;
-   return float(avg) / float(nSum);
+    return float(avg) / float(nSum);
 }
 
 int BaseCommAdapter();
@@ -132,7 +132,7 @@ void ZyrloCamera::BayerToDownsampledRG2Grey(const Mat & bayer, Mat & grey, int s
         grey.create(nH, nW, CV_8U);
     for(int i = 0, j = 0; i < bayer.rows; i += step, ++j)
         for(pS = bayer.ptr(i), pD = grey.ptr(j), pSend = pS +  bayer.cols; pS < pSend; pS += step, ++pD)
-                *pD = pS[1]; // green
+            *pD = pS[1]; // green
 }
 
 void ZyrloCamera::BayerToDownsampledRG2Grey(const Mat & bayer) {
@@ -202,7 +202,7 @@ ZyrloCamera::Zcevent ZyrloCamera::FollowGestures(Point2f motion) {
         m_nMotionNX = 0;
         if(m_nMotionPX == 3 && m_nWait == 0) {
             m_nWait = 20;
-             ret = eGestPauseResume;
+            ret = eGestPauseResume;
         }
     }
     else {
@@ -335,7 +335,7 @@ void ZyrloCamera::init_mmap() {
         } else {
             m_buffers[nBuffers].length = buf.length;
             m_buffers[nBuffers].start = mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
-                                        MAP_SHARED, m_fd, buf.m.offset );
+                                             MAP_SHARED, m_fd, buf.m.offset );
             LOGI("VIDIOC_QUERYBUF offset %x length %d Start %ld\n", buf.m.offset, buf.length, (long unsigned int)m_buffers[nBuffers].start);
         }
     }
@@ -347,7 +347,7 @@ void ZyrloCamera::init_mmap() {
         CLEAR(buf);
         CLEAR(expbuf);
         expbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            expbuf.index = nBuffers;
+        expbuf.index = nBuffers;
         expbuf.flags = 0x80002;
         expbuf.plane = 0;
         if(ioctl(m_fd, VIDIOC_EXPBUF, &expbuf) < 0) {
@@ -477,10 +477,10 @@ int ZyrloCamera::initCamera()
     pinMode(25, OUTPUT);
     if( (m_fd = open(DEVICE, O_RDWR, O_NONBLOCK, 0)) < 0) {
         printf("Device open error: %s\n", DEVICE);
-        return 1;
+        return -1;
     }
 
-    printf("Device opened: %s\n", DEVICE);
+    //printf("Device opened: %s\n", DEVICE);
 
     struct v4l2_capability cap;
 
@@ -489,12 +489,13 @@ int ZyrloCamera::initCamera()
         return -1;
     }
 
-    printf("Capabilities %x   %x\n", cap.capabilities, cap.device_caps);
+    //printf("Capabilities %x   %x\n", cap.capabilities, cap.device_caps);
 
     SetMode(true);
     setGain(m_nGain);
     setExposure(int(m_fPreviewExposure + 0.5f));
-     return 0;
+    qDebug() << "Init Camera Done\n";
+    return 0;
 }
 
 int ZyrloCamera::acquireBuffer(int nBufferInd) {
@@ -525,7 +526,7 @@ int ZyrloCamera::releaseBuffer(int nBufferInd) {
     buf.flags = 0;
 
     if(ioctl(m_fd, VIDIOC_QBUF, &buf) < 0) {
-    //	LOGI("error VIDIOC_QBUF %d: %s\n", errno, strerror(errno));
+        //	LOGI("error VIDIOC_QBUF %d: %s\n", errno, strerror(errno));
         return -1;
     }
     return 0;
@@ -567,7 +568,8 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
-        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 200.0f;
+        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 150.0f;
+        qDebug() << "Exposure =" <<  int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f) << "Brightness = " << m_fLastBrightness << Qt::endl;
         if(m_bUseFlash) {
             flashLed(1000);
             AcquireFullResImage(300, int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f), 0);
@@ -597,12 +599,12 @@ int ZyrloCamera::AcquireImage() {
     releaseBuffer(m_nCamBufInd);
     m_nCamBufInd = (m_nCamBufInd + 1) % 4;
 
-//    if(++m_nCnt == 10) {
-//        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
-//        printf("FPS = %d\n", fps);
-//        m_nCnt = 0;
-//        m_timeStamp = GetTickCount();
-//    }
+    //    if(++m_nCnt == 10) {
+    //        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
+    //        printf("FPS = %d\n", fps);
+    //        m_nCnt = 0;
+    //        m_timeStamp = GetTickCount();
+    //    }
     return 0;
 }
 
@@ -617,24 +619,31 @@ void WriteLog(string s) {
 }
 
 int ZyrloCamera::setExposure(int nValue) {
-    //4 - 3522
+    //4 - 1759
+    if(nValue > m_nMaxExpValue)
+        nValue = m_nMaxExpValue;
+    if(nValue < m_nMinExpValue)
+        nValue = m_nMinExpValue;
     struct v4l2_control ctrl;
     ctrl.id = 0x00980911;
     ctrl.value = nValue;
-    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) <0) {
+    if(ioctl(m_fd, VIDIOC_S_CTRL, &ctrl) < 0) {
         printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
         return -1;
     }
+    for(int exp = getExposure(), i = 0; exp != nValue; usleep(100000), exp = getExposure(), ++i)
+        if(i == 100)
+            return -1;
+    //qDebug() << "setExposure" << nValue << Qt::endl;
     m_nCurrExp = nValue;
     return 0;
 }
 
 int ZyrloCamera::getExposure() const {
-   //4 - 3522
     struct v4l2_control ctrl;
     ctrl.id = 0x00980911;
     ctrl.value = 0;
-    if(ioctl(m_fd, VIDIOC_G_CTRL, &ctrl) <0) {
+    if(ioctl(m_fd, VIDIOC_G_CTRL, &ctrl) < 0) {
         printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
         return -1;
     }
@@ -737,9 +746,9 @@ int ZyrloCamera::AcquireFullResImage(int nGain, int nExposure, int indx) {
     timeStamp = GetTickCount() - timeStamp;
     printf("PicTaken. Time: %ld\n", timeStamp);
     Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_vFullResRawImgs[indx]);
-//    char fname[256];
-//    sprintf(fname, "/home/pi/FullResRawImg_%d.bmp", indx);
-//    imwrite(fname, m_vFullResRawImgs[indx]);
+    //   char fname[256];
+    //   sprintf(fname, "/home/pi/FullResRawImg_%d.bmp", indx);
+    //   imwrite(fname, m_vFullResRawImgs[indx]);
 
     releaseBuffer(0);
     return 0;
@@ -751,13 +760,13 @@ const Mat & ZyrloCamera::GetImageForOcr() {
         adjustWb(*i);
         //cvtColor(*i, *j, COLOR_BayerBG2BGR_EA);
     }
-   //imwrite("CVDEMOSAIC_0.bmp", m_vFullResImgs[0]);
-   //imwrite("CVDEMOSAIC_1.bmp", m_vFullResImgs[1]);
-//   Ptr<MergeMertens> merge_mertens = createMergeMertens();
-//     DemosaicGrey(m0, images[0]);//dm0);
-//    DemosaicGrey(m1, images[1]);//dm1);
+    //imwrite("CVDEMOSAIC_0.bmp", m_vFullResImgs[0]);
+    //imwrite("CVDEMOSAIC_1.bmp", m_vFullResImgs[1]);
+    //   Ptr<MergeMertens> merge_mertens = createMergeMertens();
+    //     DemosaicGrey(m0, images[0]);//dm0);
+    //    DemosaicGrey(m1, images[1]);//dm1);
     //static Mat tmp, tmp1;
-//    merge_mertens->process(m_vFullResGreyImgs, tmp);
+    //    merge_mertens->process(m_vFullResGreyImgs, tmp);
     //tmp.convertTo(m_ocrImg, CV_8U, 255.0);
     //imwrite("fusion1.png", fusion * 255);
     //cvtColor(m_vFullResImgs[0], m_ocrImg, COLOR_BGR2GRAY);
@@ -799,7 +808,7 @@ float ZyrloCamera::LookForTarget(const Mat & fastPreviewImgBW, const Mat & targe
 
 static void wbRow(UCHAR *pRow, int nLength, int c) {
     for(UCHAR *pE = pRow + nLength; pRow < pE; pRow += 2)
-       *pRow  = min((*pRow * c) >> 8, 255);
+        *pRow  = min((*pRow * c) >> 8, 255);
 }
 
 
@@ -912,8 +921,8 @@ void ZyrloCamera::setGesturesUi(bool bOn) {
 
 void ZyrloCamera::setArmPosition(bool bOpen) {
     m_bArmOpen = bOpen;
-//    if(bOpen)
-//        SwitchMode(true);
-//    else
-//        stop_capturing();
+    //    if(bOpen)
+    //        SwitchMode(true);
+    //    else
+    //        stop_capturing();
 }

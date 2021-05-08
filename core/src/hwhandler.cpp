@@ -13,10 +13,9 @@
 Q_DECLARE_METATYPE(cv::Mat);
 Q_DECLARE_METATYPE(Button);
 
-HWHandler::HWHandler(QObject *parent, bool btKeyboardFound)
+HWHandler::HWHandler(QObject *parent)
     : QObject(parent)
     , m_btc((MainController*)parent)
-    , m_btKeyboardFound(btKeyboardFound)
 {
     // This is important to receive cv::Mat from another thread
     qRegisterMetaType<cv::Mat>();
@@ -42,7 +41,7 @@ void HWHandler::start() {
     QMediaService *svc = player.service();
     if (svc != nullptr) {
         QAudioOutputSelectorControl *out = qobject_cast<QAudioOutputSelectorControl *>
-                                           (svc->requestControl(QAudioOutputSelectorControl_iid));
+                (svc->requestControl(QAudioOutputSelectorControl_iid));
         if (out != nullptr)
         {
             out->setActiveOutput("pulse");
@@ -57,7 +56,7 @@ void HWHandler::start() {
         m_buttonThread = QtConcurrent::run([this](){ buttonThreadRun(); });
     if (m_btKeyboardFound && !m_buttonBtThread.isRunning())
         m_buttonBtThread = QtConcurrent::run([this](){ buttonBtThreadRun(); });
- }
+}
 
 void HWHandler::stop()
 {
@@ -106,8 +105,9 @@ void HWHandler::onButtonsUp(byte up_val) {
 }
 
 void HWHandler::buttonBtThreadRun() {
-     int nVal;
-    m_btc.init();
+    int nVal;
+    if(!(m_btKeyboardFound = m_btc.init()))
+        return;
     QThread::sleep(5);
     for(;!m_stop; QThread::msleep(100)) {
         m_btc.btConnect(m_stop);
@@ -126,7 +126,7 @@ void HWHandler::buttonBtThreadRun() {
                 emit onBtButton(nVal, false);
                 break;
             case 3:
-                qDebug() << "onBattery " << nVal << '\n';
+                //qDebug() << "onBattery " << nVal << '\n';
                 emit onBtBattery(nVal);
                 break;
             case -1:
@@ -174,17 +174,20 @@ bool usbKeyInserted() {
 }
 
 void HWHandler::buttonThreadRun() {
+    qDebug() << "buttonThreadRun STARTED\b";
     byte reply[2], xor_val, up_val, down_val;
     int nBatteryCheck = 40, nBatteryCheckCount = 0;
+    m_bc.sendCommand(I2C_COMMAND_OTHER_BOOT_COMPLETE | I2C_COMMAND_OTHER, reply); // in case it didn't stop bepping in the first time
     ReadSnAndVersion(m_bc);
     for(; !m_stop; QThread::msleep(50)) {
         if(m_bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {
             qDebug() << "BaseComm error" << reply[0] << reply[1] << Qt::endl;
             continue;
         }
+        qDebug() << "BUTTTON" << reply[0] << reply[0] << Qt::endl;
         m_nButtonMask = reply[0];
         if((SWITCH_FOLDED_MASK & m_nButtonMask) != 0) {
-            onButtonsUp(SWITCH_FOLDED_MASK_UP);
+            m_zcam.setArmPosition(true);
             break;
         }
     }
@@ -192,7 +195,7 @@ void HWHandler::buttonThreadRun() {
     for(; !m_stop; QThread::msleep(50), --nBatteryCheckCount) {
         if(nBatteryCheckCount <= 0 && m_bc.sendCommand(I2C_COMMAND_GET_BATTERY, reply, false) == 0) {
             m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
-            qDebug() << "Battery" << m_battery <<Qt::endl;
+            //qDebug() << "Battery" << m_battery <<Qt::endl;
             nBatteryCheckCount = nBatteryCheck;
             bool bUsbKeyInserted = usbKeyInserted();
             if(bUsbKeyInserted != m_bUsbKeyInserted) {
@@ -226,17 +229,17 @@ void HWHandler::flashLed(int msecs) {
 }
 
 void HWHandler::setLed(bool bOn) {
-     m_zcam.setLed(bOn);
+    m_zcam.setLed(bOn);
 }
 
 static string GetSavedImgePath(int indx) {
     char sPath[256];
     sprintf(sPath, "/home/pi/RawImage_%d.bmp", indx);
-   return sPath;
+    return sPath;
 }
 
 void HWHandler::saveImage(int indx) {
-     imwrite(GetSavedImgePath(indx), m_zcam.GetFullResRawImg(0));
+    imwrite(GetSavedImgePath(indx), m_zcam.GetFullResRawImg(0));
 }
 
 bool HWHandler::recallSavedImage(int indx) {

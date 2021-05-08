@@ -21,7 +21,7 @@ int BaseComm::init()
         return -1;
     }
 
-    int m_nSequence = 0;
+    m_nSequence = 0;
     return 0;
 }
 

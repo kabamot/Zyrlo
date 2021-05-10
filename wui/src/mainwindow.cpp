@@ -44,22 +44,19 @@ bool IsBtRunning() {
     FILE *fp;
     char path[256] = {0};
 
-    fp = popen("hcicondig", "r");
+    fp = popen("hciconfig", "r");
     if (fp == NULL) {
         qDebug() << "Failed to run command\n";
         return "";
     }
-    fp = popen("pacmd info", "r");
-    if (fp == NULL) {
-        qDebug() << "Failed to run command\n";
-        return -1;
-    }
-
-   /* Read the output a line at a time - output it. */
+    /* Read the output a line at a time - output it. */
     while (fgets(path, sizeof(path), fp) != NULL) {
-        if(strstr(path, "UP RUNNING"))
+        if(strstr(path, "UP RUNNING")) {
+            pclose(fp);
             return true;
+        }
     }
+    pclose(fp);
     return false;
 }
 
@@ -338,7 +335,7 @@ void MainWindow::mainMenu()
     m_controller.pause();
 
     auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
-    QStringList items{m_controller.translateTag(MENU_BLUETOOTH), m_controller.translateTag(MENU_LANGUAGE),  m_controller.translateTag(MENU_OPTIONS), m_controller.translateTag(MENU_ABOUT), m_controller.translateTag("EXIT_MENU")};
+    QStringList items{m_controller.translateTag(MENU_BLUETOOTH), m_controller.translateTag(MENU_LANGUAGE),  m_controller.translateTag(MENU_OPTIONS), m_controller.translateTag(MENU_ABOUT), m_controller.translateTag(MENU_EXIT)};
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);

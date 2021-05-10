@@ -29,6 +29,8 @@
 using namespace cv;
 using namespace std;
 
+#define SW_VERSION "1.0"
+
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
 #define ARMOPEN_SOUND_FILE "/opt/zyrlo/Distrib/Data/open_arm.wav"
@@ -38,7 +40,7 @@ using namespace std;
 #define LANG_VOICE_SETTINGS_FILE "/home/pi/voices.xml"
 #define SETTINGS_FILE_PATH "/home/pi/ZyrloSettings.xml"
 #define ZYRLO_BOOKS_PATH "/home/pi/media/ZyrloBooks"
-#define BOOK_IMG_DIR "Tmages"
+#define BOOK_IMG_DIR "Images"
 #define BOOK_TXT_DIR "Text"
 #define BOOK_AUDIO_DIR "Audio"
 
@@ -1053,6 +1055,10 @@ void MainController::onBtButton(int nButton, bool bDown) {
     if(nButton < 1 || nButton > 10)
         return;
     if(bDown) {
+        if((1 << KP_BUTTON_HELP) & m_keypadButtonMask) {
+            m_keypadButtonMask |= (1 << nButton);
+            return;
+        }
         m_keypadButtonMask |= (1 << nButton);
         switch(nButton) {
         case KP_BUTTON_CENTER   :
@@ -1536,8 +1542,8 @@ void MainController::setMenuOpen(bool bMenuOpen) {
 }
 
 void MainController::getListOfAboutItems(QStringList & list) const {
-    list.push_back(QString("Serial number: " + QString::number(m_hwhandler->getSN())));
-    list.push_back(QString("Version: " + QString::number(m_hwhandler->getVersion())));
+    list.push_back(QString("Serial number: ") + QString::number(m_hwhandler->getSN()));
+    list.push_back(QString("Version: ") + SW_VERSION + "-" + QString::number(m_hwhandler->getVersion()));
 }
 
 void MainController::readSettings() {
@@ -1656,10 +1662,9 @@ string GetFileNameFromPath(const string & sPath) {
 
 void MainController::onSavingAudioDone(QString sFileName) {
     int nImageConverted = m_nImagesToConvert - m_vScannedImagesQue.size() + 1;
-    if(m_vScannedImagesQue.size() == 1) {
-        system("sync");
+    system("sync");
+    if(m_vScannedImagesQue.size() == 1)
         sayTranslationTag(USB_CONVERT_COMPLETE);
-    }
     else
         sayText(translateTag(USB_KEY_CONV_PAGE) + " " + QString::number(nImageConverted));
 }
@@ -1740,6 +1745,7 @@ bool MainController::saveScannedImage(const cv::Mat & img) {
     int indx = GetLastPageIndex(m_sCurrentBookDir + '/' + BOOK_IMG_DIR);
     if(!imwrite(GetBookPagePath(m_sCurrentBookDir + '/' + BOOK_IMG_DIR, indx + 1), img))
         return false;
+    system("sync");
     sayTranslationTag(PAGE_SAVED);
     return true;
 }

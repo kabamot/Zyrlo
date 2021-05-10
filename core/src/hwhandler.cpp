@@ -54,7 +54,7 @@ void HWHandler::start() {
         m_future = QtConcurrent::run([this](){ run(); });
     if (!m_buttonThread.isRunning())
         m_buttonThread = QtConcurrent::run([this](){ buttonThreadRun(); });
-    if (m_btKeyboardFound && !m_buttonBtThread.isRunning())
+    if (!m_buttonBtThread.isRunning())
         m_buttonBtThread = QtConcurrent::run([this](){ buttonBtThreadRun(); });
 }
 
@@ -106,7 +106,7 @@ void HWHandler::onButtonsUp(byte up_val) {
 
 void HWHandler::buttonBtThreadRun() {
     int nVal;
-    if(!(m_btKeyboardFound = m_btc.init()))
+    if(!(m_btKeyboardFound = (m_btc.init() == 0)))
         return;
     QThread::sleep(5);
     for(;!m_stop; QThread::msleep(100)) {

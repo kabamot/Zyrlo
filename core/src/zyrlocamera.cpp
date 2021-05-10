@@ -568,7 +568,7 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
-        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 150.0f;
+        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 250.0f;
         qDebug() << "Exposure =" <<  int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f) << "Brightness = " << m_fLastBrightness << Qt::endl;
         if(m_bUseFlash) {
             flashLed(1000);

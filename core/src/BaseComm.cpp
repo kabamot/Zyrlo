@@ -22,6 +22,7 @@ int BaseComm::init()
     }
 
     m_nSequence = 0;
+    setSpeakerSetting(2);
     return 0;
 }
 
@@ -95,6 +96,96 @@ int BaseComm::flushInput()
     return 0;
 }
 
+int printRegs(int fdI2C)
+{
+    byte bufferIn[16];
+    byte bufferOut[16];
+    char msg[128];
+    int retVal;
 
+    bufferOut[0] = 0x1;
+    retVal = write(fdI2C, (const void *)bufferOut, 1);
+    if(retVal != 1) {
+        qDebug() << "I2C write error" << retVal;
+        return -1;
+    }
+
+    retVal = read(fdI2C, (void *)bufferIn, 7);
+    qDebug() << "Read bytes" << retVal;
+    if(retVal != 7)
+        return -1;
+
+    for(int ind=0; ind<retVal; ind++) {
+        sprintf(msg, "0x%x  ", bufferIn[ind]);
+        qDebug() << msg;
+    }
+    return 0;
+}
+
+int BaseComm::setSpeakerSetting(int nSetting) {
+    byte bufferOut[16];
+    int fdI2C = wiringPiI2CSetup(0x58);
+    switch(nSetting) {
+    case 1:
+        bufferOut[0] = 0x1;
+        bufferOut[1] = 0xc3;
+        bufferOut[2] = 0x05;
+        bufferOut[3] = 0xB;
+        bufferOut[4] = 0;
+        bufferOut[5] = 0x6;
+        bufferOut[6] = 0x3A;
+        bufferOut[7] = 0xc3;
+        break;
+    case 2:
+        bufferOut[0] = 0x1;
+        bufferOut[1] = 0xc3;
+        bufferOut[2] = 0x3f;
+        bufferOut[3] = 0x3f;
+        bufferOut[4] = 0x3f;
+        bufferOut[5] = 0x6;
+        bufferOut[6] = 0x6;
+        bufferOut[7] = 0xc2;
+        break;
+    case 3:
+        bufferOut[0] = 0x1;
+        bufferOut[1] = 0xc3;
+        bufferOut[2] = 0x1;
+        bufferOut[3] = 0x1;
+        bufferOut[4] = 0x0;
+        bufferOut[5] = 0x6;
+        bufferOut[6] = 0x1f;
+        bufferOut[7] = 0xc2;
+        break;
+    case 4:
+        bufferOut[0] = 0x1;
+        bufferOut[1] = 0xc3;
+        bufferOut[2] = 0x3f;
+        bufferOut[3] = 0x3f;
+        bufferOut[4] = 0x3f;
+        bufferOut[5] = 0x16;
+        bufferOut[6] = 0x10;
+        bufferOut[7] = 0xc3;
+        break;
+    case 5:
+        bufferOut[0] = 0x1;
+        bufferOut[1] = 0xc3;
+        bufferOut[2] = 0x3f;
+        bufferOut[3] = 0x3f;
+        bufferOut[4] = 0x3f;
+        bufferOut[5] = 0x16;
+        bufferOut[6] = 0x1f;
+        bufferOut[7] = 0x23;
+        break;
+    default:
+        qDebug() << "setSpeakerSetting wrong arg";
+    }
+    int retVal = write(fdI2C, (const void *)bufferOut, 8);
+    if(retVal != 8) {
+        printf("I2C write error %d\n", retVal);
+        return -1;
+    }
+    printRegs(fdI2C);
+    return 0;
+}
 
 

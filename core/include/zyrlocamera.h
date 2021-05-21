@@ -31,14 +31,20 @@ public:
     } Zcevent;
 
 private:
-        const int m_nFullResImgNum = 1, m_nMinExpValue = 4, m_nMaxExpValue = 1759, m_nAvgTargetBrightness = 150, exp_setting_delay = 10, m_brightUpperLimit = 250, m_brightLowerLimit = 60;
+        const int m_nFullResImgNum = 1,
+        m_nMinExpValue = 4, m_nMaxExpValue = 1759,
+        m_nMinGainValue = 0, m_nMaxGainValue = 232,
+        m_nAvgTargetBrightness = 150, exp_setting_delay = 10, m_brightUpperLimit = 250, m_brightLowerLimit = 60;
         int m_nCurrImgWidth = 0, m_nCurrImgHeight = 0, m_nCurrBytesPerLine = 0;
         int m_fd = -1;
         int m_cr = 256, m_cb = 256;
         int m_nMinExp = m_nMinExpValue, m_nMaxExp = m_nMaxExpValue;
         int m_nDelayCount = exp_setting_delay;
-        float m_fLastBrightness = -1.0f, m_fPreviewExposure = m_nMaxExpValue;
-
+        float m_fLastBrightness = -1.0f, m_fPreviewExposure = m_nMaxExpValue, m_fPreviewGain = 100.0f;
+        bool m_bAutoExposure = true;
+        int m_nLocalElecFreq = 50;
+        float m_fExpUnit = 1.0f / (30.0f * m_nMaxExpValue);
+        float m_fExposureStep = 1.0f / (2.0 * float(m_nLocalElecFreq) * m_fExpUnit);
         struct buffer {
                 void *start;
                 size_t length;
@@ -47,7 +53,7 @@ private:
 
         buffer *m_buffers;
         unsigned int m_nBuffers =  0;
-        int m_nGain = 300, m_nCurrExp = -1;
+        int m_nGain = 50, m_nCurrExp = -1;
         int m_nCamBufInd = 0, m_nCnt = 0, m_timeStamp = 0;
         bool m_bPictReq = false, m_wb = false, m_bCameraPause = true, m_bModePreview = true, m_bIgnoreInputs = false;
 
@@ -75,13 +81,14 @@ private:
 
         typedef enum {
                 eCalibration = 0,
-                eLookinForTarget,
+                eLocalLightFreqTest,
+                eLookingForTarget,
                 eReadyOnTarget,
                 eLookingForStableImage,
                 eLookingForGestures
         } ZcState;
 
-        ZcState m_eState = eLookinForTarget;//eCalibration;
+        ZcState m_eState = eLookingForTarget;//eCalibration;
 
         void init_mmap();
         void uninit_mmap();
@@ -94,12 +101,14 @@ private:
         int acquireBuffer(int nBufferInd);
         int releaseBuffer(int nBufferInd);
         int adjustExposure(const cv::Mat & img);
-        int setGain(int nValue);
         void ReserExposureLimits();
         float LookForTarget(const cv::Mat & fastPreviewImgBW, const cv::Mat & targetBitmapBW, int nRadius);
         void adjustWb(cv::Mat & bayer);
-        bool DetectImageChange(const cv::Mat & img);
+        float DetectImageChange(const cv::Mat & img);
         Zcevent FollowGestures(cv::Point2f motion);
+        void LocalLightFreqTest(const cv::Mat & img);
+        float calcGain(int nGainvalue) const {return 256.0f / float(256 - nGainvalue);}
+        int calcGainValue(float fGain) const {int nGain = int(256.0f - 256.0 / fGain + 0.5f); return min(m_nMaxGainValue, max(m_nMinGainValue, nGain));}
 
 public:
         ZyrloCamera();
@@ -121,16 +130,25 @@ public:
         int snapImage();
         void flashLed(int msecs);
         void setLed(bool bOn);
-        int AcquireFullResImage(int nGain, int nExposure, int indx);
+        int AcquireFullResImage(float fEffectiveExposure, int indx);
         bool gesturesOn() const;
         void setGesturesUi(bool bOn);
         void setArmPosition(bool bOpen);
         int getCurrExp() const { return m_nCurrExp; }
         int getExposure() const;
+        int setGain(int nValue);
         int getGain() const;
         void setIgnoreInputs(bool bIgnoreInputs) { m_bIgnoreInputs = bIgnoreInputs; }
         void setUseFlash(bool bUseFlash) {m_bUseFlash = bUseFlash; }
         bool getUseFlash() const { return m_bUseFlash; }
+        void setAutoExposure(bool bEnable) {m_bAutoExposure = bEnable;}
+        bool getAutoExposure() const {return m_bAutoExposure;}
+        void SetLocalLightFreqTest(bool bOn) {if(bOn) m_eState = eLocalLightFreqTest; else m_eState = eLookingForTarget;}
+        int CalcLocalAjustedExposure(int nValue) const;
+        float getExposureStep() const {return m_fExposureStep;}
+        void setExposureStep(float fStep) {m_fExposureStep = min(float(m_nMaxExpValue), max(1.0f, fStep));}
+        float setEffectiveExposure(float fExposure);
+        float getPreviewExposure() const {return m_fPreviewExposure;}
   };
 
 #endif /* ZYRLOCAMERA_H_ */

@@ -46,6 +46,7 @@ public:
     void setCameraArmPosition(bool bOpen);
     int getMainBatteryPercent() const { return int(m_battery / 2.55f + 0.5f); }
     bool ChangeCameraExposure(int delta);
+    bool ChangeCameraExposureStep(int delta);
     int getSN() const {return m_nSN;}
     int getVersion() const {return m_nVersion;}
     void setIgnoreCameraInputs(bool bIgnore);
@@ -53,7 +54,14 @@ public:
     bool getUseCameraFlash() const;
     bool IsUsbKeyInserted() const { return m_bUsbKeyInserted; }
     bool readKpConfig() { return m_btc.readKpConfig(); }
-    void setmUsingMainAudioSink(bool bUsingMainAudioSink) { m_btc.setUsingMainAudioSink(bUsingMainAudioSink); }
+    void setUsingMainAudioSink(bool bUsingMainAudioSink) { m_btc.setUsingMainAudioSink(bUsingMainAudioSink); }
+    void SetLocalLightFreqTest(bool bOn) {m_zcam.SetLocalLightFreqTest(bOn);}
+    int getCurrentExposure() const {return m_zcam.getExposure();}
+    int getCurrentGain() const {return m_zcam.getGain();}
+    void setCurrentGain(int nGain) {m_zcam.setGain(nGain);}
+    void setExposureStep(float fStep);
+    float getExposureStep() const;
+    bool setSpeakerSetting(int nSetting);
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);

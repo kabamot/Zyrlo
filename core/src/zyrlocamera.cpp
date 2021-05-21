@@ -239,11 +239,9 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
         if(m_fLastBrightness > m_brightUpperLimit)
             newExp = max(m_fPreviewExposure * 0.9f, float(m_nMinExpValue));
         if(m_fLastBrightness < m_brightLowerLimit)
-            newExp = min(m_fPreviewExposure * 1.1f, float(m_nMaxExpValue));
-        if(fabs(newExp - m_fPreviewExposure) > 1.0e-6) {
-            m_fPreviewExposure = newExp;
-            setExposure(int(m_fPreviewExposure + 0.5f));
-        }
+            newExp = min(m_fPreviewExposure * 1.1f, float(m_nMaxExpValue)  * calcGain(m_nMaxGainValue));
+        if(m_bAutoExposure && fabs(newExp - m_fPreviewExposure) > 1.0e-6)
+             m_fPreviewExposure = setEffectiveExposure(int(newExp + 0.5f));
     }
     --m_nDelayCount;
     switch(m_eState) {
@@ -252,11 +250,14 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
             m_nDelayCount = exp_setting_delay;
             if(adjustExposure(m_previewImgPyr2) == 0) {
                 m_wb = true;
-                m_eState = eLookinForTarget;
+                m_eState = eLookingForTarget;
             }
         }
         break;
-    case eLookinForTarget:
+    case eLocalLightFreqTest:
+        LocalLightFreqTest(m_previewImgPyr2);
+        break;
+    case eLookingForTarget:
         if(LookForTarget(m_previewImgPyr2, m_targetImg, -1) > m_fLookForTargetHighThreshold) {
             m_eState = eReadyOnTarget;
             zcev = eReaderReady;
@@ -492,8 +493,8 @@ int ZyrloCamera::initCamera()
     //printf("Capabilities %x   %x\n", cap.capabilities, cap.device_caps);
 
     SetMode(true);
-    setGain(m_nGain);
-    setExposure(int(m_fPreviewExposure + 0.5f));
+    //setGain(m_nGain);
+    setEffectiveExposure(int(m_fPreviewExposure + 0.5f));
     qDebug() << "Init Camera Done\n";
     return 0;
 }
@@ -568,18 +569,19 @@ int ZyrloCamera::adjustExposure(const Mat & img) {
 int ZyrloCamera::AcquireImage() {
     if(m_bPictReq) {
         m_bPictReq = false;
-        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 250.0f;
-        qDebug() << "Exposure =" <<  int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f) << "Brightness = " << m_fLastBrightness << Qt::endl;
+        float fExpNoFlash =  m_fPreviewExposure * 200.0f / m_fLastBrightness, fExpFlash = 2666.7f;
+        //qDebug() << "Exposure =" <<  fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) << "Brightness = " << m_fLastBrightness << Qt::endl;
         if(m_bUseFlash) {
             flashLed(1000);
-            AcquireFullResImage(300, int(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash) + 0.5f), 0);
+            AcquireFullResImage(fExpNoFlash * fExpFlash / (fExpNoFlash + fExpFlash), 0);
         }
         else
-            AcquireFullResImage(300, int(fExpNoFlash + 0.5f), 0);
+            AcquireFullResImage(fExpNoFlash, 0);
+        //float fBrightness = CalcBrightness(m_vFullResRawImgs[0], 5, 90);
+        //qDebug() << "Full Res bright =" << fBrightness;
         //AcquireFullResImage(100, 2500, 1);
         SwitchMode(true);
-        setGain(m_nGain);
-        setExposure(int(m_fPreviewExposure + 0.5f));
+        setEffectiveExposure(m_fPreviewExposure);
         digitalWrite(21, 0);
         return 1;
     }
@@ -599,12 +601,12 @@ int ZyrloCamera::AcquireImage() {
     releaseBuffer(m_nCamBufInd);
     m_nCamBufInd = (m_nCamBufInd + 1) % 4;
 
-    //    if(++m_nCnt == 10) {
-    //        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
-    //        printf("FPS = %d\n", fps);
-    //        m_nCnt = 0;
-    //        m_timeStamp = GetTickCount();
-    //    }
+//    if(++m_nCnt == 100) {
+//        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
+//        qDebug() << "FPS = " << fps;
+//        m_nCnt = 0;
+//        m_timeStamp = GetTickCount();
+//    }
     return 0;
 }
 
@@ -618,12 +620,32 @@ void WriteLog(string s) {
     fclose(fp);
 }
 
+int ZyrloCamera::CalcLocalAjustedExposure(int nValue) const {
+    int nSteps = int(float(nValue) / m_fExposureStep + 0.5f);
+    int nMaxSteps = int(m_nMaxExpValue / m_fExposureStep);
+    if(nSteps < 1)
+        nSteps = 1;
+    if(nSteps > nMaxSteps)
+        nSteps = nMaxSteps;
+    return int(nSteps * m_fExposureStep + 0.5f);
+}
+
+float ZyrloCamera::setEffectiveExposure(float fExposure) {
+    int nAdjExp = CalcLocalAjustedExposure(int(fExposure + 0.5f));
+    float fGain = fExposure / float(nAdjExp);
+    int nGain = calcGainValue(fGain);
+    setGain(nGain);
+    setExposure(nAdjExp);
+    return float(nAdjExp) * calcGain(nGain);
+}
+
 int ZyrloCamera::setExposure(int nValue) {
     //4 - 1759
     if(nValue > m_nMaxExpValue)
         nValue = m_nMaxExpValue;
     if(nValue < m_nMinExpValue)
         nValue = m_nMinExpValue;
+
     struct v4l2_control ctrl;
     ctrl.id = 0x00980911;
     ctrl.value = nValue;
@@ -701,6 +723,10 @@ int ZyrloCamera::snapImage() {
 
 
 int ZyrloCamera::setGain(int nValue) {
+    if(nValue > m_nMaxGainValue)
+        nValue = m_nMaxGainValue;
+    if(nValue < m_nMinGainValue)
+        nValue = m_nMinGainValue;
     struct v4l2_control ctrl;
     ctrl.id = 0x009e0903;
     ctrl.value = nValue;
@@ -708,6 +734,11 @@ int ZyrloCamera::setGain(int nValue) {
         printf("VIDIOC_S_CTRL exposure error %d %s\n", errno, strerror(errno));
         return -1;
     }
+
+    for(int gain = getGain(), i = 0; gain != nValue; usleep(100000), gain = getGain(), ++i)
+        if(i == 100)
+            return -1;
+
     return 0;
 }
 
@@ -730,21 +761,17 @@ void ZyrloCamera::ReserExposureLimits() {
     m_nMaxExp = m_nMaxExpValue;
 }
 
-int ZyrloCamera::AcquireFullResImage(int nGain, int nExposure, int indx) {
-    long int timeStamp = GetTickCount();
+int ZyrloCamera::AcquireFullResImage(float fEffectiveExposure, int indx) {
+    //long int timeStamp = GetTickCount();
 
     //flashLed();
-    int nresExp = setExposure(nExposure);
+    setEffectiveExposure(fEffectiveExposure);
     SwitchMode(false);
-    char msg[512];
-    int nresGain = 0;//setGain(nGain);
-    sprintf(msg, "G = %d, Exp = %d", nresGain, nresExp);
-    WriteLog(msg);
+    //char msg[512];
     //adjustColorGains();
     acquireBuffer(0);
-    //digitalWrite(21, 0);
-    timeStamp = GetTickCount() - timeStamp;
-    printf("PicTaken. Time: %ld\n", timeStamp);
+//    timeStamp = GetTickCount() - timeStamp;
+//    printf("PicTaken. Time: %ld\n", timeStamp);
     Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_vFullResRawImgs[indx]);
     //   char fname[256];
     //   sprintf(fname, "/home/pi/FullResRawImg_%d.bmp", indx);
@@ -891,21 +918,21 @@ static float MaxRegionDiff(const Mat & img1, const Mat & img2, int nStep, int nR
     return fMaxDiff;
 }
 
-bool ZyrloCamera::DetectImageChange(const Mat & img) {
+float ZyrloCamera::DetectImageChange(const Mat & img) {
     if(m_firstStableImg.empty()) {
         img.copyTo(m_firstStableImg);
-        return false;
+        return 0.0f;
     }
     float fImgChange = MaxRegionDiff(m_firstStableImg, img, 2, 4, 3, 20);
     if(fImgChange < m_fImageChangeSensitivity) {
         ++m_nNoChange;
         m_nMotionDetected = 0;
-        return FALSE;
+        return fImgChange;
     }
     m_nNoChange = 0;
     ++m_nMotionDetected;
     img.copyTo(m_firstStableImg);
-    return TRUE;
+    return fImgChange;
 }
 
 bool ZyrloCamera::gesturesOn() const {
@@ -926,3 +953,18 @@ void ZyrloCamera::setArmPosition(bool bOpen) {
     //    else
     //        stop_capturing();
 }
+
+void ZyrloCamera::LocalLightFreqTest(const Mat & img) {
+    static int nCount = 0;
+    static float fSum = 0.0f, fMax = 0;
+    float fImgChange = DetectImageChange(img);
+    fSum += fImgChange;
+    if(fImgChange > fMax)
+        fMax = fImgChange;
+    if(++nCount == 100) {
+        qDebug() << "Img Noise = " << fSum / float(nCount) << fMax;
+        nCount = 0;
+        fMax = fSum = 0.0f;
+    }
+}
+

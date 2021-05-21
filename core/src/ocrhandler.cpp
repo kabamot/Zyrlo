@@ -111,6 +111,8 @@ const TextPage *OcrHandler::textPage() const
 void OcrHandler::checkProcess()
 {
     if (isIdle()) {
+        if (getOcrResults())
+            emit lineAdded();
         m_page->setCompleted();
         m_timer.stop();
         emit finished();
@@ -147,25 +149,23 @@ void OcrHandler::destroyTextPage()
         m_page = nullptr;
     }
 }
+#include <unistd.h>
 
 bool OcrHandler::getOcrResults()
 {
     bool hasNewResult = false;
     text_line textLine;
-    int resultsCode = 0;
-    while (resultsCode == 0) {
-        resultsCode = zyrlo_proc_get_result(&textLine);
-        if (resultsCode == 0) {
-            if (m_currentParagraphId != textLine.nParagraphId) {
-                // New paragraph started
-                ++m_processingParagraphNum;
-                m_currentParagraphId = textLine.nParagraphId;
-                m_page->addParagraph();
-            }
 
-            m_page->addParagraphLine(textLine.sText, textLine.sLang);
-            hasNewResult = true;
+    while (zyrlo_proc_get_result(&textLine) == 0) {
+        if (m_currentParagraphId != textLine.nParagraphId) {
+            // New paragraph started
+            ++m_processingParagraphNum;
+            m_currentParagraphId = textLine.nParagraphId;
+            m_page->addParagraph();
         }
+
+        m_page->addParagraphLine(textLine.sText, textLine.sLang);
+        hasNewResult = true;
     }
 
     return hasNewResult;

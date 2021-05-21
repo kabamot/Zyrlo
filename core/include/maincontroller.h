@@ -65,6 +65,8 @@ public:
     void SaySN();
     QString translateTag(const QString &tag) const;
     bool ChangeCameraExposure(int delta);
+    bool ChangeCameraGain(int delta);
+    bool ChangeCameraExposureStep(int delta);
 
     void resetAudio();
     void getListOfLanguges(QStringList & list) const;
@@ -90,6 +92,11 @@ public:
     bool ConvertTextToAudio(const std::string & sPath);
     bool ProcessNextScannedImg();
     void onReaderReady();
+    void SetLocalLightFreqTest(bool bOn);
+    int getCurrentExposure() const;
+    int getCurrentGain() const;
+    int getExposureStep() const;
+    bool setSpeakerSetting(int nSetting);
 
 signals:
     void textUpdated(const QString &text);

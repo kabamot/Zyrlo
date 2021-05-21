@@ -29,7 +29,7 @@
 using namespace cv;
 using namespace std;
 
-#define SW_VERSION "1.0"
+#define SW_VERSION "1.2"
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
@@ -136,7 +136,7 @@ QVector<LangVoice> LANGUAGES;
 int FirstEnabledVoiceIndex(int nStartIndx, const vector<LangVoiceComb> & vLangVoiceSettings) {
     if(g_vLangVoiceSettings.empty())
         return -1;
-    nStartIndx = (nStartIndx + 1) % g_vLangVoiceSettings.size();
+    nStartIndx = nStartIndx % g_vLangVoiceSettings.size();
     for(size_t i = 0; i < vLangVoiceSettings.size(); ++i) {
         if(g_vLangVoiceSettings[nStartIndx].m_bEnabled)
             return nStartIndx;
@@ -202,7 +202,7 @@ MainController::MainController()
     readSettings();
     vector<int> vSinkIndxs;
     m_nActiveSink = getAvailableSinks(vSinkIndxs, m_nBuiltInSink);
-    m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
+    m_hwhandler->setUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
 
     m_nCurrentLangaugeSettingIndx = FirstEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
 
@@ -799,7 +799,7 @@ bool MainController::setAudioSink(int indx) {
     }
     resetAudio();
     m_nActiveSink = indx;
-    m_hwhandler->setmUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
+    m_hwhandler->setUsingMainAudioSink( m_nActiveSink == m_nBuiltInSink );
     return bret;
 }
 
@@ -1409,6 +1409,7 @@ void MainController::onSayBatteryStatus() {
             m_beepSound->play();
         return;
     }
+    nLevel = min(nLevel * 10 / 9, 100);
     sayText(translateTag(MAIN_BATTERY_LEVEL) + " " + QString::number(nLevel) + " %");
 }
 
@@ -1495,14 +1496,14 @@ void MainController::getListOfLanguges(QStringList & list) const {
                 lngs += ", ";
             lngs += i.voice + " (" + i.lang + ")";
         }
-        lngs += vlc.m_bEnabled ? " - Enabled" : " - Disabled";
+        lngs += " - " + (vlc.m_bEnabled ? translateTag(MENU_ENABLED) : translateTag(MENU_DISABLED));
         list.push_back(lngs);
     }
 }
 
 void MainController::getListOfOptions(QStringList & list) const {
     list.clear();
-    list.push_back(QString("Camera flash ") + (m_hwhandler->getUseCameraFlash() ?  "- Enabled" : "- Disabled"));
+    list.push_back(translateTag(MENU_ENABLE_FLASH) + " - " + (m_hwhandler->getUseCameraFlash() ?  translateTag(MENU_ENABLED) : translateTag(MENU_DISABLED)));
 }
 
 void MainController::toggleOption(int nIndx) {
@@ -1542,8 +1543,8 @@ void MainController::setMenuOpen(bool bMenuOpen) {
 }
 
 void MainController::getListOfAboutItems(QStringList & list) const {
-    list.push_back(QString("Serial number: ") + QString::number(m_hwhandler->getSN()));
-    list.push_back(QString("Version: ") + SW_VERSION + "-" + QString::number(m_hwhandler->getVersion()));
+    list.push_back(translateTag(MENU_SERIAL) + " " + QString::number(m_hwhandler->getSN()));
+    list.push_back(translateTag(MENU_VERSION) + " " + SW_VERSION + " -- " + QString::number(m_hwhandler->getVersion()));
 }
 
 void MainController::readSettings() {
@@ -1552,17 +1553,23 @@ void MainController::readSettings() {
     fn = file["nCurrentLangaugeSettingIndx"];
     if (!fn.empty())
         fn >> m_nCurrentLangaugeSettingIndx;
-    fn = file["navigationMode"];
-    if (!fn.empty()) {
-        int navigationMode;
-        fn >> navigationMode;
-        m_navigationMode = (NavigationMode) navigationMode;
-    }
+//    fn = file["navigationMode"];
+//    if (!fn.empty()) {
+//        int navigationMode;
+//        fn >> navigationMode;
+//        m_navigationMode = (NavigationMode) navigationMode;
+//    }
     fn = file["bUseCameraFlash"];
     if (!fn.empty()) {
         int bUseCameraFlash;
         fn >> bUseCameraFlash;
         m_hwhandler->setUseCameraFlash(bUseCameraFlash);
+    }
+    fn = file["fExposureStep"];
+    if(!fn.empty()) {
+        float fExposureStep;
+        fn >> fExposureStep;
+        m_hwhandler->setExposureStep(fExposureStep);
     }
 }
 
@@ -1570,9 +1577,10 @@ void MainController::writeSettings() const {
     FileStorage file(SETTINGS_FILE_PATH, FileStorage::WRITE);
 
     file << "nCurrentLangaugeSettingIndx" << m_nCurrentLangaugeSettingIndx;
-    file << "navigationMode" << (int)m_navigationMode;
+    //file << "navigationMode" << (int)m_navigationMode;
     file << "bUseCameraFlash" << m_hwhandler->getUseCameraFlash();
-}
+    file << "fExposureStep" << m_hwhandler->getExposureStep();
+ }
 
 
 void MainController::toggleNavigationMode(bool bForward) {
@@ -1642,6 +1650,18 @@ bool MainController::ChangeCameraExposure(int delta) {
     return m_hwhandler->ChangeCameraExposure(delta);
 }
 
+bool MainController::ChangeCameraGain(int delta) {
+    int nGain = m_hwhandler->getCurrentGain();
+    m_hwhandler->setCurrentGain(nGain + delta);
+    return true;
+}
+
+bool MainController::ChangeCameraExposureStep(int delta) {
+    m_hwhandler->ChangeCameraExposureStep(delta);
+    writeSettings();
+    return true;
+}
+
 void MainController::convertTextToAudio(const QString & sText, const QString & sAudioFileName) {
     m_ttsEnginesList[m_currentTTSIndex]->convertTextToAudio(sText, sAudioFileName);
 }
@@ -1667,6 +1687,10 @@ void MainController::onSavingAudioDone(QString sFileName) {
         sayTranslationTag(USB_CONVERT_COMPLETE);
     else
         sayText(translateTag(USB_KEY_CONV_PAGE) + " " + QString::number(nImageConverted));
+}
+
+bool MainController::setSpeakerSetting(int nSetting) {
+    return m_hwhandler->setSpeakerSetting(nSetting);
 }
 
 static int GetFileIndx(const string & sPagename) {
@@ -1840,6 +1864,29 @@ bool MainController::saveScannedText() const {
     stream << sText;
     file.close();
     return true;
+}
+
+void MainController::SetLocalLightFreqTest(bool bOn) {
+    if(m_hwhandler)
+        m_hwhandler->SetLocalLightFreqTest(bOn);
+}
+
+int MainController::getCurrentExposure() const {
+    if(!m_hwhandler)
+        return -1;
+    return m_hwhandler->getCurrentExposure();
+}
+
+int MainController::getCurrentGain() const {
+    if(!m_hwhandler)
+        return -1;
+    return m_hwhandler->getCurrentGain();
+}
+
+int MainController::getExposureStep() const {
+    if(!m_hwhandler)
+        return -1;
+    return m_hwhandler->getExposureStep();
 }
 
 static bool file_exists (const char *filename) {

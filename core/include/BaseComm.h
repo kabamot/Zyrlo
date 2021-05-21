@@ -41,7 +41,7 @@ public:
 	int init();	
     int sendCommand(byte pCommand, byte *pReply, bool bCheckEquality = true);
 	int flushInput();
-
+    int setSpeakerSetting(int nSetting);
 };
 
 #endif //_BASE_COMM_H_

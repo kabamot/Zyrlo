@@ -12,6 +12,7 @@
 #include <QTextBlock>
 #include <QInputDialog>
 #include <regex>
+#include <QMessageBox>
 
 #include "menuwidget.h"
 #include "bluetoothhandler.h"
@@ -221,11 +222,75 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_F6:
         m_controller.SaySN();
         break;
-    case Qt::Key_B:
-        m_controller.ChangeCameraExposure(100);
+    case Qt::Key_F7:
+        m_controller.SetLocalLightFreqTest(ev->modifiers() & Qt::SHIFT);
         break;
-    case Qt::Key_M:
-        m_controller.ChangeCameraExposure(-100);
+    case Qt::Key_E:
+        {QMessageBox msgBox;
+        msgBox.setText("Current exposure:" + QString::number(m_controller.getCurrentExposure()) + " Gain: "+ QString::number(m_controller.getCurrentGain()));
+        msgBox.exec();}
+        break;
+    case Qt::Key_Q:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraExposure(1);
+      else
+          m_controller.ChangeCameraExposure(10);
+      break;
+  case Qt::Key_Z:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraExposure(-1);
+      else
+          m_controller.ChangeCameraExposure(-10);
+      break;
+    case Qt::Key_B:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraExposureStep(1);
+      else
+          m_controller.ChangeCameraExposureStep(10);
+      break;
+  case Qt::Key_M:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraExposureStep(-1);
+      else
+          m_controller.ChangeCameraExposureStep(-10);
+      break;
+     case Qt::Key_A:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraGain(1);
+      else
+          m_controller.ChangeCameraGain(10);
+      break;
+  case Qt::Key_V:
+      if(ev->modifiers() & Qt::SHIFT)
+          m_controller.ChangeCameraGain(-1);
+      else
+          m_controller.ChangeCameraGain(-10);
+      break;
+    case Qt::Key_D:
+        {QMessageBox msgBox;
+        msgBox.setText("Current exposure step:" + QString::number(m_controller.getExposureStep()));
+        msgBox.exec();}
+        break;
+    case Qt::Key_1:
+        if(ev->modifiers() & Qt::CTRL)
+            if(m_controller.setSpeakerSetting(1))
+                m_controller.sayText("Audio profile 1");
+        break;
+    case Qt::Key_2:
+        if(m_controller.setSpeakerSetting(2))
+            m_controller.sayText("Audio profile 2");
+        break;
+    case Qt::Key_3:
+        if(m_controller.setSpeakerSetting(3))
+            m_controller.sayText("Audio profile 3");
+        break;
+    case Qt::Key_4:
+        if(m_controller.setSpeakerSetting(4))
+            m_controller.sayText("Audio profile 4");
+        break;
+    case Qt::Key_5:
+        if(m_controller.setSpeakerSetting(5))
+            m_controller.sayText("Audio profile 5");
         break;
     }
 }

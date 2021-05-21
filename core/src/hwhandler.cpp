@@ -269,10 +269,19 @@ void HWHandler::setCameraArmPosition(bool bOpen) {
 
 bool HWHandler::ChangeCameraExposure(int delta) {
 
-    int nExp = m_zcam.getCurrExp();
+    int nExp = m_zcam.getExposure();
+    qDebug() << "Exposure = " << nExp;
+    m_zcam.setAutoExposure(false);
     return m_zcam.setExposure(nExp + delta) == 0;
 }
 
+bool HWHandler::ChangeCameraExposureStep(int delta) {
+    float fStep = m_zcam.getExposureStep();
+    m_zcam.setExposureStep(fStep + float(delta));
+    float fExp = m_zcam.getPreviewExposure();
+    m_zcam.setEffectiveExposure(fExp);
+    return true;
+}
 void HWHandler::setIgnoreCameraInputs(bool bIgnore) {
     m_zcam.setIgnoreInputs(bIgnore);
 }
@@ -285,3 +294,14 @@ bool HWHandler::getUseCameraFlash() const {
     return m_zcam.getUseFlash();
 }
 
+void HWHandler::setExposureStep(float fStep) {
+    m_zcam.setExposureStep(fStep);
+}
+
+float HWHandler::getExposureStep() const {
+    return m_zcam.getExposureStep();
+}
+
+bool HWHandler::setSpeakerSetting(int nSetting) {
+    return m_bc.setSpeakerSetting(nSetting) == 0;
+}

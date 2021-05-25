@@ -29,7 +29,7 @@
 using namespace cv;
 using namespace std;
 
-#define SW_VERSION "1.2"
+#define SW_VERSION "1.3"
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
@@ -1302,6 +1302,13 @@ void MainController::onBtBattery(int nVal) {
 
 }
 
+static QString buildVoicesString(const vector<LangVoice> & vlangs) {
+    QString res;
+    for(auto & lang : vlangs)
+        res += ", " + lang.voice;
+    return res;
+}
+
 void MainController::onToggleVoice() {
     m_beepSound->play();
 
@@ -1316,8 +1323,8 @@ void MainController::onToggleVoice() {
     //m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
-    string sMsg = (g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString(VOICE_SET_AUTO) : m_translator.GetString(VOICE_SET_TO);
-    sayText(sMsg.c_str());
+    QString sMsg(((g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString(VOICE_SET_AUTO) : m_translator.GetString(VOICE_SET_TO)).c_str());
+    sayText(sMsg + buildVoicesString(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs));
     writeSettings();
 }
 

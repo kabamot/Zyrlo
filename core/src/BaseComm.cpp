@@ -22,7 +22,7 @@ int BaseComm::init()
     }
 
     m_nSequence = 0;
-    setSpeakerSetting(2);
+    setSpeakerSetting(5);
     return 0;
 }
 

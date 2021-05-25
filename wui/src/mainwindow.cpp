@@ -27,6 +27,8 @@ using namespace std;
 constexpr int STATUS_MESSAGE_TIMEOUT = 5000; // ms
 constexpr int BLUETOOTH_SCANNING_ANNOUNCEMENT_TIME = 4000; // ms
 
+//#define ZYRLO_ENABLE_ADJUSTMENT_CONTRIOLS
+
 QString GetCpuTemp() {
     FILE *fp;
     char path[256] = {0};
@@ -242,6 +244,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
       else
           m_controller.ChangeCameraExposure(-10);
       break;
+#ifdef ZYRLO_ENABLE_ADJUSTMENT_CONTRIOLS
     case Qt::Key_B:
       if(ev->modifiers() & Qt::SHIFT)
           m_controller.ChangeCameraExposureStep(1);
@@ -254,6 +257,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
       else
           m_controller.ChangeCameraExposureStep(-10);
       break;
+#endif
      case Qt::Key_A:
       if(ev->modifiers() & Qt::SHIFT)
           m_controller.ChangeCameraGain(1);
@@ -271,6 +275,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         msgBox.setText("Current exposure step:" + QString::number(m_controller.getExposureStep()));
         msgBox.exec();}
         break;
+#ifdef ZYRLO_ENABLE_ADJUSTMENT_CONTRIOLS
     case Qt::Key_1:
         if(ev->modifiers() & Qt::CTRL)
             if(m_controller.setSpeakerSetting(1))
@@ -292,6 +297,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         if(m_controller.setSpeakerSetting(5))
             m_controller.sayText("Audio profile 5");
         break;
+#endif
     }
 }
 

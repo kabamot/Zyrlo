@@ -56,6 +56,7 @@ private slots:
     void onBluetoothConnected(const QString &name);
     void onBluetoothConnectionError(const QString &name);
     void onBluetoothUnpaired(int, const QString &);
+    void onPauseResumeButton();
 
 private:
     void setCursorAtPosition(const TextPosition &position, QTextCursor &cursor);

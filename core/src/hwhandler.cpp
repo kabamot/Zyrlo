@@ -305,3 +305,7 @@ float HWHandler::getExposureStep() const {
 bool HWHandler::setSpeakerSetting(int nSetting) {
     return m_bc.setSpeakerSetting(nSetting) == 0;
 }
+
+string HWHandler::kpConfig() const {
+    return m_btc.kpConfig();
+}

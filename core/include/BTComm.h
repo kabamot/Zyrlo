@@ -51,7 +51,7 @@ public:
 	pthread_t m_ConnectThread;
     eBtCommStatus m_eStatus;
 
-    char keypadMacStr[18];
+    char keypadMacStr[18] = {0};
 
     BTComm(MainController *pMainController) : m_pMainController(pMainController) {}
     int init();
@@ -61,6 +61,7 @@ public:
     bool readKpConfig();
     void setUsingMainAudioSink(bool bUsingMainAudioSink) { m_bUsingMainAudioSink = bUsingMainAudioSink; }
     MainController *m_pMainController {nullptr};
+    std::string kpConfig() const { return keypadMacStr; }
 };
 
 #endif // __BT_COMM_H__

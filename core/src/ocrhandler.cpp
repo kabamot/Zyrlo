@@ -41,6 +41,8 @@ OcrHandler::~OcrHandler()
 
 bool OcrHandler::setLanguage(unsigned long long  languageCode)
 {
+//    qputenv("LC_ALL", "C");
+    //setlocale(LC_ALL, "C");
     m_languageCode = languageCode;
     const auto retCode = zyrlo_proc_set_ocr_language(m_languageCode);
     if (retCode != 0) {

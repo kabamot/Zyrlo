@@ -62,6 +62,7 @@ public:
     void setExposureStep(float fStep);
     float getExposureStep() const;
     bool setSpeakerSetting(int nSetting);
+    std::string kpConfig() const;
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);

@@ -94,8 +94,8 @@ MainWindow::MainWindow(QWidget *parent)
     connect(&m_controller, &MainController::wordPositionChanged, this, &MainWindow::highlighWord);
     connect(&m_controller, &MainController::previewUpdated, this, &MainWindow::updatePreview);
     connect(&m_controller, &MainController::openMainMenu, this, &MainWindow::mainMenu);
+    connect(ui->pauseButton, &QPushButton::clicked, this, &MainWindow::onPauseResumeButton);
 
-    connect(ui->pauseButton, &QPushButton::clicked, &m_controller, &MainController::pauseResume);
     connect(ui->nextWordButton, &QPushButton::clicked, &m_controller, &MainController::nextWord);
     connect(ui->backWordButton, &QPushButton::clicked, &m_controller, &MainController::backWord);
     connect(ui->nextSentenceButton, &QPushButton::clicked, &m_controller, &MainController::nextSentence);
@@ -266,9 +266,11 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
       break;
   case Qt::Key_V:
       if(ev->modifiers() & Qt::SHIFT)
-          m_controller.ChangeCameraGain(-1);
+          m_controller.changeVoiceVolume((ev->modifiers() & Qt::CTRL) ? -1 :-10);
+          //m_controller.ChangeCameraGain(-1);
       else
-          m_controller.ChangeCameraGain(-10);
+          m_controller.changeVoiceVolume((ev->modifiers() & Qt::CTRL) ? 1 :10);
+          //m_controller.ChangeCameraGain(-10);
       break;
     case Qt::Key_D:
         {QMessageBox msgBox;
@@ -547,6 +549,7 @@ void MainWindow::bluetoothScanMenu()
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
         } else {
+            m_scanningTimer.stop();
             m_controller.sayTranslationTag(MENU_MSG_PAIRING);
             m_bluetoothHandler.startPairing(index);
         }
@@ -641,4 +644,9 @@ void MainWindow::onBluetoothUnpaired(int /*index*/, const QString &/*name*/)
         m_controller.waitForSayTextFinished();
         menuWidget->exit();
     }
+}
+
+void MainWindow::onPauseResumeButton() {
+    if(!m_controller.tryProcessScannedImages())
+        m_controller.pauseResume();
 }

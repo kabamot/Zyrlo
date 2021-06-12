@@ -54,6 +54,15 @@ set(SRC_FILES
     src/cerence/positionmapper.cpp
     src/cerence/positionmapper.h
 
+    src/espeak/espeaktts.cpp
+    src/espeak/espeaktts.h
+
+    src/zyrlotts.cpp
+    src/zyrlotts.h
+
+    src/ttsaudiolayer.cpp
+    src/ttsaudiolayer.h
+
     3rd/tinyxml/tinystr.cpp
     3rd/tinyxml/tinyxml.cpp
     3rd/tinyxml/tinyxmlerror.cpp
@@ -96,6 +105,7 @@ target_link_libraries(${LIB_NAME}
         wiringPi
         bluetooth
         mp3lame
+        espeak
 
     PRIVATE
         ${ZYRLO_OCR_LIB}

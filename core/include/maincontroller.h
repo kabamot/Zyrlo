@@ -17,8 +17,9 @@
 
 class OcrHandler;
 class Paragraph;
-class CerenceTTS;
+class ZyrloTts;
 class HWHandler;
+class TtsAudioLayer;
 
 namespace cv {
     class Mat;
@@ -97,6 +98,10 @@ public:
     int getCurrentGain() const;
     int getExposureStep() const;
     bool setSpeakerSetting(int nSetting);
+    void changeVoiceVolume(int nStep);
+    bool tryProcessScannedImages();
+    void SettTTsEngine(int nIndx);
+
 
 signals:
     void textUpdated(const QString &text);
@@ -146,7 +151,7 @@ private:
     bool isPageValid() const;
     void changeVoiceSpeed(int nStep);
     QString prepareTextToSpeak(QString text);
-    void populateVoices();
+    //void populateVoices();
     void SetCurrentTts(const QString & lang);
     void SetDefaultTts();
      void InitTtsEngines();
@@ -174,10 +179,9 @@ private slots:
 
 
 private:
-    QVector<CerenceTTS *>m_ttsEnginesList;
-    CerenceTTS *m_ttsEngine {nullptr};
+    QVector<ZyrloTts *>m_ttsEnginesList;
+    ZyrloTts *m_ttsEngine {nullptr};
     int         m_currentTTSIndex {0};
-    QStringList m_voices;
     HWHandler  *m_hwhandler {nullptr};
     int         m_ttsStartPositionInParagraph {0};
     int         m_currentParagraphNum {-1};
@@ -208,5 +212,6 @@ private:
     std::string m_sCurrentImgPath;
     std::deque<std::string> m_vScannedImagesQue;
     int m_nImagesToConvert = 0;
+    TtsAudioLayer *m_pTtsAudioLayer {nullptr};
 };
 

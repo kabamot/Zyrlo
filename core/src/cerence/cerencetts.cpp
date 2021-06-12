@@ -15,6 +15,7 @@
 #include <QThread>
 #include <QtConcurrent>
 #include <lame/lame.h>
+#include "../ttsaudiolayer.h"
 
 void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize);
 
@@ -72,8 +73,8 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
     return ret; // returning an error will cause the ve to stop processing.
 }
 
-CerenceTTS::CerenceTTS(const QString &voice, QObject *parent)
-    : QObject(parent)
+CerenceTTS::CerenceTTS(const QString &voice, QObject *parent, TtsAudioLayer *pTtsAudioLayer)
+    : ZyrloTts(parent, pTtsAudioLayer)
 {
     initTTS(voice);
     initAudio();
@@ -102,8 +103,7 @@ void CerenceTTS::say(const QString &text, int delayMs)
 
     m_currentWord = -1;
     m_wordMarks.clear();
-    m_audioIO->buffer().clear();
-    m_audioIO->reset();
+    m_pTtsAudioLayer->clear();
 
     m_positionMapper.setText(text);
 
@@ -122,74 +122,27 @@ void CerenceTTS::say(const QString &text, int delayMs)
         qDebug() << "TTS processing finished in" << timer.elapsed() << "ms";
     });
 
-    m_speakingStartTimer.start(delayMs);
+    m_pTtsAudioLayer->startTimer(delayMs);
 }
 
 void CerenceTTS::stop()
 {
-    m_speakingStartTimer.stop();
-    m_audioOutput->stop();
-
+    m_pTtsAudioLayer->stop();
     ve_ttsStop(m_hTtsInst);
     m_ttsFuture.waitForFinished();
-}
-
-void CerenceTTS::pause()
-{
-    m_audioOutput->suspend();
-}
-
-void CerenceTTS::resume()
-{
-    m_audioOutput->resume();
-}
-
-bool CerenceTTS::isSpeaking() const
-{
-    return m_audioOutput->state() == QAudio::ActiveState;
-}
-
-bool CerenceTTS::isPaused() const
-{
-    return m_audioOutput->state() == QAudio::SuspendedState;
-}
-
-bool CerenceTTS::isStoppedSpeaking() const
-{
-    return m_audioOutput->state() == QAudio::StoppedState;
-}
-
-char *CerenceTTS::buffer()
-{
-    return m_ttsBuffer.data();
-}
-
-size_t CerenceTTS::bufferSize()
-{
-    return m_ttsBuffer.size();
-}
-
-VE_MARKINFO *CerenceTTS::markBuffer()
-{
-    return m_ttsMarkBuffer.data();
-}
-
-size_t CerenceTTS::markBufferSize()
-{
-    return m_ttsMarkBuffer.size() * sizeof(VE_MARKINFO);
 }
 
 void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
 {
     if (sizePcm > 0) {
         auto totalSize = sizePcm;
-        const auto audioBuffSize = static_cast<size_t>(m_audioOutput->bufferSize());
+        const auto audioBuffSize = static_cast<size_t>(m_pTtsAudioLayer->bufferSize());
         if (sizePcm < audioBuffSize) {
             // Fill up to the buffer size with 0s, otherwise it will be not played
             std::fill(m_ttsBuffer.data() + sizePcm, m_ttsBuffer.data() + audioBuffSize, 0);
             totalSize = audioBuffSize;
         }
-        m_audioIO->buffer().append(m_ttsBuffer.data(), totalSize);
+        m_pTtsAudioLayer->appendSample(m_ttsBuffer.data(), totalSize);
     }
 
     if (sizeMarks > 0) {
@@ -204,26 +157,6 @@ void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
             }
         }
     }
-}
-
-QStringList CerenceTTS::availableLanguages() const
-{
-    return m_languageNames.keys();
-}
-
-QStringList CerenceTTS::availableVoices(const QString &language) const
-{
-    return m_voicesMap.value(language);
-}
-
-const QMap<QString, QString> &CerenceTTS::languageNames() const
-{
-    return m_languageNames;
-}
-
-const QMap<QString, QStringList> &CerenceTTS::voicesMap() const
-{
-    return m_voicesMap;
 }
 
 void CerenceTTS::initTTS(const QString &voice)
@@ -260,8 +193,6 @@ void CerenceTTS::initTTS(const QString &voice)
         return;
     }
 
-    queryLanguagesVoicesInfo();
-
     VE_PARAM ttsParam[3];
 
     // First set voice
@@ -282,8 +213,7 @@ void CerenceTTS::initTTS(const QString &voice)
     }
 }
 
-void CerenceTTS::initAudio()
-{
+void CerenceTTS::initAudio() {
     /* Set the output device */
     m_stOutDevInfo.pUserData = this;
     m_stOutDevInfo.pfOutNotify = vout_Write;
@@ -308,153 +238,6 @@ void CerenceTTS::initAudio()
         qWarning() << "Using nearest format" << format.sampleRate() << format.sampleSize() << format.codec()
                    << format.byteOrder() << format.sampleType();
     }
-
-    m_audioOutput = new QAudioOutput(format, this);
-    m_audioOutput->setBufferSize(4096 * 4); // Give some buffer to remove stutter
-    m_audioOutput->setNotifyInterval(50);
-    qDebug() << __func__ << m_audioOutput->bufferSize() << m_audioOutput->notifyInterval();
-
-    connect(m_audioOutput, &QAudioOutput::notify, this, [this](){
-        const auto elapsedSamples = m_audioOutput->processedUSecs() *
-                m_audioOutput->format().sampleRate() / 1'000'000;
-        auto newCurrentWord = m_currentWord;
-
-        {
-            // Searching if the new word pronouncing
-            QMutexLocker locker(&m_wordMarksMutex);
-            for (int i = m_currentWord + 1; i < m_wordMarks.size(); ++i) {
-                if (elapsedSamples >= static_cast<qint64>(m_wordMarks[i].cntDestPos)) {
-                    newCurrentWord = i;
-                } else {
-                    break;
-                }
-            }
-        }
-
-        if (newCurrentWord > m_currentWord) {
-            m_currentWord = newCurrentWord;
-            emit wordNotify(m_positionMapper.position(m_wordMarks[m_currentWord].cntSrcPos),
-                            m_wordMarks[m_currentWord].cntSrcTextLen);
-        }
-    });
-
-    connect(m_audioOutput, &QAudioOutput::stateChanged, this, [this](QAudio::State state) {
-        qDebug() << "state" << state;
-        switch (state) {
-        case QAudio::ActiveState:
-            emit sayStarted();
-            break;
-
-        case QAudio::StoppedState:
-            if (m_audioOutput->error() != QAudio::NoError) {
-                // Error handling
-                qWarning() << __func__ << __LINE__ << m_audioOutput->error();
-            }
-            break;
-
-        case QAudio::IdleState:
-            if (m_ttsFuture.isFinished()) {
-                m_audioOutput->stop();
-                emit sayFinished();
-                m_messageQueMutex.lock();
-                if(m_messageQue.empty()) {
-                    m_messageQueMutex.unlock();
-                }
-                else {
-                    QString text = m_messageQue.front();
-                    m_messageQue.pop_front();
-                    m_messageQueMutex.unlock();
-                    say(text);
-                }
-
-            }
-            break;
-
-        default:
-            break;
-        }
-    });
-
-    m_audioIO = new QBuffer(this);
-    m_audioIO->open(QIODevice::ReadOnly);
-
-    m_speakingStartTimer.setSingleShot(true);
-    connect(&m_speakingStartTimer, &QTimer::timeout, this, [this](){
-        if(!outputToFile())
-            m_audioOutput->start(m_audioIO);
-    });
-
-}
-
-void CerenceTTS::queryLanguagesVoicesInfo()
-{
-    m_voicesMap.clear();
-    m_languageNames.clear();
-
-    NUAN_U16 numLanguages = 0;
-    auto nErrcode = ve_ttsGetLanguageList(m_hSpeech, NULL, &numLanguages);
-    if (nErrcode != NUAN_OK) {
-        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
-        return;
-    }
-
-    QByteArray buffLanguages(sizeof(VE_LANGUAGE) * numLanguages, 0);
-    VE_LANGUAGE *pLangList = reinterpret_cast<VE_LANGUAGE *>(buffLanguages.data());
-
-    nErrcode = ve_ttsGetLanguageList(m_hSpeech, pLangList, &numLanguages);
-    if (nErrcode != NUAN_OK) {
-        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
-        return;
-    }
-
-    for (int i = 0; i < numLanguages; ++i) {
-        qDebug("%d>> %s, %s, %s", i,
-               pLangList[i].szLanguage,
-               pLangList[i].szLanguageTLW,
-               pLangList[i].szVersion);
-
-        const QString langCode = pLangList[i].szLanguageTLW; // ex. ENU, NON, etc
-        const QString language = pLangList[i].szLanguage;    // American English, Norwegian
-
-        NUAN_U16 numVoices = 0;
-        nErrcode = ve_ttsGetVoiceList(m_hSpeech, pLangList[i].szLanguage, NULL, &numVoices);
-        if (nErrcode != NUAN_OK) {
-            qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
-            return;
-        }
-
-        QByteArray buffVoices(sizeof(VE_VOICEINFO) * numVoices, 0);
-        VE_VOICEINFO *pVoiceList = reinterpret_cast<VE_VOICEINFO *>(buffVoices.data());
-
-        nErrcode = ve_ttsGetVoiceList(m_hSpeech, pLangList[i].szLanguage, pVoiceList, &numVoices);
-        if (nErrcode != NUAN_OK) {
-            qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
-            return;
-        }
-
-        QStringList voices;
-        for (int j = 0; j < numVoices; j++) {
-            qDebug("  %d>> %s, %s, %s\n", j, pVoiceList[j].szVoiceName,
-                   pVoiceList[j].szVoiceAge, pVoiceList[j].szVoiceType);
-
-            voices.append(pVoiceList[j].szVoiceName);
-        }
-
-        m_voicesMap[langCode] = voices;
-        m_languageNames[langCode] = language;
-    }
-}
-
-void CerenceTTS::stopAudio() {
-    if(m_audioIO)
-        delete m_audioIO;
-    if(m_audioOutput)
-        delete m_audioOutput;
-}
-
-void CerenceTTS::resetAudio() {
-    stopAudio();
-    initAudio();
 }
 
 void CerenceTTS::setSpeechRate(int nRate) {
@@ -476,88 +259,37 @@ int CerenceTTS::getSpeechRate() {
     return (int) prm.uValue.usValue;
 }
 
-bool CerenceTTS::writeToWave(const char *sFileName) {
-    int nBuffSize = m_audioIO->buffer().size();
-    if(nBuffSize < 1)
-        return false;
-    FILE *fp = fopen(sFileName, "wb");
-    if(!fp)
-        return false;
-    WriteWaveHeader(fp, 22050, 16, 1, nBuffSize);
-    int nWritten = fwrite(m_audioIO->buffer().constData(), 2, nBuffSize, fp);
-    fclose(fp);
-    m_bOutputToFile = false;
-    return nWritten == nBuffSize;
+void CerenceTTS::setVolume(int nVolume) {
+    VE_PARAM prm;
+    prm.eID = VE_PARAM_VOLUME;
+    prm.uValue.usValue = nVolume;
+    auto nErrcode = ve_ttsSetParamList(m_hTtsInst, &prm, 1);
+    if (nErrcode != NUAN_OK)
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
 }
 
-bool CerenceTTS::writeToMp3(const char *sFileName) {
-    int nBuffSize = m_audioIO->buffer().size();
-    if(nBuffSize < 1)
-        return false;
-    FILE *fp = fopen(sFileName, "wb");
-    if(!fp)
-        return false;
-    const int PCM_SIZE = 8192;
-    const int MP3_SIZE = 1.25 * PCM_SIZE * 0.5  + 7200;
-    unsigned char mp3_buffer[MP3_SIZE];
-    lame_t lame = lame_init();
-    lame_set_in_samplerate(lame, 22050);
-    lame_set_VBR(lame, vbr_default);
-    lame_set_mode(lame, MONO);
-    lame_set_num_channels(lame, 1);
-    lame_init_params(lame);
-    int nWritten = 0;
-    for(int i = 0, chunk = std::min(PCM_SIZE, nBuffSize); chunk > 0; nBuffSize -=  PCM_SIZE, chunk = std::min(PCM_SIZE, nBuffSize), ++i) {
-        nWritten = lame_encode_buffer(lame, (short int*)(m_audioIO->buffer().constData() + i * PCM_SIZE), NULL, chunk / 2, mp3_buffer, MP3_SIZE);
-        fwrite(mp3_buffer, nWritten, 1, fp);
-    }
-    nWritten = lame_encode_flush(lame, mp3_buffer, MP3_SIZE);
-    fwrite(mp3_buffer, nWritten, 1, fp);
-    lame_close(lame);
-    fclose(fp);
-    m_bOutputToFile = false;
-    return true;
+int CerenceTTS::getVolume() {
+    VE_PARAM prm;
+    prm.eID = VE_PARAM_VOLUME;
+    prm.uValue.usValue = 0;
+    auto nErrcode = ve_ttsGetParamList(m_hTtsInst, &prm, 1);
+    if (nErrcode != NUAN_OK)
+        qWarning() << __func__ << __LINE__ << "error:" << ve_ttsGetErrorString(nErrcode);
+    return (int) prm.uValue.usValue;
 }
 
-void CerenceTTS::convertTextToAudio(const QString & sText, const QString & sAudioFileName) {
-    m_bOutputToFile = true;
-    m_audioOutFileName = sAudioFileName;
-    say(sText);
+char *CerenceTTS::buffer() {
+    return m_ttsBuffer.data();
 }
 
-void CerenceTTS::sayAfter(const QString &text) {
-    m_messageQueMutex.lock();
-    if(isSpeaking() || !m_messageQue.empty())
-        m_messageQue.push_back(text);
-    else
-        say(text);
-    m_messageQueMutex.unlock();
+size_t CerenceTTS::bufferSize() {
+    return m_ttsBuffer.size();
 }
 
-void WriteWaveHeader(FILE *fp, int nSampleRate, int nBitsPerSample, int nChannels, int nBuffSize) {
-    fwrite("RIFF", 1, 4, fp);
-    int nBiteRate = nSampleRate * nBitsPerSample / 8 * nChannels;
-    int nSubchunk2Size = nBuffSize;
-    int nChunksize = nSubchunk2Size + 36;
-    fwrite(&nChunksize, 4, 1, fp);
-    fwrite("WAVE", 1, 4, fp);
-    char sTmp[4] = "fmt";
-    sTmp[3] = 0x20;
-    fwrite(sTmp, 1, 4, fp);
-    sTmp[0] = 16;
-    memset(sTmp + 1, 0, 3);
-    fwrite(sTmp, 1, 4, fp);
-    sTmp[0] = 1;
-    sTmp[1] = sTmp[3] = 0;
-    sTmp[2] = nChannels;
-    fwrite(sTmp, 1, 4, fp);
-    fwrite(&nSampleRate, 4 , 1, fp);
-    fwrite(&nBiteRate, 4, 1, fp);
-    sTmp[0] = 4;
-    sTmp[1] = 0;
-    sTmp[2] = nBitsPerSample;
-    sTmp[3] = 0;
-    fwrite(sTmp, 1, 4, fp);
-    fwrite("data", 1, 4, fp);
-    fwrite(&nSubchunk2Size, 4, 1, fp);
+VE_MARKINFO *CerenceTTS::markBuffer() {
+    return m_ttsMarkBuffer.data();
+}
+
+size_t CerenceTTS::markBufferSize() {
+    return m_ttsMarkBuffer.size() * sizeof(VE_MARKINFO);
 }

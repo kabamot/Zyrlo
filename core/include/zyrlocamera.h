@@ -77,7 +77,7 @@ private:
         int m_nWait = 20, m_nMotionPX = 0, m_nMotionNX = 0;
         bool m_bArmOpen = false;
         bool m_bUseFlash = true;
-
+        int m_nSwitchFullResPreview = 0;
 
         typedef enum {
                 eCalibration = 0,
@@ -85,7 +85,8 @@ private:
                 eLookingForTarget,
                 eReadyOnTarget,
                 eLookingForStableImage,
-                eLookingForGestures
+                eLookingForGestures,
+                eFullResPreview
         } ZcState;
 
         ZcState m_eState = eLookingForTarget;//eCalibration;
@@ -139,16 +140,17 @@ public:
         int setGain(int nValue);
         int getGain() const;
         void setIgnoreInputs(bool bIgnoreInputs) { m_bIgnoreInputs = bIgnoreInputs; }
-        void setUseFlash(bool bUseFlash) {m_bUseFlash = bUseFlash; }
+        void setUseFlash(bool bUseFlash) { m_bUseFlash = bUseFlash; }
         bool getUseFlash() const { return m_bUseFlash; }
-        void setAutoExposure(bool bEnable) {m_bAutoExposure = bEnable;}
-        bool getAutoExposure() const {return m_bAutoExposure;}
-        void SetLocalLightFreqTest(bool bOn) {if(bOn) m_eState = eLocalLightFreqTest; else m_eState = eLookingForTarget;}
+        void setAutoExposure(bool bEnable) { m_bAutoExposure = bEnable; }
+        bool getAutoExposure() const { return m_bAutoExposure; }
+        void SetLocalLightFreqTest(bool bOn) { if(bOn) m_eState = eLocalLightFreqTest; else m_eState = eLookingForTarget; }
         int CalcLocalAjustedExposure(int nValue) const;
-        float getExposureStep() const {return m_fExposureStep;}
-        void setExposureStep(float fStep) {m_fExposureStep = min(float(m_nMaxExpValue), max(1.0f, fStep));}
+        float getExposureStep() const { return m_fExposureStep; }
+        void setExposureStep(float fStep) { m_fExposureStep = min(float(m_nMaxExpValue), max(1.0f, fStep)); }
         float setEffectiveExposure(float fExposure);
-        float getPreviewExposure() const {return m_fPreviewExposure;}
+        float getPreviewExposure() const { return m_fPreviewExposure; }
+        void setFullResPreview(bool bOn);
   };
 
 #endif /* ZYRLOCAMERA_H_ */

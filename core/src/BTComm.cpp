@@ -20,10 +20,7 @@
 #define LOGI(x) qDebug() << x
 
 #define KEYPAD_CONFIG_FILE	"/home/pi/keypad_config.txt"
-const char RFCOMM_FILE[] =	"/dev/rfcomm0";
-
-
-
+#define BT_ERROR_FILE "/home/pi/BtError.txt"
 
 bool BTComm::readKpConfig() {
     int iRet;
@@ -110,4 +107,58 @@ int BTComm::btConnect(const std::atomic_bool &isStop) {
         m_s = -1;
     }
     return status;
+}
+
+bool IsBtRunning() {
+    FILE *fp;
+    char path[256] = {0};
+
+    fp = popen("hciconfig", "r");
+    if (fp == NULL) {
+        qDebug() << "Failed to run command\n";
+        return "";
+    }
+    /* Read the output a line at a time - output it. */
+    while (fgets(path, sizeof(path), fp) != NULL) {
+        if(strstr(path, "UP RUNNING")) {
+            pclose(fp);
+            return true;
+        }
+    }
+    pclose(fp);
+    return false;
+}
+
+bool file_exists (const char *filename);
+
+void RebootOnBtError() {
+    if(!file_exists(KEYPAD_CONFIG_FILE))
+        return;
+    if(IsBtRunning()) {
+        if(file_exists(BT_ERROR_FILE))
+            remove(BT_ERROR_FILE);
+        return;
+    }
+    if(!file_exists(BT_ERROR_FILE)) {
+        FILE *fp = fopen(BT_ERROR_FILE, "w");
+        fclose(fp);
+        system("sync");
+        system("reboot");
+    }
+//    static pthread_t  h = 0;
+//    pthread_create(&h, NULL, [](void *param) {
+//        sleep(1);
+//        if(IsBtRunning()) {
+//            if(file_exists(BT_ERROR_FILE))
+//                remove(BT_ERROR_FILE);
+//            return (void*)NULL;
+//        }
+//        if(!file_exists(BT_ERROR_FILE)) {
+//            FILE *fp = fopen(BT_ERROR_FILE, "w");
+//            fclose(fp);
+//            system("sync");
+//            system("reboot");
+//        }
+//        return (void*)NULL;
+//    }, NULL);
 }

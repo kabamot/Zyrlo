@@ -63,6 +63,7 @@ public:
     float getExposureStep() const;
     bool setSpeakerSetting(int nSetting);
     std::string kpConfig() const;
+    void setFullResPreview(bool bOn);
 
 signals:
     void imageReceived(const cv::Mat &image, bool bPlayShutterSound);

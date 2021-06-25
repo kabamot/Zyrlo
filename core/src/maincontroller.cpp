@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "ttsaudiolayer.h"
+#include <pthread.h>
 
 using namespace cv;
 using namespace std;
@@ -45,11 +46,13 @@ using namespace std;
 #define BOOK_IMG_DIR "Images"
 #define BOOK_TXT_DIR "Text"
 #define BOOK_AUDIO_DIR "Audio"
+#define BATTERY_TEST_FILE "/home/pi/BaterryTest.txt"
+#define USB_KEY_ROOT "/home/pi/media"
 
 static int getAvailableSinks(vector<int> &vSinkIndxs, int & builtinIndx);
 static bool FindZyrloBooks(vector<string> & vBooks);
 static bool IsUpdateDrive();
-static bool file_exists (const char *filename);
+bool file_exists (const char *filename);
 
 
 constexpr int DELAY_ON_NAVIGATION = 1000; // ms, delay before starting TTS
@@ -246,6 +249,7 @@ MainController::MainController()
     connect(this, &MainController::toggleVoice, this, &MainController::onToggleVoice);
     connect(this, &MainController::readHelp, this, &MainController::onReadHelp);
     connect(this, &MainController::sayBatteryStatus, this, &MainController::onSayBatteryStatus);
+    connect(this, &MainController::saveMainBatterylevel, this, &MainController::onSaveMainBatterylevel);
 
     connect(m_hwhandler, &HWHandler::imageReceived, this, [this](const Mat &image, bool bPlayShutterSound) {
         if(m_bMenuOpen)
@@ -573,7 +577,7 @@ void MainController::backParagraph() {
         m_isContinueAfterSpeakingFinished = m_wordNavigationWithDelay = false;
     TextPosition position;
     while (!position.isValid()) {
-        if (m_currentParagraphNum - 1>= 0) {
+        if (m_currentParagraphNum - 1 >= 0) {
             --m_currentParagraphNum;
             position = paragraph().firstSentencePosition();
         }
@@ -708,9 +712,9 @@ void MainController::sayText(QString text, bool bAfter)
     }
 }
 
-void MainController::sayTranslationTag(const QString &tag)
+void MainController::sayTranslationTag(const QString &tag, bool bAfter)
 {
-    sayText(translateTag(tag));
+    sayText(translateTag(tag), bAfter);
 }
 
 void MainController::spellText(const QString &text)
@@ -1048,6 +1052,7 @@ void MainController::ReadImage(int indx) {
         return;
     }
     sayTranslationTag(PAGE_RECALL);
+    waitForSayTextFinished();
     m_hwhandler->readRecallImage();
 }
 
@@ -1505,8 +1510,7 @@ void MainController::SaySN() {
     sayText(sn.substr(12).c_str());
 }
 
-void MainController::waitForSayTextFinished()
-{
+void MainController::waitForSayTextFinished() {
     size_t i = 0;
     while (m_state == State::SpeakingText) {
         if (++i % 1000 == 0) {
@@ -1740,6 +1744,18 @@ const string GetBookPath(const string & sBooksDir, int nIndx) {
     return imgPath;
 }
 
+bool moveBatteryTestFile() {
+    if(!file_exists(BATTERY_TEST_FILE))
+        return false;
+    for(int i = 0; !file_exists(USB_KEY_ROOT) && i != 10; ++i, sleep(1));
+    char cmd[256];
+    sprintf(cmd, "cp %s %s/", BATTERY_TEST_FILE, USB_KEY_ROOT);
+    system(cmd);
+    sprintf(cmd, "rm %s", BATTERY_TEST_FILE);
+    system(cmd);
+    return true;
+}
+
 void MainController::onUsbKeyInsert(bool bInserted) {
     if(IsUpdateDrive())
         return;
@@ -1750,6 +1766,8 @@ void MainController::onUsbKeyInsert(bool bInserted) {
     m_sCurrentBookDir.clear();
     if(bInserted) {
         if(IsUpdateDrive())
+            return;
+        if(moveBatteryTestFile())
             return;
         vector<string> vBooks;
         FindZyrloBooks(vBooks);
@@ -1921,7 +1939,7 @@ int MainController::getExposureStep() const {
     return m_hwhandler->getExposureStep();
 }
 
-static bool file_exists (const char *filename) {
+bool file_exists (const char *filename) {
     struct stat   buffer;
     return (stat (filename, &buffer) == 0);
 }
@@ -1955,4 +1973,40 @@ bool MainController::tryProcessScannedImages () {
         return true;
     }
     return false;
+}
+
+void MainController::setFullResPreview(bool bOn) {
+    m_hwhandler->setFullResPreview(bOn);
+}
+
+void MainController::onSaveMainBatterylevel() const {
+    int nLevel = m_hwhandler->getMainBatteryPercent();\
+    nLevel = min(nLevel * 10 / 9, 100);
+    if(nLevel < 10)
+        return;
+    FILE *fp = fopen(BATTERY_TEST_FILE, "a");
+    if(fp) {
+        time_t rawtime;
+        struct tm * timeinfo;
+        char buffer [80];
+        time (&rawtime);
+        timeinfo = localtime (&rawtime);
+        strftime (buffer, 80, "%I:%M%p.", timeinfo);
+        fprintf(fp, "%s - %d\n", buffer, nLevel);
+        fclose(fp);
+    }
+}
+
+void  MainController::startBatteryTest() {
+    static pthread_t  h = 0;
+    if(h) {
+        sayText("Baterry test is in progress");
+        return;
+    }
+    sayText("Starting baterry test");
+    pthread_create(&h, NULL, [](void *param){
+        for(sleep(10);;sleep(1800))
+            emit ((MainController*)param)->saveMainBatterylevel();
+        return (void*)NULL;
+        }, this);
 }

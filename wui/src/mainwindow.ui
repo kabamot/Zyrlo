@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1072</width>
-    <height>808</height>
+    <height>667</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,61 +34,6 @@
       </property>
       <widget class="QWidget" name="readerPage">
        <layout class="QGridLayout" name="gridLayout">
-        <item row="1" column="0">
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <widget class="QPushButton" name="menuButton">
-            <property name="text">
-             <string>Menu</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <spacer name="horizontalSpacer">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <widget class="QPushButton" name="toggleSinkButton">
-            <property name="text">
-             <string>Toggle sink</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="nextVoiceButton">
-            <property name="text">
-             <string>Next voice</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="rateUpButton">
-            <property name="text">
-             <string>Rate Up</string>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QPushButton" name="rateDownButton">
-            <property name="text">
-             <string>Rate Down</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </item>
-        <item row="2" column="0">
-         <widget class="QTextBrowser" name="textBrowser"/>
-        </item>
         <item row="0" column="0">
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
@@ -152,15 +97,89 @@
           </item>
          </layout>
         </item>
+        <item row="2" column="0">
+         <widget class="QTextBrowser" name="textBrowser"/>
+        </item>
+        <item row="1" column="0">
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QPushButton" name="menuButton">
+            <property name="text">
+             <string>Menu</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="toggleSinkButton">
+            <property name="text">
+             <string>Toggle sink</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="nextVoiceButton">
+            <property name="text">
+             <string>Next voice</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="rateUpButton">
+            <property name="text">
+             <string>Rate Up</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="rateDownButton">
+            <property name="text">
+             <string>Rate Down</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
       </widget>
-     </widget>
-    </item>
-    <item>
-     <widget class="QLabel" name="previewLabel">
-      <property name="text">
-       <string>TextLabel</string>
-      </property>
+      <widget class="QWidget" name="previewPage">
+       <widget class="QWidget" name="gridLayoutWidget">
+        <property name="geometry">
+         <rect>
+          <x>-1</x>
+          <y>-1</y>
+          <width>75</width>
+          <height>19</height>
+         </rect>
+        </property>
+        <layout class="QFormLayout" name="formLayout"/>
+       </widget>
+       <widget class="QLabel" name="previewLabel">
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>30</y>
+          <width>701</width>
+          <height>581</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+       </widget>
+      </widget>
      </widget>
     </item>
    </layout>

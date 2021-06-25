@@ -101,6 +101,8 @@ public:
     void changeVoiceVolume(int nStep);
     bool tryProcessScannedImages();
     void SettTTsEngine(int nIndx);
+    void setFullResPreview(bool bOn);
+    void startBatteryTest();
 
 
 signals:
@@ -115,6 +117,7 @@ signals:
     void readHelp();
     void openMainMenu();
     void sayBatteryStatus();
+    void saveMainBatterylevel();
 
 public slots:
     void pauseResume();
@@ -131,12 +134,13 @@ public slots:
     void backSymbol();
 
     void sayText(QString text, bool bAfter = false);
-    void sayTranslationTag(const QString &tag);
+    void sayTranslationTag(const QString &tag, bool bAfter = false);
     void spellText(const QString &text);
     void speechRateUp();
     void speechRateDown();
     void nextVoice();
     void onToggleAudioSink();
+    void onSaveMainBatterylevel() const;
 
 private:
     OcrHandler &ocr();
@@ -194,7 +198,7 @@ private:
     bool        m_wordNavigationWithDelay {false};  // Determines if it's need to do delay before continue page reading
     bool        m_isContinueAfterSpeakingFinished {true};
     bool m_bKeepBeeping = false;
-    QFuture<void> m_beepingThread, m_longPressTimerThread;
+    QFuture<void> m_beepingThread, m_longPressTimerThread, m_batteryTestThread;
     unsigned int m_deviceButtonsMask = 0, m_keypadButtonMask = 0;
     int m_nLongPressCount = -1;
     void (MainController::*m_longPressAction)(void);

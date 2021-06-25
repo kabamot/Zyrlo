@@ -43,25 +43,7 @@ QString GetCpuTemp() {
     return path;
 }
 
-bool IsBtRunning() {
-    FILE *fp;
-    char path[256] = {0};
-
-    fp = popen("hciconfig", "r");
-    if (fp == NULL) {
-        qDebug() << "Failed to run command\n";
-        return "";
-    }
-    /* Read the output a line at a time - output it. */
-    while (fgets(path, sizeof(path), fp) != NULL) {
-        if(strstr(path, "UP RUNNING")) {
-            pclose(fp);
-            return true;
-        }
-    }
-    pclose(fp);
-    return false;
-}
+bool IsBtRunning();
 
 void MainWindow::ShowButtons(bool bShow) {
     ui->startButton->setVisible(bShow);
@@ -86,7 +68,8 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->previewLabel->setVisible(false);
+    ui->readerPage->setVisible(true);
+    ui->previewPage->setVisible(false);
     ShowButtons(m_bShowButtons);
 
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
@@ -145,9 +128,10 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     switch(ev->key()) {
     case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
-            m_bPreviewOn = true;
-            ui->previewLabel->setVisible(true);
-            qDebug() << "Preview ON";
+            m_bPreviewOn = !m_bPreviewOn;
+            ui->readerPage->setVisible(!m_bPreviewOn);
+            ui->previewPage->setVisible(m_bPreviewOn);
+            qDebug() << "Preview" << (m_bPreviewOn ? "ON" : "OFF");
         }
         else if(ev->modifiers() & Qt::SHIFT) {
             m_bShowButtons = !m_bShowButtons;
@@ -159,9 +143,7 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
         }
         break;
     case Qt::Key_H:
-        m_bPreviewOn = false;
-        ui->previewLabel->setVisible(false);
-        qDebug() << "Preview OFF\n";
+        m_controller.setFullResPreview((ev->modifiers() & Qt::SHIFT) == 0);
         break;
     case Qt::Key_F:
         m_controller.flashLed();
@@ -257,6 +239,13 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
       else
           m_controller.ChangeCameraExposureStep(-10);
       break;
+#else
+    case Qt::Key_B:
+        if((ev->modifiers() & (Qt::SHIFT | Qt::CTRL)) == (Qt::SHIFT | Qt::CTRL)) {
+            m_controller.startBatteryTest();
+        }
+        break;
+
 #endif
      case Qt::Key_A:
       if(ev->modifiers() & Qt::SHIFT)

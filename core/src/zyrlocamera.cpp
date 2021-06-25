@@ -163,7 +163,10 @@ Point2f ZyrloCamera::GetMotion(const Mat & grey) {
 }
 
 void ZyrloCamera::Clear() {
+    m_previewImgPyr1.release();
+    m_previewImgPyr2.release();
     m_previewImg.release();
+    m_ocrImg.release();
 }
 
 const Mat & ZyrloCamera::GetPreviewImg() const {
@@ -241,7 +244,7 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
         if(m_fLastBrightness < m_brightLowerLimit)
             newExp = min(m_fPreviewExposure * 1.1f, float(m_nMaxExpValue)  * calcGain(m_nMaxGainValue));
         if(m_bAutoExposure && fabs(newExp - m_fPreviewExposure) > 1.0e-6)
-             m_fPreviewExposure = setEffectiveExposure(int(newExp + 0.5f));
+            m_fPreviewExposure = setEffectiveExposure(int(newExp + 0.5f));
     }
     --m_nDelayCount;
     switch(m_eState) {
@@ -297,6 +300,8 @@ ZyrloCamera::Zcevent ZyrloCamera::AcquireFrameStep() {
             Point2f motion = GetMotion(m_previewImgPyr2);
             zcev = FollowGestures(motion);
         }
+        break;
+    case eFullResPreview:
         break;
     }
     return zcev;
@@ -586,6 +591,22 @@ int ZyrloCamera::AcquireImage() {
         return 1;
     }
 
+    if( m_nSwitchFullResPreview ) {
+
+        if(m_nSwitchFullResPreview == 1)
+        {
+            m_eState = eFullResPreview;
+            SwitchMode(false);
+        }
+        else
+        {
+            m_eState = eLookingForTarget;
+            SwitchMode(true);
+        }
+        m_nSwitchFullResPreview = 0;
+        Clear();
+    }
+
     acquireBuffer(m_nCamBufInd);
 
     Mat img(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[m_nCamBufInd].start);
@@ -601,12 +622,12 @@ int ZyrloCamera::AcquireImage() {
     releaseBuffer(m_nCamBufInd);
     m_nCamBufInd = (m_nCamBufInd + 1) % 4;
 
-//    if(++m_nCnt == 100) {
-//        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
-//        qDebug() << "FPS = " << fps;
-//        m_nCnt = 0;
-//        m_timeStamp = GetTickCount();
-//    }
+    //    if(++m_nCnt == 100) {
+    //        int fps = m_nCnt * 1000 /(GetTickCount() - m_timeStamp);
+    //        qDebug() << "FPS = " << fps;
+    //        m_nCnt = 0;
+    //        m_timeStamp = GetTickCount();
+    //    }
     return 0;
 }
 
@@ -707,7 +728,7 @@ int ZyrloCamera::adjustColorGains() {
 }
 
 void ZyrloCamera::flashLed(int msecs) {
-    unsigned long h;
+    pthread_t  h;
     static int time_out = msecs * 1000;
     pthread_create(&h, NULL, [](void* param){digitalWrite(21, 1); qDebug() << "Led ON\n"; usleep(*((int*)param));digitalWrite(21, 0); qDebug() << "Led OFF\n";return (void*)NULL;}, (void *)&time_out);
 }
@@ -770,8 +791,8 @@ int ZyrloCamera::AcquireFullResImage(float fEffectiveExposure, int indx) {
     //char msg[512];
     //adjustColorGains();
     acquireBuffer(0);
-//    timeStamp = GetTickCount() - timeStamp;
-//    printf("PicTaken. Time: %ld\n", timeStamp);
+    //    timeStamp = GetTickCount() - timeStamp;
+    //    printf("PicTaken. Time: %ld\n", timeStamp);
     Mat(m_nCurrImgHeight, m_nCurrBytesPerLine , CV_8U, m_buffers[0].start).copyTo(m_vFullResRawImgs[indx]);
     //   char fname[256];
     //   sprintf(fname, "/home/pi/FullResRawImg_%d.bmp", indx);
@@ -968,3 +989,6 @@ void ZyrloCamera::LocalLightFreqTest(const Mat & img) {
     }
 }
 
+void ZyrloCamera::setFullResPreview(bool bOn) {
+    m_nSwitchFullResPreview = bOn ? 1 : -1;
+}

@@ -72,10 +72,13 @@ string GetProgName(const string & sPath) {
     return sPath.substr(pos + 1);
 }
 
+void RebootOnBtError();
+
 int main(int argc, char *argv[])
 {
     system("aplay /opt/zyrlo/Distrib/Data/start_up.wav &");
     KillProgramsByName(GetProgName(argv[0]));
+    RebootOnBtError();
     // This is required for tesseract
     qputenv("LC_ALL", "C");
     //setlocale(LC_ALL, "C");

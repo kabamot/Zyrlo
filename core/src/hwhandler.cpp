@@ -309,3 +309,7 @@ bool HWHandler::setSpeakerSetting(int nSetting) {
 string HWHandler::kpConfig() const {
     return m_btc.kpConfig();
 }
+
+void HWHandler::setFullResPreview(bool bOn) {
+    m_zcam.setFullResPreview(bOn);
+}

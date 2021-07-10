@@ -32,6 +32,7 @@ set(INC_FILES
     include/translator.h
     include/uinput.h
     include/kbdinputinjector.h
+    include/Buttons.h
 )
 
 set(SRC_FILES
@@ -54,8 +55,8 @@ set(SRC_FILES
     src/cerence/positionmapper.cpp
     src/cerence/positionmapper.h
 
-    src/espeak/espeaktts.cpp
-    src/espeak/espeaktts.h
+#    src/espeak/espeaktts.cpp
+#    src/espeak/espeaktts.h
 
     src/zyrlotts.cpp
     src/zyrlotts.h
@@ -68,6 +69,8 @@ set(SRC_FILES
     3rd/tinyxml/tinyxmlerror.cpp
     3rd/tinyxml/tinyxmlparser.cpp
     src/translator.cpp
+    src/usbcomm.cpp
+    src/usbcomm.h
 )
 
 #qt5_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} ${TS_FILES})
@@ -105,7 +108,7 @@ target_link_libraries(${LIB_NAME}
         wiringPi
         bluetooth
         mp3lame
-        espeak
+ #       espeak
 
     PRIVATE
         ${ZYRLO_OCR_LIB}

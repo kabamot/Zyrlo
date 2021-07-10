@@ -14,10 +14,12 @@ class TtsAudioLayer : public QAudioOutput {
 
     static TtsAudioLayer *m_pTtsAudioLayer;
 
+    bool m_bOutputToFile =false;
+
     TtsAudioLayer(const QAudioFormat &format, QObject *parent);
 
 public:
-    ~TtsAudioLayer();
+    virtual ~TtsAudioLayer();
     static TtsAudioLayer *instance(QObject *parent = NULL);
     static TtsAudioLayer *reset();
     void clear();
@@ -26,6 +28,7 @@ public:
     void appendSample(const char *pSample, size_t size);
     bool writeToWave(const char *sFileName);
     bool writeToMp3(const char *sFileName);
+    void setOutputToFile(bool bOutputToFile) { m_bOutputToFile = bOutputToFile; }
  };
 
 #endif // TTSAUDIOLAYER_H

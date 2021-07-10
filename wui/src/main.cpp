@@ -76,12 +76,11 @@ void RebootOnBtError();
 
 int main(int argc, char *argv[])
 {
+    RebootOnBtError();
     system("aplay /opt/zyrlo/Distrib/Data/start_up.wav &");
     KillProgramsByName(GetProgName(argv[0]));
-    RebootOnBtError();
     // This is required for tesseract
     qputenv("LC_ALL", "C");
-    //setlocale(LC_ALL, "C");
     QCoreApplication::setOrganizationName("Zyrlo");
     QCoreApplication::setOrganizationDomain("zyrlo.com");
     QCoreApplication::setApplicationName("Zyrlo");

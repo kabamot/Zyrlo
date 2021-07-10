@@ -13,14 +13,18 @@
 
 #include <ZyrloOcr.h>
 #include "textpage.h"
+#include <unistd.h>
 
 constexpr auto DATA_DIR = "/opt/zyrlo/Distrib";
 constexpr int STATUS_MAX_SIZE = 64;
 
 using namespace std;
 
+OcrHandler *OcrHandler::ocr = NULL;
+
 OcrHandler::OcrHandler()
 {
+    //qDebug() << "OcrHandler constructor";
     const auto retCode = zyrlo_proc_init(DATA_DIR, m_languageCode);
     if (retCode != 0) {
         qWarning() << "Error in zyrlo_proc_init()" << retCode;
@@ -32,6 +36,7 @@ OcrHandler::OcrHandler()
 
     m_timer.setInterval(10);
     connect(&m_timer, &QTimer::timeout, this, &OcrHandler::checkProcess);
+    //qDebug() << "OcrHandler created";
 }
 
 OcrHandler::~OcrHandler()
@@ -41,8 +46,6 @@ OcrHandler::~OcrHandler()
 
 bool OcrHandler::setLanguage(unsigned long long  languageCode)
 {
-//    qputenv("LC_ALL", "C");
-    //setlocale(LC_ALL, "C");
     m_languageCode = languageCode;
     const auto retCode = zyrlo_proc_set_ocr_language(m_languageCode);
     if (retCode != 0) {

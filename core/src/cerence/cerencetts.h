@@ -34,7 +34,7 @@ class CerenceTTS : public ZyrloTts
     Q_OBJECT
 
 public:
-    CerenceTTS(const QString &voice, QObject *parent, TtsAudioLayer *pTtsAudioLayer);
+    CerenceTTS(const QString &voice, QObject *parent, TtsAudioLayer **ppTtsAudioLayer);
     ~CerenceTTS();
 
     void say(const QString &text, int delayMs = 0);

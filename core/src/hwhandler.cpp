@@ -8,6 +8,10 @@
 #include <QMediaService>
 #include <sys/types.h>
 #include <dirent.h>
+#include "usbcomm.h"
+#include <unistd.h>
+#include <pthread.h>
+#include <signal.h>
 
 // This is important to receive cv::Mat from another thread
 Q_DECLARE_METATYPE(cv::Mat);
@@ -113,7 +117,10 @@ void HWHandler::buttonBtThreadRun() {
         m_btc.btConnect(m_stop);
         bool bCont = true;
         for(; !m_stop && bCont; QThread::msleep(20)) {
-
+            if(m_bUsbKpConnected) {
+                m_btc.receiveLoopStep(nVal);
+                continue;
+            }
             switch(m_btc.receiveLoopStep(nVal)) {
             case 0:
                 break;
@@ -138,6 +145,52 @@ void HWHandler::buttonBtThreadRun() {
     }
 }
 
+void HWHandler::buttonUsbThreadLoop() {
+    int nVal;
+    USBComm ucm;
+    if(!ucm.Init())
+        return;
+    for(; m_bUsbKpConnected; usleep(20000)) {
+        switch(ucm.Receive(nVal)) {
+        case KP_SERIAL_INFO:
+            if(m_bBtSerialVerfied)
+                break;
+            if(m_btc.kpConfig().compare(ucm.getSerial())) {
+                m_btc.setKpConfig(ucm.getSerial());
+                m_btKeyboardFound = true;
+                if (!m_buttonBtThread.isRunning()) {
+                    m_buttonBtThread = QtConcurrent::run([this](){ buttonBtThreadRun(); });
+                }
+                emit onBtKpRegistered();
+            }
+            m_bBtSerialVerfied = true;
+            break;
+        case KP_BUTTON_PRESSED:
+            qDebug() << "onUsbButtonsDown " << nVal << '\n';
+            emit onBtButton(nVal, true);
+            break;
+        case KP_BUTTON_RELEASED:
+            qDebug() << "onButtonsUp " << nVal << '\n';
+            emit onBtButton(nVal, false);
+            break;
+        case KP_BATTERY_INFO:
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void HWHandler::startButtonUsbThread() {
+    static pthread_t  h = 0;
+    if(h && pthread_kill(h, 0) == 0)
+        return;
+    pthread_create(&h, NULL, [](void *param) {
+        ((HWHandler*)param)->buttonUsbThreadLoop();
+        return (void*)NULL;
+        }, this);
+ }
+
 void HWHandler::ReadSnAndVersion(BaseComm & bc) {
     byte reply[2];
     int res[] = {-1, -1, -1};
@@ -157,20 +210,23 @@ void HWHandler::ReadSnAndVersion(BaseComm & bc) {
 
 }
 
-bool usbKeyInserted() {
+bool CheckUsb(bool *usbStorageInserted, bool *usbKpConnected) {
     DIR *fd = opendir("/dev");
     if(!fd)
         return false;
-    bool bret = false;
+    *usbStorageInserted =  *usbKpConnected = false;
     struct dirent *dp;
     while ((dp = readdir (fd))) {
         if(strncmp(dp->d_name, "sd", 2) == 0) {
-            bret = true;
-            break;
+            *usbStorageInserted = true;
+        }
+        if(strncmp(dp->d_name, "ttyUSB", 6) == 0 && !*usbKpConnected) {
+            USBComm::setDeviceName(string("/dev/") +  dp->d_name);
+            *usbKpConnected = true;
         }
     }
     closedir(fd);
-    return bret;
+    return true;
 }
 
 void HWHandler::buttonThreadRun() {
@@ -197,10 +253,18 @@ void HWHandler::buttonThreadRun() {
             m_battery =  (m_battery < 0) ? float(reply[1]) : m_battery * 0.9f + float(reply[1]) * 0.1f;
             //qDebug() << "Battery" << m_battery <<Qt::endl;
             nBatteryCheckCount = nBatteryCheck;
-            bool bUsbKeyInserted = usbKeyInserted();
+            bool bUsbKeyInserted,  bUsbKpConnected;
+            CheckUsb(&bUsbKeyInserted, &bUsbKpConnected);
             if(bUsbKeyInserted != m_bUsbKeyInserted) {
                 m_bUsbKeyInserted = bUsbKeyInserted;
                 emit usbKeyInsert(m_bUsbKeyInserted);
+            }
+            if(bUsbKpConnected != m_bUsbKpConnected) {
+                m_bUsbKpConnected = bUsbKpConnected;
+                emit usbKpConnect(m_bUsbKpConnected);
+                if(m_bUsbKpConnected) {
+                    startButtonUsbThread();
+                }
             }
         }
         if(m_bc.sendCommand(I2C_COMMAND_GET_KEY_STATUS, reply) != 0) {

@@ -11,8 +11,10 @@
 #include <QTextCharFormat>
 #include <QAction>
 #include <QTimer>
+#include <QLabel>
 
 #include "maincontroller.h"
+#include "menuwidget.h"
 #include "textposition.h"
 #include "bluetoothhandler.h"
 #include <opencv2/opencv.hpp>
@@ -74,4 +76,8 @@ private:
     QAction m_actionExit;
     BluetoothHandler m_bluetoothHandler;
     QTimer m_scanningTimer;
+    MenuWidget *m_pMenuWidget = NULL;
+    QWidget *m_pCameraViewPage = NULL;
+    QLabel *m_pCameraView = NULL;
+
 };

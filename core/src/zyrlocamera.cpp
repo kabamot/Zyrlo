@@ -478,7 +478,6 @@ int ZyrloCamera::SetMode(bool bModePreview)
 
 int ZyrloCamera::initCamera()
 {
-    wiringPiSetup();
     pinMode(21, OUTPUT);
     pinMode(25, OUTPUT);
     if( (m_fd = open(DEVICE, O_RDWR, O_NONBLOCK, 0)) < 0) {

@@ -28,7 +28,7 @@ protected:
     QString m_audioOutFileName;
 
 public:
-    ZyrloTts(QObject *parent = nullptr, TtsAudioLayer *pTtsAudioLayer = nullptr);
+    ZyrloTts(QObject *parent = nullptr, TtsAudioLayer **ppTtsAudioLayer = nullptr);
 
     virtual void say(const QString &text, int delayMs = 0) = 0;
     virtual void sayAfter(const QString &text);
@@ -69,7 +69,7 @@ protected:
     PositionMapper          m_positionMapper;
     QMutex m_messageQueMutex;
     std::deque<QString> m_messageQue;
-    TtsAudioLayer *m_pTtsAudioLayer {nullptr};
+    TtsAudioLayer **m_ppTtsAudioLayer {nullptr};
     QMetaObject::Connection m_connectNotify, m_connectChanged;
 };
 

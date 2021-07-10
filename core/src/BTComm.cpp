@@ -22,6 +22,8 @@
 #define KEYPAD_CONFIG_FILE	"/home/pi/keypad_config.txt"
 #define BT_ERROR_FILE "/home/pi/BtError.txt"
 
+using namespace std;
+
 bool BTComm::readKpConfig() {
     int iRet;
     FILE *fp = fopen(KEYPAD_CONFIG_FILE, "r");
@@ -161,4 +163,9 @@ void RebootOnBtError() {
 //        }
 //        return (void*)NULL;
 //    }, NULL);
+}
+
+void BTComm::setKpConfig(const string & conf) {
+    strcpy(keypadMacStr, conf.c_str());
+    system((string("echo ") + keypadMacStr + " > " + KEYPAD_CONFIG_FILE).c_str());
 }

@@ -68,7 +68,7 @@ int create_virtual_device(const char *szDev, bool keyboard, int mouse)
     }
 
     ioctl(fd_kb, UI_DEV_CREATE);
-    printf("intCreate success: %d",  fd_kb);
+    //printf("intCreate success: %d",  fd_kb);
     return fd_kb;
 }
 

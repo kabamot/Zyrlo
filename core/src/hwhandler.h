@@ -32,6 +32,8 @@ public:
     void run();
     void buttonThreadRun();
     void buttonBtThreadRun();
+    void buttonUsbThreadLoop();
+    void startButtonUsbThread();
     void snapImage();
     void flashLed(int msecs);
     void setLed(bool bOn);
@@ -76,10 +78,12 @@ signals:
     void onBtBattery(int nVal);
     void onGesture(int nGesture);
     void usbKeyInsert(bool bInserted);
+    void usbKpConnect(bool bConnected);
+    void onBtKpRegistered();
 
 private:
     std::atomic_bool    m_stop {false};
-    QFuture<void>       m_future, m_buttonThread, m_buttonBtThread;
+    QFuture<void>       m_future, m_buttonThread, m_buttonBtThread, m_buttonUsbThread;
     ZyrloCamera m_zcam;
     int m_nButtonMask = -1; //0x40;
     cv::Mat m_recallImg;
@@ -89,5 +93,7 @@ private:
     float m_battery = -1.0f;
     int m_nSN = -1, m_nVersion = -1;
     bool m_bUsbKeyInserted = false;
+    bool m_bUsbKpConnected = false;
+    bool m_bBtSerialVerfied = false;
     void ReadSnAndVersion(BaseComm & bc);
-};
+  };

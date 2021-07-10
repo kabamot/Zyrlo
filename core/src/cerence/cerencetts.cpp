@@ -73,8 +73,8 @@ static NUAN_ERROR vout_Write(VE_HINSTANCE hTtsInst, void *pUserData,
     return ret; // returning an error will cause the ve to stop processing.
 }
 
-CerenceTTS::CerenceTTS(const QString &voice, QObject *parent, TtsAudioLayer *pTtsAudioLayer)
-    : ZyrloTts(parent, pTtsAudioLayer)
+CerenceTTS::CerenceTTS(const QString &voice, QObject *parent, TtsAudioLayer **ppTtsAudioLayer)
+    : ZyrloTts(parent, ppTtsAudioLayer)
 {
     initTTS(voice);
     initAudio();
@@ -103,7 +103,7 @@ void CerenceTTS::say(const QString &text, int delayMs)
 
     m_currentWord = -1;
     m_wordMarks.clear();
-    m_pTtsAudioLayer->clear();
+    (*m_ppTtsAudioLayer)->clear();
 
     m_positionMapper.setText(text);
 
@@ -122,12 +122,12 @@ void CerenceTTS::say(const QString &text, int delayMs)
         qDebug() << "TTS processing finished in" << timer.elapsed() << "ms";
     });
 
-    m_pTtsAudioLayer->startTimer(delayMs);
+    (*m_ppTtsAudioLayer)->startTimer(delayMs);
 }
 
 void CerenceTTS::stop()
 {
-    m_pTtsAudioLayer->stop();
+    (*m_ppTtsAudioLayer)->stop();
     ve_ttsStop(m_hTtsInst);
     m_ttsFuture.waitForFinished();
 }
@@ -136,13 +136,13 @@ void CerenceTTS::bufferDone(size_t sizePcm, size_t sizeMarks)
 {
     if (sizePcm > 0) {
         auto totalSize = sizePcm;
-        const auto audioBuffSize = static_cast<size_t>(m_pTtsAudioLayer->bufferSize());
+        const auto audioBuffSize = static_cast<size_t>((*m_ppTtsAudioLayer)->bufferSize());
         if (sizePcm < audioBuffSize) {
             // Fill up to the buffer size with 0s, otherwise it will be not played
             std::fill(m_ttsBuffer.data() + sizePcm, m_ttsBuffer.data() + audioBuffSize, 0);
             totalSize = audioBuffSize;
         }
-        m_pTtsAudioLayer->appendSample(m_ttsBuffer.data(), totalSize);
+        (*m_ppTtsAudioLayer)->appendSample(m_ttsBuffer.data(), totalSize);
     }
 
     if (sizeMarks > 0) {

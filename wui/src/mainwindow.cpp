@@ -68,8 +68,15 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    ui->readerPage->setVisible(true);
-    ui->previewPage->setVisible(false);
+    ui->stackedWidget->setCurrentWidget(ui->readerPage);
+
+    m_pCameraViewPage = new QWidget();
+    m_pCameraViewPage->setObjectName(QString::fromUtf8("cameraViewPage"));
+    m_pCameraView = new QLabel;
+    m_pCameraView->setObjectName(QString::fromUtf8("cameraView"));
+    m_pCameraView->setGeometry(QRect(190, 30, 701, 581));
+    m_pCameraView->setParent(m_pCameraViewPage);
+
     ShowButtons(m_bShowButtons);
 
     connect(ui->startButton, &QPushButton::clicked, this, &MainWindow::start);
@@ -116,8 +123,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->fileNameLineEdit->setText("/opt/zyrlo/RawFull_000.bmp");
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
+    if(m_pCameraView)
+        delete m_pCameraView;
+
+    if(m_pCameraViewPage) {
+        ui->stackedWidget->removeWidget(m_pCameraViewPage);
+        delete m_pCameraViewPage;
+    }
     delete ui;
     m_controller.setLed(false);
 }
@@ -129,8 +142,14 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
     case Qt::Key_S:
         if(ev->modifiers() & Qt::CTRL) {
             m_bPreviewOn = !m_bPreviewOn;
-            ui->readerPage->setVisible(!m_bPreviewOn);
-            ui->previewPage->setVisible(m_bPreviewOn);
+            if(m_bPreviewOn) {
+                ui->stackedWidget->addWidget(m_pCameraViewPage);
+                ui->stackedWidget->setCurrentWidget(m_pCameraViewPage);
+            }
+            else {
+                ui->stackedWidget->removeWidget(m_pCameraViewPage);
+                ui->stackedWidget->setCurrentWidget(ui->readerPage);
+            }
             qDebug() << "Preview" << (m_bPreviewOn ? "ON" : "OFF");
         }
         else if(ev->modifiers() & Qt::SHIFT) {
@@ -166,6 +185,9 @@ void MainWindow::keyPressEvent(QKeyEvent *ev) {
             m_controller.setLed(true);
             qDebug() << "Light ON\n";
         }
+        break;
+    case Qt::Key_N:
+        m_controller.onToggleVoice();
         break;
     case Qt::Key_P:
         m_controller.toggleAudioSink();
@@ -383,7 +405,8 @@ void MainWindow::updatePreview(const Mat &img) {
     if(m_bPreviewOn) {
         cvtColor(img, m_prevImg, CV_GRAY2RGB);
         rotate(m_prevImg, m_prevImg, ROTATE_180);
-        ui->previewLabel->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
+        //ui->previewLabel->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
+        m_pCameraView->setPixmap(QPixmap::fromImage(QImage(m_prevImg.data, m_prevImg.cols, m_prevImg.rows, m_prevImg.step, QImage::Format_RGB888)));
     }
     if(m_bSavePreviewImage) {
         m_bSavePreviewImage = false;
@@ -393,20 +416,23 @@ void MainWindow::updatePreview(const Mat &img) {
 
 void MainWindow::mainMenu()
 {
+    if(m_pMenuWidget)
+        return;
     m_controller.setMenuOpen(true);
     m_controller.pause();
 
-    auto *menuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
+    m_pMenuWidget = new MenuWidget("Main menu", &m_controller, ui->stackedWidget);
     QStringList items{m_controller.translateTag(MENU_BLUETOOTH), m_controller.translateTag(MENU_LANGUAGE),  m_controller.translateTag(MENU_OPTIONS), m_controller.translateTag(MENU_ABOUT), m_controller.translateTag(MENU_EXIT)};
-    menuWidget->setItems(items);
+    m_pMenuWidget->setItems(items);
 
-    ui->stackedWidget->addWidget(menuWidget);
-    ui->stackedWidget->setCurrentWidget(menuWidget);
+    ui->stackedWidget->addWidget(m_pMenuWidget);
+    ui->stackedWidget->setCurrentWidget(m_pMenuWidget);
 
-    connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int , const QString &item){
+    connect(m_pMenuWidget, &MenuWidget::activated, this, [this](int , const QString &item){
         if (item == m_controller.translateTag(MENU_EXIT)) {
-            ui->stackedWidget->removeWidget(menuWidget);
-            delete menuWidget;
+            ui->stackedWidget->removeWidget(m_pMenuWidget);
+            delete m_pMenuWidget;
+            m_pMenuWidget = NULL;
             m_controller.sayTranslationTag(MENU_MSG_EXITED);
             m_controller.setMenuOpen(false);
         } else if (item == m_controller.translateTag(MENU_BLUETOOTH)) {
@@ -461,7 +487,7 @@ void MainWindow::langugesMenu()
     ui->stackedWidget->setCurrentWidget(menuWidget);
 
     connect(menuWidget, &MenuWidget::activated, this, [this, menuWidget](int i, const QString &item){
-        if (item == MENU_EXIT) {
+        if (item == m_controller.translateTag(MENU_EXIT)) {
             m_controller.saveVoiceSettings();
             ui->stackedWidget->removeWidget(menuWidget);
             delete menuWidget;
@@ -480,7 +506,7 @@ void MainWindow::optionsMenu() {
     auto *menuWidget = new MenuWidget("About menu", &m_controller, ui->stackedWidget);
     QStringList items;
     m_controller.getListOfOptions(items);
-    items.push_back(MENU_EXIT);
+    items.push_back(m_controller.translateTag(MENU_EXIT));
     menuWidget->setItems(items);
 
     ui->stackedWidget->addWidget(menuWidget);

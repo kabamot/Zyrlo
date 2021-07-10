@@ -62,6 +62,7 @@ public:
     void setUsingMainAudioSink(bool bUsingMainAudioSink) { m_bUsingMainAudioSink = bUsingMainAudioSink; }
     MainController *m_pMainController {nullptr};
     std::string kpConfig() const { return keypadMacStr; }
+    void setKpConfig(const std::string & conf);
 };
 
 #endif // __BT_COMM_H__

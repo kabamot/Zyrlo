@@ -9,12 +9,12 @@
 #include <string.h>
 #include <QDebug>
 #include "BaseComm.h"
-
+#include <fcntl.h>
 
 
 int BaseComm::init()
 {
-    wiringPiSetup () ;
+    wiringPiSetup();
     m_fdI2C = wiringPiI2CSetup(0x50);
     if(m_fdI2C < 0) {
         LogError("wiringPiI2CSetup error %d\n", errno);
@@ -39,7 +39,7 @@ int BaseComm::sendCommand(byte pCommand, byte *pReply, bool bCheckEquality)
     bufferOut[0] = pCommand;
     retVal = write(m_fdI2C, (const void *)bufferOut, 1);
     if(retVal != 1) {
-        qDebug() << "I2C write error\n";
+        qDebug() << "I2C write error" << errno << strerror(errno);
         return -1;
     }
     usleep(10000);
@@ -60,7 +60,7 @@ int BaseComm::sendCommand(byte pCommand, byte *pReply, bool bCheckEquality)
     }
     //qDebug() << (int)bufferIn[1] << "    " << (int)bufferIn[0] << '\n';
     if(bCheckEquality && bufferIn[1] != bufferIn[0]) {
-        LogError("I2C read data error %x %x     %x %x\n", bufferOut[0], bufferIn[0], bufferOut[0], bufferIn[0] );
+        LogError("I2C read data error %x %x     %x %x\n", bufferOut[0], bufferIn[0], bufferOut[1], bufferIn[1] );
         usleep(100000);
         retVal = read(m_fdI2C, (void *)bufferIn, 2);
         if(retVal < 0)
@@ -181,7 +181,7 @@ int BaseComm::setSpeakerSetting(int nSetting) {
     }
     int retVal = write(fdI2C, (const void *)bufferOut, 8);
     if(retVal != 8) {
-        printf("I2C write error %d\n", retVal);
+        qDebug() << "I2C write error" << retVal << errno << strerror(errno);
         return -1;
     }
     printRegs(fdI2C);

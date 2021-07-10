@@ -53,7 +53,9 @@ void TtsAudioLayer::clear() {
     m_audioIO->reset();
 }
 
-void TtsAudioLayer::startTimer(int delayMs) {
+void TtsAudioLayer::startTimer(int delayMs) {\
+    if(m_bOutputToFile)
+        return;
     m_speakingStartTimer.start(delayMs);
 }
 

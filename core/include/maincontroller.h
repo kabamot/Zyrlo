@@ -100,7 +100,7 @@ public:
     bool setSpeakerSetting(int nSetting);
     void changeVoiceVolume(int nStep);
     bool tryProcessScannedImages();
-    void SettTTsEngine(int nIndx);
+    void SetTTsEngine(int nIndx);
     void setFullResPreview(bool bOn);
     void startBatteryTest();
 
@@ -180,6 +180,8 @@ private slots:
     void onSayBatteryStatus();
     void onSavingAudioDone(QString sFileName);
     void onUsbKeyInsert(bool bInserted);
+    void onUsbKpConnect(bool bConnected);
+    void onBtKpRegistered();
 
 
 private:

@@ -21,10 +21,13 @@ class Mat;
 class OcrHandler : public QObject
 {
     Q_OBJECT
+    static OcrHandler *ocr;
+
 public:
     static OcrHandler &instance() {
-        static OcrHandler ocr;
-        return ocr;
+        if(!ocr)
+            ocr = new OcrHandler;
+        return *ocr;
     }
     OcrHandler(OcrHandler const&) = delete;
     void operator=(OcrHandler const&) = delete;

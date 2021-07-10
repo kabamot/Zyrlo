@@ -10,7 +10,7 @@
 #include "textpage.h"
 #include "hwhandler.h"
 #include "cerence/cerencetts.h"
-#include "espeak/espeaktts.h"
+//#include "espeak/espeaktts.h"
 #include <opencv2/imgcodecs.hpp>
 
 #include <QDebug>
@@ -32,7 +32,7 @@
 using namespace cv;
 using namespace std;
 
-#define SW_VERSION "1.3"
+#define SW_VERSION "1.4"
 
 #define SHUTER_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/camera-shutter-click-01.wav"
 #define BEEP_SOUND_WAVE_FILE "/opt/zyrlo/Distrib/Data/beep-08b.wav"
@@ -170,19 +170,19 @@ void MainController::InitTtsEngines() {
     for (const auto &language : LANGUAGES) {
         switch(language.engine) {
         case eCerence:
-            {auto ttsEngine = new CerenceTTS(language.voice, this, m_pTtsAudioLayer);
+            {auto ttsEngine = new CerenceTTS(language.voice, this, &m_pTtsAudioLayer);
             connect(ttsEngine, &CerenceTTS::wordNotify, this, &MainController::setCurrentWord);
             connect(ttsEngine, &CerenceTTS::sayFinished, this, &MainController::onSpeakingFinished);
             connect(ttsEngine, &CerenceTTS::savingAudioDone, this, &MainController::onSavingAudioDone);
             m_ttsEnginesList.append(ttsEngine);}
             break;
-        case eEspeak:
-            {auto ttsEngine = new espeaktts(language.lang, language.voice, this, m_pTtsAudioLayer);
-            connect(ttsEngine, &espeaktts::wordNotify, this, &MainController::setCurrentWord);
-            connect(ttsEngine, &espeaktts::sayFinished, this, &MainController::onSpeakingFinished);
-            connect(ttsEngine, &espeaktts::savingAudioDone, this, &MainController::onSavingAudioDone);
-            m_ttsEnginesList.append(ttsEngine);}
-            break;
+//        case eEspeak:
+//            {auto ttsEngine = new espeaktts(language.lang, language.voice, this, &m_pTtsAudioLayer);
+//            connect(ttsEngine, &espeaktts::wordNotify, this, &MainController::setCurrentWord);
+//            connect(ttsEngine, &espeaktts::sayFinished, this, &MainController::onSpeakingFinished);
+//            connect(ttsEngine, &espeaktts::savingAudioDone, this, &MainController::onSavingAudioDone);
+//            m_ttsEnginesList.append(ttsEngine);}
+//            break;
         default:
             qDebug() << "Unknown tts engine";
         }
@@ -222,7 +222,7 @@ MainController::MainController()
     if(ReadLangVoiceSettings(g_vLangVoiceSettings))
         FillLanguages(g_vLangVoiceSettings, LANGUAGES);
     else
-        qDebug() << "Cant find voces.xml\n";
+        qDebug() << "Cant find voces.xml";
     readSettings();
     vector<int> vSinkIndxs;
     m_nActiveSink = getAvailableSinks(vSinkIndxs, m_nBuiltInSink);
@@ -275,7 +275,7 @@ MainController::MainController()
     InitTtsEngines();
 
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
-    SettTTsEngine(m_currentTTSIndex);
+    SetTTsEngine(m_currentTTSIndex);
 
     connect(m_hwhandler, &HWHandler::readerReady, this, &MainController::readerReady, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::targetNotFound, this, &MainController::targetNotFound, Qt::QueuedConnection);
@@ -285,6 +285,8 @@ MainController::MainController()
     connect(m_hwhandler, &HWHandler::onBtBattery, this, &MainController::onBtBattery, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::onGesture, this, &MainController::onGesture, Qt::QueuedConnection);
     connect(m_hwhandler, &HWHandler::usbKeyInsert, this, &MainController::onUsbKeyInsert, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::usbKpConnect, this, &MainController::onUsbKpConnect, Qt::QueuedConnection);
+    connect(m_hwhandler, &HWHandler::onBtKpRegistered, this, &MainController::onBtKpRegistered, Qt::QueuedConnection);
 
     m_translator.Init(TRANSLATION_FILE);
     //m_help.Init(HELP_FILE);
@@ -956,9 +958,10 @@ void MainController::onNewTextExtracted() {
 }
 
 void MainController::onSpeakingFinished() {
-    if(m_bUsbKeyInserted)
+    if(m_bUsbKeyInserted) {
         ProcessNextScannedImg();
-
+        return;
+    }
     const bool isSpeakingTextState = m_state == State::SpeakingText;
     if (isSpeakingTextState) {
         qDebug() << __func__ << "changing state to" << (int)m_prevState;
@@ -1096,6 +1099,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
         m_keypadButtonMask |= (1 << nButton);
         switch(nButton) {
         case KP_BUTTON_CENTER   :
+            if(m_bMenuOpen) {
+                m_keypadButtonMask |= (1 << nButton);
+                m_kbdInjctr.sendKeyEvent(KEYCODE_ENTER);
+                return;
+            }
             if(m_bUsbKeyInserted) {
                 if(StartProcessScannedImages())
                     sayText(QString::number(m_nImagesToConvert) + " " + translateTag(USB_FILES_TO_CONVERT));
@@ -1106,6 +1114,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
             pauseResume();
             break;
         case KP_BUTTON_UP       :
+            if(m_bMenuOpen) {
+                m_keypadButtonMask |= (1 << nButton);
+                m_kbdInjctr.sendKeyEvent(KEYCODE_UP);
+                return;
+            }
             if((1 << KP_BUTTON_ROUND_L) & m_keypadButtonMask) {
                 startLongPressTimer(&MainController::toggleAudioOutput, LONG_PRESS_DELAY);
                 break;
@@ -1121,6 +1134,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
             toggleNavigationMode(false);
             break;
         case KP_BUTTON_DOWN     :
+            if(m_bMenuOpen) {
+                m_keypadButtonMask |= (1 << nButton);
+                m_kbdInjctr.sendKeyEvent(KEYCODE_DOWN);
+                return;
+            }
             if((1 << KP_BUTTON_SQUARE_L) & m_keypadButtonMask) {
                 SaveImage(2);
                 break;
@@ -1132,6 +1150,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
             toggleNavigationMode(true);
             break;
         case KP_BUTTON_LEFT     :
+            if(m_bMenuOpen) {
+                m_keypadButtonMask |= (1 << nButton);
+                m_kbdInjctr.sendKeyEvent(KEYCODE_LEFT);
+                return;
+            }
             if((1 << KP_BUTTON_RIGHT) & m_keypadButtonMask) {
                 onToggleSingleColumn();
                 break;
@@ -1147,6 +1170,11 @@ void MainController::onBtButton(int nButton, bool bDown) {
             onLeftArrow();
             break;
         case KP_BUTTON_RIGHT    :
+            if(m_bMenuOpen) {
+                m_keypadButtonMask |= (1 << nButton);
+                m_kbdInjctr.sendKeyEvent(KEYCODE_RIGHT);
+                return;
+            }
             if((1 << KP_BUTTON_LEFT) & m_keypadButtonMask) {
                 onToggleSingleColumn();
                 break;
@@ -1343,7 +1371,7 @@ void MainController::onToggleVoice() {
         m_ttsEngine->pause();
     m_beepSound->play();
 
-    setlocale(LC_ALL, "C");
+    //setlocale(LC_ALL, "C");
     int nIndx = NextEnabledVoiceIndex(m_nCurrentLangaugeSettingIndx, g_vLangVoiceSettings);
 
     if(!ocr().setLanguage(g_vLangVoiceSettings[nIndx].m_uLang_mask)) {
@@ -1354,13 +1382,13 @@ void MainController::onToggleVoice() {
     m_translator.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     //m_help.SetLanguage(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs.front().lang.toStdString());
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.front();
-    SettTTsEngine(m_currentTTSIndex);
+    SetTTsEngine(m_currentTTSIndex);
     QString sMsg(((g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs.size() > 1) ? m_translator.GetString(VOICE_SET_AUTO) : m_translator.GetString(VOICE_SET_TO)).c_str());
     sayText(sMsg + buildVoicesString(g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_vlangs));
     writeSettings();
 }
 
-void MainController::SettTTsEngine(int nIndx) {
+void MainController::SetTTsEngine(int nIndx) {
     if(m_ttsEngine)
         m_ttsEngine->disconnectFromAudioLayer();
     m_ttsEngine = m_ttsEnginesList[m_currentTTSIndex];
@@ -1376,7 +1404,7 @@ void MainController::SetCurrentTts(const QString & lang) {
             if(m_currentTTSIndex == vindxs[i])
                 return;
             m_currentTTSIndex = vindxs[i];
-            SettTTsEngine(m_currentTTSIndex);
+            SetTTsEngine(m_currentTTSIndex);
         }
 }
 
@@ -1386,7 +1414,7 @@ void MainController::SetDefaultTts() {
         return;
     m_ttsEngine->stop();
     m_currentTTSIndex = g_vLangVoiceSettings[m_nCurrentLangaugeSettingIndx].m_ttsEngIndxs[0];
-    SettTTsEngine(m_currentTTSIndex);
+    SetTTsEngine(m_currentTTSIndex);
 }
 
 void MainController::onSpellCurrentWord() {
@@ -1406,7 +1434,10 @@ QString MainController::translateTag(const QString &tag) const {
 
 void MainController::resetAudio()
 {
-    m_pTtsAudioLayer->reset();
+    if(m_ttsEngine)
+        m_ttsEngine->disconnectFromAudioLayer();
+    m_pTtsAudioLayer = TtsAudioLayer::reset();
+    m_ttsEngine->connectToAudioLayer();
 }
 
 void MainController::changeVoiceSpeed(int nStep) {
@@ -1757,7 +1788,7 @@ bool moveBatteryTestFile() {
 }
 
 void MainController::onUsbKeyInsert(bool bInserted) {
-    if(IsUpdateDrive())
+    if(bInserted && IsUpdateDrive())
         return;
     m_bUsbKeyInserted = bInserted;
     int nIndx = 0;
@@ -1773,8 +1804,18 @@ void MainController::onUsbKeyInsert(bool bInserted) {
         FindZyrloBooks(vBooks);
         if(!vBooks.empty())
             nIndx = GetFileIndx(vBooks.back());
+        m_sCurrentBookDir = GetBookPath(ZYRLO_BOOKS_PATH, nIndx + 1);
     }
-    m_sCurrentBookDir = GetBookPath(ZYRLO_BOOKS_PATH, nIndx + 1);
+}
+
+void MainController::onUsbKpConnect(bool bConnected) {
+    if(m_beepSound)
+        m_beepSound->play();
+}
+
+void MainController::onBtKpRegistered() {
+    if(m_beepSound)
+        m_beepSound->play();
 }
 
 static bool GetBookPages(const string & sDir, vector<string> & vPages) {
